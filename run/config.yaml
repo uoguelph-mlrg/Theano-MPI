@@ -1,0 +1,58 @@
+# If want to input None, use !!null
+
+# Model choose
+name: alexnet # alexnet or googlenet
+
+# Resume Training, start from scratch or resume training
+resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
+load_epoch: 70
+load_path: /work/mahe6562/models-alexnet-8gpu-1000-cop7/ 
+#/work/mahe6562/pretrained-models/googlenet-32b/models-googlenet-8gpu-32b-cop7/
+
+# Momentum
+use_momentum: True # def: True
+use_nesterov_momentum: False # def: False
+
+# Weight Average
+avg_freq: 1 # def: 1, if average weights every iteration
+train_mode: avg # mode selection: avg or cdd
+cuda_aware: False
+fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
+
+# Data
+file_batch_size: 128 # def: choose according to the preprocessed hkl file size
+use_data_layer: False # def: False
+para_load: True # def: should be always true, training and loading data in parallel
+batch_crop_mirror: False  # if False, do randomly on each image separately
+data_source: hkl # hkl or lmdb or both
+
+# Directories
+lmdb_head: /work/mahe6562/prepdata_1000cat_128b/lmdb/   # base dir where lmdb training data is kept
+dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
+label_folder : /labels/  # 
+mean_file : /misc/img_mean.npy   
+weights_dir : /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+record_dir: ./inforec/
+train_folder: /train_hkl_128b/   #/hkl_data/  
+val_folder: /val_hkl_128b/   
+
+# conv library
+lib_conv: cudnn  # or 
+#lib_conv: cudaconvnet #(to use pylearn2's convnet)
+
+# output
+flag_top_5: True
+print_info_every: 5120 # print time and error info every 5120 images
+snapshot_freq: 2  # epoch frequency of saving weights def: 20
+print_train_error: True
+print_freq: 2  # iteration frequency of printing training error rate def: 200
+
+# randomness
+random: True
+shuffle: True # def: False, if shuffle the batches
+rand_crop: True # def: True
+
+# gpu and socket
+gpushift: 0
+sock_data: 5011
+debug: False # def: False ; True: run a small sample of training data for shorter epoch testing time

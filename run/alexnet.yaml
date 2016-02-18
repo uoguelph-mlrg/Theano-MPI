@@ -1,0 +1,23 @@
+# GoogLeNet model and training hyperparameters
+
+# Learning Parameters
+n_epochs: 70 # def: 70 for  AlexNet, 90 for GoogLeNet
+learning_rate: 0.01  # def: 0.01 for both AlexNet and GoogLeNet
+lr_policy: step  # def: step or auto
+lr_adapt_threshold: 0.01
+lr_step: [20, 40, 60]   # def: 20, learning rate will be reduced by 10 times at these steps when training AlexNet
+
+# Weight Decay
+weight_decay: 0.0005 # def: 0.0005 for AlexNet, 0.0002 for GoogLeNet
+
+# Momentum
+momentum: 0.9 # def: 0.9
+
+# Model info
+name: alexnet
+input_width: 227 # def: 227 for AlexNet, 224 for GoogLeNet 
+input_height: 227 # def: 227 for AlexNet, 224 for GoogLeNet 
+
+n_softmax_out: 1000
+
+batch_size: 128 # def: 128 # def: 128 for AlexNet, 32 for GoogleNet 
