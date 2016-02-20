@@ -275,7 +275,7 @@ class Optimizer(object):
         save_momentums(vels, 
                        self.config['weights_dir'], self.epoch)
         if self.verbose:
-            print '\nweights and momentums saved at epoch %d' % load_epoch
+            print '\nweights and momentums saved at epoch %d' % self.epoch
         
     def start(self):
 

@@ -33,11 +33,11 @@ class Weight(object):
         self.val = theano.shared(value=self.np_values)
 
     def save_weight(self, dir, name):
-        print 'weight saved: ' + name
+        #print 'weight saved: ' + name
         np.save(dir + name + '.npy', self.val.get_value())
 
     def load_weight(self, dir, name):
-        print 'weight loaded: ' + name
+        #print 'weight loaded: ' + name
         self.np_values = np.load(dir + name + '.npy')
         self.val.set_value(self.np_values)
 
