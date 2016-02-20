@@ -141,7 +141,7 @@ class Recorder(object):
         self.info_dict['val_info'].append([count, cost, error, error_top5])
     
         if self.verbose:
-            print 'validation cost:%.4f' % cost
+            print '\nvalidation cost:%.4f' % cost
             print 'validation error:%.4f' % error
             print 'validation top_5_error:%.4f' % error_top5
     
@@ -168,6 +168,126 @@ class Recorder(object):
         with open(filepath, 'rb') as f:
 
             self.info_dict = pickle.load(f)
+            
+    def show(self):
+        
+        import matplotlib.pyplot as plt
+
+        from matplotlib.font_manager import FontProperties
+
+        fontP = FontProperties()
+        fontP.set_size('small')
+        color = ['-r','-b','-m','-g', '--r','--b','--m']
+        
+        count_train, train_loss, train_error  = np.transpose(self.info_dict['train_info'])
+        train_loss = train_loss[:int(train_loss.shape[0]/250) * 250]
+        train_error = train_error[:int(train_error.shape[0]/250) * 250]
+        train_loss = np.mean(train_loss.reshape(-1, 250), axis=1)
+        train_error = np.mean(train_error.reshape(-1, 250), axis=1)
+        
+        count_val, val_loss, val_error, val_error_top5  = np.transpose(self.info_dict['val_info'])
+        count_t, t_all, t_calc, t_comm, t_wait = np.transpose(self.info_dict['all_time'])
+        t_all = t_all[:int(t_all.shape[0]/250) * 250]
+        t_calc = t_calc[:int(t_calc.shape[0]/250) * 250]
+        t_comm = t_comm[:int(t_comm.shape[0]/250) * 250]
+        t_wait = t_wait[:int(t_wait.shape[0]/250) * 250]
+        
+        t_all = np.mean(t_all.reshape(-1, 250), axis=1)
+        t_calc = np.mean(t_calc.reshape(-1, 250), axis=1)
+        t_comm = np.mean(t_comm.reshape(-1, 250), axis=1)
+        t_wait = np.mean(t_wait.reshape(-1, 250), axis=1)
+        
+        count_epoch, t_epoch = np.transpose(self.info_dict['epoch_time'])
+        count_lr , lr = np.transpose(self.info_dict['lr'])
+
+        # train error
+        fig = plt.figure(1)
+
+        ax = plt.subplot(211) # one record per 40 iterations , total 250 recordings for 10008 iterations in an epoch
+        ax.plot(train_loss, color[0], label='loss')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('train loss')
+
+        ax = plt.subplot(212)
+        ax.plot(train_error, color[1], label='error')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('train error')
+        
+        plt.suptitle('training info')
+
+        # val error
+        fig = plt.figure(2)
+
+        ax = plt.subplot(311) # one record per epoch
+        ax.plot(val_loss, color[0], label='loss')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('validation loss')
+
+        ax = plt.subplot(312)
+        ax.plot(val_error, color[1], label='error')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('validation error')
+
+        ax = plt.subplot(313)
+        ax.plot(val_error_top5, color[1], label='error_top5')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('validation top5 error')
+        
+        plt.suptitle('validation info')
+
+
+        # time
+        fig = plt.figure(3)
+
+        ax = plt.subplot(411) # one record per 40 iterations ,
+        ax.plot(t_all, color[0], label='all_time')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('overall')
+
+        ax = plt.subplot(412)
+        ax.plot(t_calc, color[1], label='train_time')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('calc')
+
+        ax = plt.subplot(413)
+        ax.plot(t_comm, color[2], label='comm_time')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('comm')
+
+        ax = plt.subplot(414)
+        ax.plot(t_wait, color[3], label='wait_time')
+        ax.set_xlabel('epoch')
+        ax.set_ylabel('wait')
+        
+        plt.suptitle('time per 5120 images')
+
+
+        # epoch time
+        fig = plt.figure(4) # in hour
+
+        plt.plot(t_epoch/3600.0, color[0], label='epoch_time')
+        plt.xlabel('epoch')
+        plt.ylabel('time per epoch')
+
+        plt.ylim([0,3])
+        
+        plt.suptitle('epoch time')
+        
+        
+        # learning rate
+        
+        fig = plt.figure(5)
+
+        plt.plot(lr, color[0], label='lr')
+        plt.xlabel('epoch')
+        plt.ylabel('learning rate')
+        
+        plt.ylim([0,0.1])
+        
+        plt.suptitle('learning rate')
+        
+
+        plt.show()
             
 
     

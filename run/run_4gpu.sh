@@ -1,4 +1,4 @@
-source set4copper_intel.sh
+source /opt/sharcnet/testing/set4theano.sh
 
 if [[ -z $1 ]]; then
 	echo 'need a host as argument $1'

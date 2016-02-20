@@ -204,7 +204,8 @@ class Optimizer(object):
         
         self.config['comm'].Barrier()
         
-        if self.verbose: print 'Now training'
+        if self.verbose: 
+            print '\nNow training'
         
         for i in range(0,self.train_len,self.config['size']):
         
@@ -226,7 +227,8 @@ class Optimizer(object):
         
         self.config['comm'].Barrier()
         
-        if self.verbose: print 'Now validating'
+        if self.verbose: 
+            print '\nNow validating'
         
         self.model.set_dropout_off()
         
@@ -240,8 +242,6 @@ class Optimizer(object):
 
             self.recorder.gather_val_info()
         
-        if self.verbose: print ''
-        
         self.recorder.print_val_info(self.count)
         
         self.model.set_dropout_on()
@@ -253,23 +253,29 @@ class Optimizer(object):
         learning_rate = self.model.lr
         vels = self.model.vels
         
-        load_weights(layers, path, epoch)
+        load_weights(layers, path, load_epoch)
         if learning_rate != None: 
             learning_rate.set_value(np.load(os.path.join(path, 
                       'lr_' + str(epoch) + '.npy')))
         if vels != None:
-            load_momentums(vels, path, epoch)
+            load_momentums(vels, path, load_epoch)
             
-    def save_model(self):  
+        if self.verbose: 
+            print '\nweights and momentums loaded from epoch %d' % load_epoch
+            
+    def save_model(self): 
+      
+        layers = self.model.layers
+        path = self.config['weights_dir']
+        vels = self.model.vels  
         
-        try:
-            save_weights(self.model.layers, config['weights_dir'], self.epoch)
-            np.save(self.config['weights_dir'] + 'lr_' + \
-                         str(self.epoch) + '.npy', self.model.lr.get_value())
-            save_momentums(self.model.vels, 
-                           self.config['weights_dir'], self.epoch)
-        except:
-            pass
+        save_weights(layers, path, self.epoch)
+        np.save(path + 'lr_' + str(self.epoch) + \
+                        '.npy', self.model.lr.get_value())
+        save_momentums(vels, 
+                       self.config['weights_dir'], self.epoch)
+        if self.verbose:
+            print '\nweights and momentums saved at epoch %d' % load_epoch
         
     def start(self):
 
@@ -290,9 +296,12 @@ class Optimizer(object):
                 self.recorder.save(self.count, self.model.lr.get_value())
                 
                 if self.epoch % self.config['snapshot_freq'] == 0:
-                    self.save_model()
+                    if self.config['rank'] ==0 :
+                        self.save_model()
 
-                if self.epoch >= self.config['n_epochs']: break
+                if self.epoch >= self.config['n_epochs']: 
+                    print '\noptimization finished'
+                    break
     		
     		
         elif self.config['syncrule'] == 'EASGD':
