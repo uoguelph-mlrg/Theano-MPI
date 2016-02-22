@@ -31,7 +31,7 @@ lmdb_head: /work/mahe6562/prepdata_1000cat_128b/lmdb/   # base dir where lmdb tr
 dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
-weights_dir : /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+weights_dir : /tmp/models #others don't have write permission to /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
 train_folder: /train_hkl_128b/   #/hkl_data/  
 val_folder: /val_hkl_128b/   

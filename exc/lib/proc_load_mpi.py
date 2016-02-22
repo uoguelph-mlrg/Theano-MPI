@@ -51,7 +51,7 @@ def crop_and_mirror(data, param_rand, flag_batch=True, cropsize=227):
                     crop_ys:crop_ys + cropsize, :]
 
     else:
-        # mirror and crop each batch individually
+        # mirror and crop each batch(each image?) individually
         # to ensure consistency, use the param_rand[1] as seed
         np.random.seed(int(10000 * param_rand[1]))
 
