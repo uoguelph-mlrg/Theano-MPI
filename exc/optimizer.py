@@ -63,12 +63,16 @@ class P_iter(object):
         
         if self.mode=='train':
             
-            time_seed = int(time.time())*int(self.config['worker_id'])%1000
-            np.random.seed(time_seed)
-        
             filenames_arr = np.array(raw_filenames)
-            indices = np.random.permutation(filenames_arr.shape[0])
-            filenames= filenames_arr[indices]
+            
+            if self.config['random'] and self.config['shuffle']:
+                time_seed = int(time.time())*int(self.config['worker_id'])%1000
+                np.random.seed(time_seed)
+            
+                indices = np.random.permutation(filenames_arr.shape[0])
+                filenames= filenames_arr[indices]
+            else:
+                filenames = filenames_arr
 
             y=[]
             for index in range(len(indices)):

@@ -135,17 +135,15 @@ def dtype_to_mpi(t):
 TODO below need adjust
 '''
 
-def get_rand3d(flag_random, SEED):  
-    np.random.seed(SEED)
-#    rng = np.random.RandomState(SEED)
-#    tmp_rand = rng.normal(0, 0.1 , 2) 
-#    tmp_rand[0] = abs((tmp_rand[0] + 0.3)/0.6 )
-#    tmp_rand[1] = abs((tmp_rand[1] + 0.3)/0.6)    
-#    tmp_rand = (tmp_rand[0],tmp_rand[1],round(np.float32(np.random.rand(1))))
-    tmp_rand = np.float32(np.random.rand(3))
-    tmp_rand[2] = round(tmp_rand[2])
+def get_rand3d(config):  
 
-    if flag_random == True:
+    if config['random'] and config['rand_crop'] == True:
+        
+        time_seed = int(time.time())*int(config['worker_id'])%1000
+
+        np.random.seed(time_seed)
+        tmp_rand = np.float32(np.random.rand(3))
+        tmp_rand[2] = round(tmp_rand[2])
         return tmp_rand
     else:
         return np.float32([0.5, 0.5, 0]) 

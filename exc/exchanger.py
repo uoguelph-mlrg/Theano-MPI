@@ -24,8 +24,8 @@ class Exchanger(object):
         self.vels = model.vels
         self.vels2 = model.vels2
         self.helper_param_list = None 
-		# param_ga_list,param_update_ga_list,d_param_halfs, d_param_half_tmps, d_param_half_sums, d_param_half_updates for fp16 ca
-		# or d_param_32_tmps, d_param_32_sums for fp32 ca
+		# param_update_ga_list,d_param_halfs, d_param_half_tmps, d_param_half_sums, d_param_half_updates for fp16 ca
+		# or param_update_ga_list, d_param_32_tmps, d_param_32_sums for fp32 ca
 		# or param_updates for cdd
 		# or param_updates , avg_fun_list for avg
         self.avg_func_list = []
@@ -40,9 +40,7 @@ class Exchanger(object):
                 
                 self.cdd()
                 
-                self.param_updates = self.helper_param_list[0]
-                
-                
+                self.param_update_list = self.helper_param_list[0]
                 
             elif self.train_mode == 'avg' and self.cuda_aware == False:
                 
@@ -50,15 +48,14 @@ class Exchanger(object):
                 
                 self.param_updates = self.helper_param_list[0]
                 
-                
-                
             elif self.train_mode == 'avg' and self.cuda_aware == True \
                                                     and self.fp == 32:
                 self.avg_ca_fp32()
                 self.compile_fp32_kernels()
                 self.ctx = config['ctx']
                 
-                self.d_param_32_tmps, self.d_param_32_sums = \
+                self.param_update_ga_list,\
+                    self.d_param_32_tmps, self.d_param_32_sums = \
                                         self.helper_param_list
                 self.grid_sum_sizes, self.numElements, \
                     self.reducesizes, self.mpitp = self.cuda_aware_var_list
@@ -70,7 +67,7 @@ class Exchanger(object):
                 self.compile_fp16_kernels()
                 self.ctx = config['ctx']
                 
-                self.param_ga_list, self.param_update_ga_list,\
+                self.param_update_ga_list,\
                     self.d_param_halfs, self.d_param_half_tmps,\
                     self.d_param_half_sums, self.d_param_half_updates = \
                                             self.helper_param_list
@@ -97,16 +94,28 @@ class Exchanger(object):
                             zip(self.param_list, self.param_updates):
                     self.comm.Allreduce(param.get_value(), param_update)
                     param.set_value(param_update)
-            
-            elif self.fp == 32:
-                
-                wcount=0
-                for param in self.param_list:
                     
-                    param_buf = bufint_cn(param)
+            elif self.fp == 32: 
+                
+                # copy weight from param_ga to param_update_ga
+                for param, param_update_ga in \
+                                zip(self.param_list, self.param_update_ga_list):
+
+                    param_ga = \
+                     theano.misc.pycuda_utils.to_gpuarray(param.container.value)
+
+                    self.drv.memcpy_dtod(param_update_ga.ptr,
+                                          param_ga.ptr,
+                                          param_ga.dtype.itemsize *
+                                          param_ga.size)
+                                          
+                # allreduce weight from param_update_ga to itself
+                                          
+                wcount=0
+                for param_update_ga in self.param_update_ga_list:
 			        
                     self.comm.Alltoall(
-			                  [param_buf, self.mpitp],
+			                  [bufint(param_update_ga), self.mpitp],
 			                  [bufint(self.d_param_32_tmps[wcount]),\
                                                            self.mpitp])
 			    
@@ -121,18 +130,28 @@ class Exchanger(object):
                     self.ctx.synchronize()
                     self.comm.Allgather(\
                                     [bufint(self.d_param_32_sums[wcount]),\
-                                        self.mpitp], [param_buf,self.mpitp])
+                                        self.mpitp], [bufint(param_update_ga),self.mpitp])
                     #param.container.value.release_buffer(param_buf)
                     
                     wcount = wcount +1
+                    
+                # copy weight from param_reduce_ga back to param_ga
+                for param, param_update_ga in \
+                                zip(self.param_list, self.param_update_ga_list):
+    
+                	param_ga = \
+                     theano.misc.pycuda_utils.to_gpuarray(param.container.value)
+
+                	self.drv.memcpy_dtod(param_ga.ptr,
+                                          param_update_ga.ptr,
+                                          param_update_ga.dtype.itemsize *
+                                          param_update_ga.size)
 
             elif self.fp == 16:
 			
-                
-
                 # copy weight from param_ga to param_update_ga
                 for param, param_update_ga in \
-                                zip(self.param_list, param_update_ga_list):
+                                zip(self.param_list, self.param_update_ga_list):
 
                     param_ga = \
                      theano.misc.pycuda_utils.to_gpuarray(param.container.value)
@@ -145,34 +164,34 @@ class Exchanger(object):
                 # allreduce weight from param_update_ga to itself
 
                 wcount=0
-                for param_update_ga in param_update_ga_list:
+                for param_update_ga in self.param_update_ga_list:
 
-                    float2half(param_update_ga, d_param_halfs[wcount], \
-                                        numElements[wcount], offsets[wcount], \
-                                        block=(256,1,1),grid=grid_sizes[wcount])
+                    self.float2half(param_update_ga, self.d_param_halfs[wcount], \
+                                        self.numElements[wcount], self.offsets[wcount], \
+                                        block=(256,1,1),grid=self.grid_sizes[wcount])
     
                     self.comm.Alltoall(
-                                    [bufint(d_param_halfs[wcount]), mpitp],\
-                                    [bufint(d_param_half_tmps[wcount]),mpitp])
-                    sumhalfs(d_param_half_tmps[wcount], \
-                             d_param_half_sums[wcount], \
-                             reducesizes[wcount],ranksize,\
-                             reducesizes[wcount], \
-                             block=(256,1,1),grid=grid_sum_sizes[wcount])
+                                    [bufint(self.d_param_halfs[wcount]), self.mpitp],\
+                                    [bufint(self.d_param_half_tmps[wcount]),self.mpitp])
+                    self.sumhalfs(self.d_param_half_tmps[wcount], \
+                             self.d_param_half_sums[wcount], \
+                             self.reducesizes[wcount],self.ranksize,\
+                             self.reducesizes[wcount], \
+                             block=(256,1,1),grid=self.grid_sum_sizes[wcount])
 
                     self.comm.Allgather(
-                                [bufint(d_param_half_sums[wcount]),mpitp],\
-                                [bufint(d_param_half_updates[wcount]),mpitp])
+                                [bufint(self.d_param_half_sums[wcount]),self.mpitp],\
+                                [bufint(self.d_param_half_updates[wcount]),self.mpitp])
     
-                    half2float(d_param_half_updates[wcount], param_update_ga, \
-                                        numElements[wcount],offsets[wcount], \
-                                        block=(256,1,1),grid=grid_sizes[wcount])
+                    self.half2float(self.d_param_half_updates[wcount], param_update_ga, \
+                                        self.numElements[wcount],self.offsets[wcount], \
+                                        block=(256,1,1),grid=self.grid_sizes[wcount])
     
                     wcount+=1
 
                 # copy weight from param_reduce_ga back to param_ga
                 for param, param_update_ga in \
-                                zip(self.param_list, param_update_ga_list):
+                                zip(self.param_list, self.param_update_ga_list):
     
                 	param_ga = \
                      theano.misc.pycuda_utils.to_gpuarray(param.container.value)
@@ -188,7 +207,7 @@ class Exchanger(object):
 	    
             self.comm.Barrier()
             for vel,vel2, param_update in \
-                                zip(self.vels,self.vels2, param_updates):
+                                zip(self.vels,self.vels2, self.param_update_list):
                 self.comm.Allreduce(vel.get_value(), param_update)
                 vel2.set_value(param_update)
 		
@@ -208,12 +227,22 @@ class Exchanger(object):
 		
 	
     def avg_ca_fp32(self):
+        
+        param_ga_list = []
+        param_update_ga_list=[]
 
         division_factor = 1.0 / self.size
         for param in self.param_list:
             average_fun = theano.function([], \
                             updates=[(param, param * division_factor)])
             self.avg_func_list.append(average_fun)
+            
+            param_ga = \
+                theano.misc.pycuda_utils.to_gpuarray(param.container.value)
+            param_ga_list.append(param_ga)
+            param_update = param.get_value()
+            param_update_ga = gpuarray.GPUArray(param_update.shape,param_update.dtype)
+            param_update_ga_list.append(param_update_ga)
 
         # fp32 related parameters
         block_size = np.int32(256)
@@ -259,7 +288,8 @@ class Exchanger(object):
 
         mpitp = dtype_to_mpi(d_param_32_tmps[0].dtype)
 
-        self.helper_param_list = [d_param_32_tmps, d_param_32_sums]
+        self.helper_param_list = [param_update_ga_list, \
+                                d_param_32_tmps, d_param_32_sums]
         self.cuda_aware_var_list = [grid_sum_sizes, numElements, \
         						reducesizes, mpitp]
 
@@ -336,7 +366,7 @@ class Exchanger(object):
 
         mpitp = dtype_to_mpi(d_param_halfs[0].dtype)
 
-        self.helper_param_list = [param_ga_list,param_update_ga_list, \
+        self.helper_param_list = [param_update_ga_list, \
         			d_param_halfs, d_param_half_tmps, d_param_half_sums, \
                     d_param_half_updates]
                     

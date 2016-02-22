@@ -1,5 +1,4 @@
-# Parallel-training
-
+# Parallel Training
 Parallel training framework for training deep learning models built in Theano 
 
 ## Dependencies

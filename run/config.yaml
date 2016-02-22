@@ -5,7 +5,7 @@ name: alexnet # alexnet or googlenet
 
 # Resume Training, start from scratch or resume training
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
-load_epoch: 70
+load_epoch: 44
 load_path: /work/mahe6562/models-alexnet-8gpu-1000-cop7/ 
 #/work/mahe6562/pretrained-models/googlenet-32b/models-googlenet-8gpu-32b-cop7/
 
@@ -16,8 +16,8 @@ use_nesterov_momentum: False # def: False
 # Weight Average
 avg_freq: 1 # def: 1, if average weights every iteration
 train_mode: avg # mode selection: avg or cdd
-cuda_aware: False
-fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
+cuda_aware: True
+fp: 16 # when cuda_aware == True, select parameter communication in float point 16 or 32 
 
 # Data
 file_batch_size: 128 # def: choose according to the preprocessed hkl file size
@@ -50,7 +50,8 @@ print_freq: 2  # iteration frequency of printing training error rate def: 200
 # randomness
 random: True
 shuffle: True # def: False, if shuffle the batches
-rand_crop: True # def: True
+rand_crop: True # def: True, if False will likely be overfitting
+weight_init_seed: 23455 # to change, see layer.py file
 
 # gpu and socket
 gpushift: 0

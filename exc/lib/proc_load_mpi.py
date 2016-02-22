@@ -146,7 +146,9 @@ if __name__ == '__main__':
 
             data = hkl.load(str(filename)) - img_mean
             
-            data = crop_and_mirror(data, [0.5,0.5,0], flag_batch=True)
+            rand_arr = get_rand3d(config)
+
+            data = crop_and_mirror(data, rand_arr, flag_batch=True, cropsize = config['input_width'])
 
             gpu_data.set(data)
             
