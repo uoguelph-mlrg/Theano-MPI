@@ -201,57 +201,71 @@ class Recorder(object):
         count_lr , lr = np.transpose(self.info_dict['lr'])
 
         # train error
-        fig = plt.figure(1)
+        fig = plt.figure(1, figsize=(5,8))
+        fig.subplots_adjust(left = 0.15, bottom = 0.07,
+                            right = 0.94, top = 0.94,
+                            hspace = 0.14)
 
         ax = plt.subplot(211) # one record per 40 iterations , total 250 recordings for 10008 iterations in an epoch
-        ax.plot(train_loss, color[0], label='loss')
-        ax.set_xlabel('epoch')
-        ax.set_ylabel('train loss')
+        ax.plot(train_loss, color[0], label=self.config['name']+ '_8GPU')
+        ax.legend(loc='upper right',prop=fontP)
+        #ax.set_xlabel('epoch')
+        ax.set_ylabel('loss')
+        
 
         ax = plt.subplot(212)
-        ax.plot(train_error, color[1], label='error')
+        ax.plot(train_error, color[1], label=self.config['name']+ '_8GPU')
+        ax.legend(loc='upper right',prop=fontP)
         ax.set_xlabel('epoch')
-        ax.set_ylabel('train error')
+        ax.set_ylabel('error')
+        
         
         plt.suptitle('training info')
+        fig.savefig('train.pdf',format='pdf')
 
         # val error
-        fig = plt.figure(2)
+        fig = plt.figure(2, figsize=(5,8))
+        fig.subplots_adjust(left = 0.15, bottom = 0.07,
+                            right = 0.94, top = 0.94,
+                            hspace = 0.14)
 
         ax = plt.subplot(311) # one record per epoch
-        ax.plot(val_loss, color[0], label='loss')
-        ax.set_xlabel('epoch')
-        ax.set_ylabel('validation loss')
+        ax.plot(val_loss, color[0], label=self.config['name']+ '_8GPU')
+        ax.legend(loc='upper right',prop=fontP)
+        #ax.set_xlabel('epoch')
+        ax.set_ylabel('loss')
 
         ax = plt.subplot(312)
-        ax.plot(val_error, color[1], label='error')
-        ax.set_xlabel('epoch')
-        ax.set_ylabel('validation error')
+        ax.plot(val_error, color[1], label=self.config['name']+ '_8GPU')
+        ax.legend(loc='upper right',prop=fontP)
+        #ax.set_xlabel('epoch')
+        ax.set_ylabel('error')
 
         ax = plt.subplot(313)
-        ax.plot(val_error_top5, color[1], label='error_top5')
+        ax.plot(val_error_top5, color[1], label=self.config['name']+ '_8GPU')
+        ax.legend(loc='upper right',prop=fontP)
         ax.set_xlabel('epoch')
-        ax.set_ylabel('validation top5 error')
+        ax.set_ylabel('top5 error')
         
         plt.suptitle('validation info')
-
+        fig.savefig('val.pdf',format='pdf')
 
         # time
         fig = plt.figure(3)
 
         ax = plt.subplot(411) # one record per 40 iterations ,
         ax.plot(t_all, color[0], label='all_time')
-        ax.set_xlabel('epoch')
+        #ax.set_xlabel('epoch')
         ax.set_ylabel('overall')
 
         ax = plt.subplot(412)
         ax.plot(t_calc, color[1], label='train_time')
-        ax.set_xlabel('epoch')
+        #ax.set_xlabel('epoch')
         ax.set_ylabel('calc')
 
         ax = plt.subplot(413)
         ax.plot(t_comm, color[2], label='comm_time')
-        ax.set_xlabel('epoch')
+        #ax.set_xlabel('epoch')
         ax.set_ylabel('comm')
 
         ax = plt.subplot(414)

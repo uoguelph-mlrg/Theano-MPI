@@ -179,6 +179,7 @@ class Optimizer(object):
         self.model = model
         self.config = config
         self.recorder = recorder
+        self.verbose = self.config['rank'] == 0
 
         from exchanger import Exchanger
 
@@ -194,15 +195,15 @@ class Optimizer(object):
                                     data[2], data[3], 'val')
 
         if self.config['resume_train'] == True:
-            epoch = self.config['load_epochs']
+            self.epoch = self.config['load_epoch']
+            self.load_model(self.epoch)
         else:
-            epoch = 0
+            self.epoch = 0
 
         self.train_len = len(data[0])
 
         self.val_len = len(data[2])
-        
-        self.verbose = self.config['rank'] == 0
+
     
     def train(self):
         
@@ -256,16 +257,19 @@ class Optimizer(object):
         path = self.config['load_path']
         learning_rate = self.model.lr
         vels = self.model.vels
-        
-        load_weights(layers, path, load_epoch)
+
         if learning_rate != None: 
+            # TODO needs to verify the previous lr is when training with avg, scaled by size
             learning_rate.set_value(np.load(os.path.join(path, 
-                      'lr_' + str(epoch) + '.npy')))
+                      'lr_' + str(load_epoch) + '.npy')))
+                             
+        load_weights(layers, path, load_epoch)
         if vels != None:
             load_momentums(vels, path, load_epoch)
             
         if self.verbose: 
-            print '\nweights and momentums loaded from epoch %d' % load_epoch
+            print '\nlearning rate loaded %f' % learning_rate.get_value()
+            print 'weights and momentums loaded from epoch %d' % load_epoch
             
     def save_model(self): 
       
@@ -302,9 +306,10 @@ class Optimizer(object):
                 if self.epoch % self.config['snapshot_freq'] == 0:
                     if self.config['rank'] ==0 :
                         self.save_model()
+                        
 
-                if self.epoch >= self.config['n_epochs']: 
-                    print '\noptimization finished'
+                if self.epoch >= self.config['n_epochs']:
+                    if self.verbose: print '\noptimization finished'
                     break
     		
     		

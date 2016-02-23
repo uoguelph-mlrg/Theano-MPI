@@ -131,10 +131,6 @@ def dtype_to_mpi(t):
         raise ValueError('cannot convert type')
     return mpi_type
 
-'''
-TODO below need adjust
-'''
-
 def get_rand3d(config):  
 
     if config['random'] and config['rand_crop'] == True:

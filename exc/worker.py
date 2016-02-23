@@ -300,9 +300,6 @@ class ConvNet_Worker(Worker):
         self.recorder = Recorder(self.config)
 
         opt = Optimizer(self.config, self.model, self.data, self.recorder)
-        
-        if self.config['resume_train'] == True:
-        	opt.load_model(self.config['load_epoch'])
 
         opt.start()
         
