@@ -12,18 +12,10 @@ Parallel training framework for training deep learning models built in Theano
 * [hickle](https://github.com/telegraphic/hickle)
 
 ## How to run
-1.
-
-ssh copper.sharcnet.ca
-
-2.
-
-ssh to one computing node e.g., cop3
-
-3.
-
-set .theanorc to the following:
-
+- 1. ssh copper.sharcnet.ca
+- 2. ssh to one computing node e.g., cop3
+- 3. set .theanorc to the following:
+```
 [global]
 
 mode = FAST_RUN
@@ -35,12 +27,8 @@ base_compiledir = /tmp/mahe6562/.theano
 [cuda]
 
 root=/opt/sharcnet/cuda/7.0.28/toolkit
-
-4.
-
-cd into run/ and execute:
-
-./run_2gpu.sh cop3
+```
+- 4. cd into run/ and execute: ./run_2gpu.sh cop3
 
 ## Note
 
