@@ -50,12 +50,11 @@ Make sure you have access to the data.
 
 ## Performance Testing
 
-![train-info](https://raw.github.com/uoguelph-mlrg/Parallel-training/blob/master/show/train.pdf)
 <div class="fig figcenter fighighlight">
   <img src="/show/train.pdf">
   <div class="figcaption"> train </div>
 </div>
-![val-info](https://raw.github.com/uoguelph-mlrg/Parallel-training/blob/master/show/val.pdf)
+
 <div class="fig figcenter fighighlight">
   <img src="/show/val.pdf">
   <div class="figcaption"> validation </div>
