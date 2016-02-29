@@ -73,10 +73,36 @@ fi
 
 echo 'numa3:' $numa3 'device3:' $3
 
+###### device 4
+
+if [[ -z $4 ]]; then
+	echo 'need a device4 as argument $1'
+	exit 1
+else
+	device4=$4
+fi
+
+if [[ ${device4:0:3} == "gpu" ]]; then
+	
+	dev4=${device4#gpu}
+else
+	echo 'device4 starts with *gpu* '
+	exit 1
+fi
+
+if [[ $dev4 -ge '4' ]]; then
+	numa4=1
+else
+	numa4=0
+fi
+
+echo 'numa4:' $numa4 'device4:' $4
+
 
 mpirun --mca mpi_common_cuda_event_max 10000 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 --prefix /opt/sharcnet/openmpi/1.8.7/intel-15.0.3/std -x PYTHONPATH=$PYTHONPATH -x PATH=$PATH -x CPATH=$CPATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -n 1 numactl -N $numa1 python ../lib/EASGD_Worker.py $device1 : \
 	   --mca mpi_common_cuda_event_max 10000 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 --prefix /opt/sharcnet/openmpi/1.8.7/intel-15.0.3/std -x PYTHONPATH=$PYTHONPATH -x PATH=$PATH -x CPATH=$CPATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -n 1 numactl -N $numa2 python ../lib/EASGD_Worker.py $device2 : \
 	   --mca mpi_common_cuda_event_max 10000 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 --prefix /opt/sharcnet/openmpi/1.8.7/intel-15.0.3/std -x PYTHONPATH=$PYTHONPATH -x PATH=$PATH -x CPATH=$CPATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -n 1 numactl -N $numa3 python ../lib/EASGD_Worker.py $device3 : \
+	   --mca mpi_common_cuda_event_max 10000 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 --prefix /opt/sharcnet/openmpi/1.8.7/intel-15.0.3/std -x PYTHONPATH=$PYTHONPATH -x PATH=$PATH -x CPATH=$CPATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -n 1 numactl -N $numa4 python ../lib/EASGD_Worker.py $device4 : \
 	
 
 

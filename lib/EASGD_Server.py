@@ -27,7 +27,7 @@ class EASGD_PTServer(PTServer):
         
     def prepare_param_exchanger(self):
     
-        from exchanger import EASGD_Exchanger
+        from base.exchanger import EASGD_Exchanger
 
         self.exchanger = EASGD_Exchanger(self.config, \
                                     self.drv, \

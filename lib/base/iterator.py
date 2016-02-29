@@ -30,7 +30,7 @@ class P_iter(object):
         self.current = 0
 
         self.mode = mode
-        self.verbose = self.config['rank'] == 0
+        self.verbose = self.config['verbose'] == 0
 
         if self.mode == 'train':
             if self.config['train_mode'] == 'cdd':

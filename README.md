@@ -30,8 +30,20 @@ base_compiledir = /tmp/USERNAME/.theano
 root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
 - 4. cd into run/ 
- - to start a BSP training session: execute ./run_bsp.sh N, N is the desired number of workers.
- - to start a EASGD training session: execute ./run_server_workers.sh gpu4 gpu5 gpu6, where "gpu4 gpu5 gpu6" are the desired worker devices and the server device defaults to gpu7. This will start the server process and each worker process in a separate screen session. To quit server and all worker screen sessions, execute ./quit.sh.
+ - to start a BSP training session: 
+  - 1) configure config.yaml file as follows:
+  ```
+  sync_rule: BSP
+  avg_freq: 1
+  ```
+  - 2) execute ./run_bsp.sh N, N is the desired number of workers.
+ - to start a EASGD training session: 
+  - 1) configure config.yaml file as follows:
+  ```
+  sync_rule: EASGD
+  avg_freq: 8 or desired value
+  ```
+  - 2) execute ./run_server_workers.sh gpu4 gpu5 gpu6, where "gpu4 gpu5 gpu6" are the desired worker devices and the server device defaults to gpu7. This will start the server process and each worker process in a separate screen session. To quit server and all worker screen sessions, execute ./quit.sh.
 
 ## Note
 

@@ -209,7 +209,10 @@ class EASGD_PTWorker(PTWorker):
 
                 self.val()
                 
-                self.model.adjust_lr(self.epoch)
+                uidx = self.request('uidx')
+                self.uepohc = int(uidx/len(train_filenames))
+                
+                self.model.adjust_lr(self.uepoch)
                     
                 self.recorder.save(self.count, self.model.lr.get_value(), \
                         filepath = self.config['record_dir'] + 'inforec.pkl')

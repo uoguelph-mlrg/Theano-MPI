@@ -170,7 +170,7 @@ class Recorder(object):
 
             self.info_dict = pickle.load(f)
             
-    def show(self):
+    def show(self, label='', color_id = 0, show=True):
         
         import matplotlib.pyplot as plt
 
@@ -208,14 +208,14 @@ class Recorder(object):
                             hspace = 0.14)
 
         ax = plt.subplot(211) # one record per 40 iterations , total 250 recordings for 10008 iterations in an epoch
-        ax.plot(train_loss, color[0], label=self.config['name']+ '_8GPU')
+        ax.plot(train_loss, color[0+color_id], label=self.config['name']+ label)
         ax.legend(loc='upper right',prop=fontP)
         #ax.set_xlabel('epoch')
         ax.set_ylabel('loss')
         
 
         ax = plt.subplot(212)
-        ax.plot(train_error, color[1], label=self.config['name']+ '_8GPU')
+        ax.plot(train_error, color[0+color_id], label=self.config['name']+ label)
         ax.legend(loc='upper right',prop=fontP)
         ax.set_xlabel('epoch')
         ax.set_ylabel('error')
@@ -231,19 +231,19 @@ class Recorder(object):
                             hspace = 0.14)
 
         ax = plt.subplot(311) # one record per epoch
-        ax.plot(val_loss, color[0], label=self.config['name']+ '_8GPU')
+        ax.plot(val_loss, color[0+color_id], label=self.config['name']+ label)
         ax.legend(loc='upper right',prop=fontP)
         #ax.set_xlabel('epoch')
         ax.set_ylabel('loss')
 
         ax = plt.subplot(312)
-        ax.plot(val_error, color[1], label=self.config['name']+ '_8GPU')
+        ax.plot(val_error, color[0+color_id], label=self.config['name']+ label)
         ax.legend(loc='upper right',prop=fontP)
         #ax.set_xlabel('epoch')
         ax.set_ylabel('error')
 
         ax = plt.subplot(313)
-        ax.plot(val_error_top5, color[1], label=self.config['name']+ '_8GPU')
+        ax.plot(val_error_top5, color[0+color_id], label=self.config['name']+ label)
         ax.legend(loc='upper right',prop=fontP)
         ax.set_xlabel('epoch')
         ax.set_ylabel('top5 error')
@@ -255,22 +255,22 @@ class Recorder(object):
         fig = plt.figure(3)
 
         ax = plt.subplot(411) # one record per 40 iterations ,
-        ax.plot(t_all, color[0], label='all_time')
+        ax.plot(t_all, color[0+color_id], label='all_time')
         #ax.set_xlabel('epoch')
         ax.set_ylabel('overall')
 
         ax = plt.subplot(412)
-        ax.plot(t_calc, color[1], label='train_time')
+        ax.plot(t_calc, color[0+color_id], label='train_time')
         #ax.set_xlabel('epoch')
         ax.set_ylabel('calc')
 
         ax = plt.subplot(413)
-        ax.plot(t_comm, color[2], label='comm_time')
+        ax.plot(t_comm, color[0+color_id], label='comm_time')
         #ax.set_xlabel('epoch')
         ax.set_ylabel('comm')
 
         ax = plt.subplot(414)
-        ax.plot(t_wait, color[3], label='wait_time')
+        ax.plot(t_wait, color[0+color_id], label='wait_time')
         ax.set_xlabel('epoch')
         ax.set_ylabel('wait')
         
@@ -280,7 +280,7 @@ class Recorder(object):
         # epoch time
         fig = plt.figure(4) # in hour
 
-        plt.plot(t_epoch/3600.0, color[0], label='epoch_time')
+        plt.plot(t_epoch/3600.0, color[0+color_id], label='epoch_time')
         plt.xlabel('epoch')
         plt.ylabel('time per epoch')
 
@@ -293,7 +293,7 @@ class Recorder(object):
         
         fig = plt.figure(5)
 
-        plt.plot(lr, color[0], label='lr')
+        plt.plot(lr, color[0+color_id], label='lr')
         plt.xlabel('epoch')
         plt.ylabel('learning rate')
         
@@ -302,7 +302,7 @@ class Recorder(object):
         plt.suptitle('learning rate')
         
 
-        plt.show()
+        if show: plt.show()
             
 
     
