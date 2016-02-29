@@ -110,7 +110,8 @@ class Recorder(object):
             self.info_dict['all_time'].append([count, t_all, calc, comm, wait])
 
             if self.verbose:
-                print 'time per %d images: %.2f (train %.2f comm %.2f wait %.2f)' % (self.config['print_info_every'], t_all, calc, comm, wait)
+                print 'time per %d images: %.2f (train %.2f comm %.2f wait %.2f)' % \
+                            (self.config['print_info_every'], t_all, calc, comm, wait)
              
             self.all_time['calc'] = []
             self.all_time['comm'] = []
@@ -149,7 +150,7 @@ class Recorder(object):
         self.val_info['error'] = []
         self.val_info['error_top5'] = []
     
-    def save(self, count,lr, filepath = '../run/inforec/inforec.pkl'):
+    def save(self, count,lr, filepath = 'inforec/inforec.pkl'):
 
         self.info_dict['lr'].append([count,lr])
         

@@ -14,16 +14,17 @@ use_momentum: True # def: True
 use_nesterov_momentum: False # def: False
 
 # Weight Average
-avg_freq: 1 # def: 1, if average weights every iteration
+sync_rule: BSP # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+avg_freq: 1 # def: 1 if average weights every iteration in BSP, and 8 in EASGD
+alpha: 0.5 # EASGD specific parameter
 train_mode: avg # mode selection: avg or cdd
 cuda_aware: True
-fp: 16 # when cuda_aware == True, select parameter communication in float point 16 or 32 
+fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
 
 # Data
 file_batch_size: 128 # def: choose according to the preprocessed hkl file size
 use_data_layer: False # def: False
 para_load: True # def: should be always true, training and loading data in parallel
-batch_crop_mirror: False  # if False, do randomly on each image separately
 data_source: hkl # hkl or lmdb or both
 
 # Directories
@@ -51,6 +52,7 @@ print_freq: 2  # iteration frequency of printing training error rate def: 200
 random: True
 shuffle: True # def: False, if shuffle the batches
 rand_crop: True # def: True, if False will likely be overfitting
+batch_crop_mirror: True  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 
 # gpu and socket

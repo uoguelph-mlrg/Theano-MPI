@@ -1,0 +1,2 @@
+# TODO 
+1. make sure EASGD server and workers started on different nodes can connect with each other 

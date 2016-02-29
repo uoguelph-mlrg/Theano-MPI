@@ -1,5 +1,6 @@
 # Parallel Training
-Parallel training framework for training deep learning models built in Theano 
+Parallel training framework for training deep learning models built in Theano based on data-parallelism.
+The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD.
 
 ## Dependencies
 * [OpenMPI 1.8.7](http://www.open-mpi.org/) or at least MPI-2 standard equivalent.
@@ -28,7 +29,9 @@ base_compiledir = /tmp/USERNAME/.theano
 
 root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
-- 4. cd into run/ and execute: ./run_2gpu.sh cop3
+- 4. cd into run/ 
+ - to start a BSP training session: execute ./run_bsp.sh N, N is the desired number of workers in 
+ - to start a EASGD training session: execute ./run_server_workers.sh gpu4 gpu5 gpu6, where "gpu4 gpu5 gpu6" are the desired worker devices and the server device defaults to gpu7. This will start the server process and each worker process in a separate screen session.
 
 ## Note
 

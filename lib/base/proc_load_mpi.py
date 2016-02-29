@@ -101,10 +101,8 @@ if __name__ == '__main__':
     batch_size = config['batch_size']
     subb = file_batch_size//batch_size
     
-    
     drv.init()
     dev = drv.Device(int(gpuid[1]))
-
     ctx = dev.make_context()
 
     import socket
@@ -137,6 +135,7 @@ if __name__ == '__main__':
     while True:
         
         mode = icomm.recv(source=MPI.ANY_SOURCE, tag=43)
+        if mode == 'stop': break
         if verbose: print '[load] 3. mode received: %s' % mode
         
         filename_list = icomm.recv(source=MPI.ANY_SOURCE, tag=40)
@@ -148,7 +147,8 @@ if __name__ == '__main__':
             
             rand_arr = get_rand3d(config)
 
-            data = crop_and_mirror(data, rand_arr, flag_batch=True, cropsize = config['input_width'])
+            data = crop_and_mirror(data, rand_arr, \
+                        flag_batch=config['batch_crop_mirror'], cropsize = config['input_width'])
 
             gpu_data.set(data)
             
