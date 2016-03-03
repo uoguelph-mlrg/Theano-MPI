@@ -8,14 +8,17 @@ class EASGD_PTWorker(PTWorker):
     
     '''
     
-    def __init__(self, port, config, device):
+    def __init__(self, port, config, device):        
         PTWorker.__init__(self, port = port, \
                                 config = config, \
                                 device = device)
                                 
         self.verbose = self.config['verbose']
         self.worker_id = self.config['worker_id']
-                                
+        
+        self.MPI_register() 
+        print 'worker registered'                      
+        self.prepare_worker()                        
         self.prepare_recorder()
         self.prepare_iterator()
         
@@ -30,36 +33,6 @@ class EASGD_PTWorker(PTWorker):
         self.mode = None
         self.epoch = 0
         self.count = 0
-        
-    def MPI_register(self):
-        
-        # 1. ask for server address tuple
-        server_address = self.request('address')
-
-        # 2. connect to server
-        self.request('connect')
-        
-        try:
-            self.client.connect(tuple(server_address))
-        except:
-            raise
-        fd = self.client.fileno()
-        
-        from mpi4py import MPI
-        self.intercomm = MPI.Comm.Join(fd)
-        self.client.close()
-        
-        self.config['irank'] = self.intercomm.rank
-        self.config['isize'] = self.intercomm.size
-        self.config['iremotesize'] = self.intercomm.remote_size
-        
-        test_intercomm(self.intercomm, rank=0)
-        
-    def MPI_deregister(self):
-        
-        self.request('disconnect')
-        
-        self.intercomm.Disconnect()
         
     def prepare_param_exchanger(self):
         
@@ -101,7 +74,7 @@ class EASGD_PTWorker(PTWorker):
             learning_rate.set_value(np.load(os.path.join(path, 
                       'lr_' + str(load_epoch) + '.npy')))
         
-        from lib.helper_funcs import load_weights, load_momentums
+        from base.helper_funcs import load_weights, load_momentums
         load_weights(layers, path, load_epoch)
         if vels != None:
             load_momentums(vels, path, load_epoch)
@@ -116,7 +89,7 @@ class EASGD_PTWorker(PTWorker):
         path = self.config['weights_dir']
         vels = self.model.vels  
         
-        from lib.helper_funcs import save_weights, save_momentums
+        from base.helper_funcs import save_weights, save_momentums
         save_weights(layers, path, self.epoch)
         np.save(path + 'lr_' + str(self.epoch) + \
                         '.npy', self.model.lr.get_value())
@@ -127,7 +100,7 @@ class EASGD_PTWorker(PTWorker):
             
     def train(self):
         
-        for i in xrange(self.train_len):
+        for i in range(self.train_len):
             
             #print self.count
             self.recorder = self.train_iterator.next(self.recorder,self.count)
@@ -136,7 +109,7 @@ class EASGD_PTWorker(PTWorker):
             
             
         self.recorder.start()
-        self.request(dict(done=self.train_len))
+        reply = self.request(dict(done=self.train_len))
         
         self.exchanger.comm = self.intercomm
         self.action(message = 'exchange', \
@@ -146,17 +119,21 @@ class EASGD_PTWorker(PTWorker):
         
     def val(self):
         
+        self.val_iterator.reset()
+        
         self.model.set_dropout_off()
         
-        for i in xrange(self.val_len):
+        for i in range(self.val_len):
         
             self.recorder = self.val_iterator.next(self.recorder,self.count)
             
-            print '.',
+            if self.verbose: print '.',
         
         self.recorder.print_val_info(self.count)
         
         self.model.set_dropout_on()
+        
+        self.train_iterator.reset()
                                     
     
     def copy_to_local(self):
@@ -164,6 +141,15 @@ class EASGD_PTWorker(PTWorker):
         self.exchanger.comm = self.intercomm
         self.action(message = 'copy_to_local', \
                     action=self.exchanger.copy_to_local)
+        if self.verbose: print '\nSynchronized parameter with server'
+                    
+    def adjust_lr(self):
+        
+        self.uepoch, self.n_workers = self.request('uepoch')
+        
+        print 'global epoch %d, %d workers online' % (self.uepoch, self.n_workers )
+        
+        self.model.adjust_lr(self.uepoch, size = self.n_workers)
         
         
     def run(self):
@@ -172,17 +158,16 @@ class EASGD_PTWorker(PTWorker):
         
         print 'worker started'
         
-        self.MPI_register()
-        
-        print 'worker registered'
-        
         self.prepare_param_exchanger()
         
         # start training with the most recent server parameter
         self.copy_to_local()
+        
+        self.adjust_lr()
                     
         epoch_start = False
         
+
         while True:
 
             self.mode = self.request('next')
@@ -199,9 +184,14 @@ class EASGD_PTWorker(PTWorker):
                         self.epoch+=1
 
                 self.train()
+                
+            if self.mode == 'adjust_lr':
+                
+                self.adjust_lr()
+                #self.copy_to_local()
 
             if self.mode == 'val':
-                
+
                 if self.verbose: 
                     print '\nNow validating'
                 
@@ -209,13 +199,11 @@ class EASGD_PTWorker(PTWorker):
 
                 self.val()
                 
-                uidx = self.request('uidx')
-                self.uepohc = int(uidx/len(train_filenames))
-                
-                self.model.adjust_lr(self.uepoch)
+                self.adjust_lr()
                     
                 self.recorder.save(self.count, self.model.lr.get_value(), \
-                        filepath = self.config['record_dir'] + 'inforec.pkl')
+                        filepath = self.config['record_dir'] + \
+                        'inforec_'+ str(self.worker_id) + '.pkl')
                 
                 if self.epoch % self.config['snapshot_freq'] == 0:
                     if self.config['rank'] ==0 :
@@ -224,22 +212,21 @@ class EASGD_PTWorker(PTWorker):
                 self.copy_to_local()
                 
                 if epoch_start == True:
-                    self.recorder.end_epoch(self.count, self.epoch)
+                    self.recorder.end_epoch(self.count, self.uepoch)
                     epoch_start = False
                         
             if self.mode == 'stop':
-                
+                self.train_iterator.stop_load()
                 if self.verbose: print '\noptimization finished'
                 break
-                
+        
+        self.para_load_close() # TODO some workers blocked here can't disconnect
         
         self.MPI_deregister()
         
         print 'worker deregistered'
         
-        self.para_load_close()
-        
-                                
+   
 if __name__ == '__main__':
     
     import yaml

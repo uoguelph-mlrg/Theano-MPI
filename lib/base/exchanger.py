@@ -512,11 +512,9 @@ class EASGD_Exchanger(object):
         self.etype = etype
         self.drv = drv
         self.param_list = param_list
-        
-        self.rank = config['irank'] # TODO not this rank should be the rank from intercomm,
-                                    # may not need rank because its constant to 0 or 1
-        self.dest = 0 # stands for the server's irank
-        self.alpha = config['alpha'] # 1.0/config['size']
+
+        self.dest = 0 # size is 1 on both side of this intercomm, so server_rank=0, worker_rank=0
+        self.alpha = config['alpha'] # TODO not sure if 1.0/config['size'] is better
 
         if self.etype == 'server':
             self.prepare_server()
@@ -635,7 +633,7 @@ class EASGD_Exchanger(object):
             
             for w_param_ga, g_param_ga in zip(self.w_param_ga_list, self.g_param_ga_list):
                 self.comm.Sendrecv(sendbuf = [bufint(w_param_ga), MPI.FLOAT], dest = self.dest,
-                                   recvbuf = [bufint(g_param_ga), MPI.FLOAT], source = self.rank,
+                                   recvbuf = [bufint(g_param_ga), MPI.FLOAT], source = self.dest,
                                    )
                                    
             # copy weight from w_param_ga to w_param

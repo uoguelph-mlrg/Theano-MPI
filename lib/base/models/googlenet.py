@@ -691,6 +691,7 @@ class GoogLeNet(object): # c01b input
         self.errors_top_5 = softmax_layer.errors_top_x(y)
         
         # training related
+        self.base_lr = float(config['learning_rate'])
         self.lr = theano.shared(np.float32(config['learning_rate']))
         self.mu = config['momentum'] # def: 0.9 # momentum
         self.eta = config['weight_decay'] #0.0002 # weight decay
@@ -796,7 +797,7 @@ class GoogLeNet(object): # c01b input
                                                                 
                                                                 
                                                                 
-    def adjust_lr(self, epoch):
+    def adjust_lr(self, epoch, size):
             
         # Poly lr policy according to
         # https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
@@ -811,12 +812,13 @@ class GoogLeNet(object): # c01b input
         # max_iter = 240 * batch_len
         # iter/max_iter = 1/240
         
-        lr_value = self.model.lr.get_value() * \
-            pow( (1. -  1.* epoch/240.0 ), 0.5 )
-	
-        lr_value = np.float32(lr_value)
-        self.lr.set_value(lr_value)
-        print 'learning rate set to %f ' % lr_value
+        power = pow( (1. -  1.* epoch/240.0 ), 0.5 )
+        tuned_base_lr = self.base_lr * pow(power,epoch)
+            
+        self.lr.set_value(tuned_base_lr * size)
+    
+        if self.verbose: 
+            print 'Learning rate now: %.10f' % np.float32(self.lr.get_value())
     
   
 
@@ -830,10 +832,6 @@ def updates_dict(config, model,
     except KeyError:
         size = 1
         verbose = True
-        
-        
-    if config['train_mode']=='avg':
-        model.lr.set_value(model.lr.get_value()*size)
         
     params, grads, weight_types = model.params, model.grads, model.weight_types
     

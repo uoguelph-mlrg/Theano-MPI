@@ -84,10 +84,13 @@ if __name__ == '__main__':
     
     from mpi4py import MPI
     
+    verbose = False #rank==0
+    
     import sys
-    gpuid = sys.argv	
+    
+    gpuid = sys.argv
 
-    print gpuid[1]
+    if verbose: print gpuid[1]
 
     icomm = MPI.Comm.Get_parent()
     
@@ -96,7 +99,7 @@ if __name__ == '__main__':
     config['icomm']=icomm
     size = config['size']
     rank = config['rank']
-    verbose = False #rank==0
+    
     file_batch_size = config['file_batch_size']
     batch_size = config['batch_size']
     subb = file_batch_size//batch_size
@@ -107,13 +110,13 @@ if __name__ == '__main__':
 
     import socket
     addr = socket.gethostbyname(socket.gethostname())
-    if verbose: print addr, rank
+    if verbose: print '[load] ', addr, rank
 
     sock = zmq.Context().socket(zmq.PAIR)
     try:
         sock.bind('tcp://*:{0}'.format(config['sock_data']))
     except zmq.error.ZMQError:
-        print 'rank %d zmq error' % rank
+        print '[load] rank %d zmq error' % rank
         sock.close()
         zmq.Context().term()
         raise
@@ -134,27 +137,28 @@ if __name__ == '__main__':
     import time
     while True:
         
-        mode = icomm.recv(source=MPI.ANY_SOURCE, tag=43)
-        if mode == 'stop': break
-        if verbose: print '[load] 3. mode received: %s' % mode
+        # 3. load the very first filename in 'train' or 'val' mode
+        filename = icomm.recv(source=MPI.ANY_SOURCE, tag=40)
         
-        filename_list = icomm.recv(source=MPI.ANY_SOURCE, tag=40)
-        if verbose: print '[load] 4. filename list received'
-
-        for filename in filename_list:
+        if filename == 'stop':
+            break
+        
+        while True:
 
             data = hkl.load(str(filename)) - img_mean
-            
+        
             rand_arr = get_rand3d(config)
 
             data = crop_and_mirror(data, rand_arr, \
                         flag_batch=config['batch_crop_mirror'], cropsize = config['input_width'])
 
             gpu_data.set(data)
-            
-            # 5. wait for computation on last minibatch to finish  
-            msg = icomm.recv(source=MPI.ANY_SOURCE,tag=35)
-            assert msg == 'calc_finished'
+        
+            # 4. wait for computation on last minibatch to finish and get the next filename
+            filename = icomm.recv(source=MPI.ANY_SOURCE,tag=40)
+        
+            if filename =='stop': # this is used when switching to 'val' or 'stop' during 'train' mode
+                break
 
             drv.memcpy_dtod(gpu_data_remote.ptr,
                             gpu_data.ptr,
@@ -164,7 +168,7 @@ if __name__ == '__main__':
 
             ctx.synchronize()
 
-            # 6. tell train proc to start train on this batch
+            # 5. tell train proc to start train on this batch
             icomm.isend("copy_finished",dest=0,tag=55)
             
     icomm.Disconnect()

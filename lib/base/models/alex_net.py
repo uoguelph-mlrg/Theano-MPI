@@ -165,6 +165,8 @@ class AlexNet(object):
         self.batch_size = batch_size
         
         # training related
+        self.base_lr = float(config['learning_rate'])
+        self.division_factor = 1.0
         self.lr = theano.shared(np.float32(config['learning_rate']))
         self.step_idx = 0
         self.mu = config['momentum'] # def: 0.9 # momentum
@@ -268,38 +270,38 @@ class AlexNet(object):
                                           givens=[(x, shared_x),
                                                   (y, shared_y)]
                                                                 )                                                       
-    def adjust_lr(self, epoch, val_error_list = None):
-    
+    def adjust_lr(self, epoch, size, val_error_list = None):
+        
         if self.config['lr_policy'] == 'step':
             
             if epoch >=20 and epoch < 40 and self.step_idx==0:
 
-                self.lr.set_value(
-                    np.float32(self.lr.get_value() / 10))
-                if self.verbose: print 'Learning rate divided by 10'
                 self.step_idx = 1
+                if self.verbose: print 'Learning rate divided by 10'
+                
                 
             elif epoch >=40 and epoch < 60 and self.step_idx==1:
                 
-                self.lr.set_value(
-                    np.float32(self.lr.get_value() / 10))
-                if self.verbose: print 'Learning rate divided by 10'
                 self.step_idx = 2
+                if self.verbose: print 'Learning rate divided by 10'
+                
                 
             elif epoch >=60 and epoch < 70 and self.step_idx==2:
                 
-                self.lr.set_value(
-                    np.float32(self.lr.get_value() / 10))
-                if self.verbose: print 'Learning rate divided by 10'
                 self.step_idx = 3
+                if self.verbose: print 'Learning rate divided by 10'
+                
             else:
-                pass 
+                pass
+            
+            tuned_base_lr = self.base_lr * 1.0/pow(10,self.step_idx) 
                 
         if self.config['lr_policy'] == 'auto':
             if epoch>5 and (val_error_list[-3] - val_error_list[-1] <
                                 self.config['lr_adapt_threshold']):
-                self.lr.set_value(
-                    np.float32(self.lr.get_value() / 10))
+                tuned_base_lr = self.base_lr / 10.0
+                    
+        self.lr.set_value(tuned_base_lr * size)
         
         if self.verbose: 
             print 'Learning rate now: %.10f' % np.float32(self.lr.get_value())

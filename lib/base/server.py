@@ -1,8 +1,3 @@
-#
-#   Hello World server in Python
-#   Binds REP socket to tcp://*:5555
-#   Expects b"Hello" from client, replies with b"World"
-#
 
 class Server(object):
     
@@ -18,26 +13,13 @@ class Server(object):
         context = zmq.Context()
         self.socket = context.socket(zmq.REP)
         self.socket.bind("tcp://*:{}".format(self.port)) # one to many
-        
-        # basic socket
-        import socket as sock
-        self.server = sock.socket(sock.AF_INET, sock.SOCK_STREAM)
-        self.server.bind(('', 0)) # one to many
-        self.server.listen(0)
-        self.address = self.server.getsockname()
     
     def process_request(self, worker_id, message):
         
         # process a request from a client process 
         #TO BE overriden by inheritance
     
-        reply = ''
-        
-        if message == 'exchange':
-            pass
-        
-        else:
-            pass
+        reply = None
         
         return reply
     

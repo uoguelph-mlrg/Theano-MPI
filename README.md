@@ -36,14 +36,15 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   sync_rule: BSP
   avg_freq: 1
   ```
-  - 2) execute ./run_bsp.sh N, N is the desired number of workers.
+  - 2) execute ./run_bsp.sh N, N is the desired number of workers. This will start worker processes inside a screen session named bspN.
  - to start a EASGD training session: 
   - 1) configure config.yaml file as follows:
-  ```
-  sync_rule: EASGD
-  avg_freq: 8 or desired value
-  ```
-  - 2) execute ./run_server_workers.sh gpu4 gpu5 gpu6, where "gpu4 gpu5 gpu6" are the desired worker devices and the server device defaults to gpu7. This will start the server process and each worker process in a separate screen session. To quit server and all worker screen sessions, execute ./quit.sh.
+   ```
+   sync_rule: EASGD
+   avg_freq: 2 or desired value
+   ```
+  - 2) check the example ./run_easgd_4w.sh, decide how many workers you want to run and which hosts and GPUs you want to use for each worker, make your customized run.sh script, which will start the server process and each worker process in a separate screen session. Note the server device defaults to gpu7 on copper.
+  - 3) execute your ./run.sh. To quit server and all worker screen sessions, execute ./quit.sh.
 
 ## Note
 

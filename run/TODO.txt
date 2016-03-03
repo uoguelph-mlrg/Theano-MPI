@@ -1,2 +1,3 @@
 # TODO 
-1. make sure EASGD server and workers started on different nodes can connect with each other 
+1. make sure EASGD server and workers started on different nodes can connect with each other (check)
+2. connect recorder to deep-dashboard

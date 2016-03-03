@@ -15,7 +15,8 @@ class BSP_PTWorker(PTWorker):
                                 
         self.verbose = self.config['verbose']
         self.worker_id = self.config['worker_id']
-                                
+        
+        self.prepare_worker()                         
         self.prepare_recorder()
         self.prepare_iterator()
         
@@ -71,7 +72,7 @@ class BSP_PTWorker(PTWorker):
             learning_rate.set_value(np.load(os.path.join(path, 
                       'lr_' + str(load_epoch) + '.npy')))
         
-        from lib.helper_funcs import load_weights, load_momentums
+        from base.helper_funcs import load_weights, load_momentums
         load_weights(layers, path, load_epoch)
         if vels != None:
             load_momentums(vels, path, load_epoch)
@@ -86,7 +87,7 @@ class BSP_PTWorker(PTWorker):
         path = self.config['weights_dir']
         vels = self.model.vels  
         
-        from lib.helper_funcs import save_weights, save_momentums
+        from base.helper_funcs import save_weights, save_momentums
         save_weights(layers, path, self.epoch)
         np.save(path + 'lr_' + str(self.epoch) + \
                         '.npy', self.model.lr.get_value())
@@ -115,6 +116,8 @@ class BSP_PTWorker(PTWorker):
         
         self.comm.Barrier()
         
+        self.val_iterator.reset()
+        
         self.model.set_dropout_off()
         
         for i in xrange(0,self.val_len,self.config['size']):
@@ -129,6 +132,12 @@ class BSP_PTWorker(PTWorker):
         
         self.model.set_dropout_on()
         
+        self.train_iterator.reset()
+    
+    def adjust_lr(self):
+        
+        self.model.adjust_lr(self.epoch, size = self.size)
+        
 
     def run(self):
         
@@ -137,6 +146,8 @@ class BSP_PTWorker(PTWorker):
         print 'worker started'
         
         self.prepare_param_exchanger()
+        
+        self.adjust_lr()
         
         self.mode = 'train'
         
@@ -161,7 +172,7 @@ class BSP_PTWorker(PTWorker):
 
                 self.val()
                 
-                self.model.adjust_lr(self.epoch)
+                self.adjust_lr()
                     
                 self.recorder.save(self.count, self.model.lr.get_value(), \
                         filepath = self.config['record_dir'] + 'inforec.pkl')
@@ -173,11 +184,12 @@ class BSP_PTWorker(PTWorker):
                 self.recorder.end_epoch(self.count, self.epoch)
                 
                 if self.epoch >= self.config['n_epochs']:
-                    if self.verbose: print '\noptimization finished'
                     self.mode = 'stop'
+                else:
+                    self.mode = 'train'
                         
             elif self.mode == 'stop':
-                
+                self.train_iterator.stop_load()
                 if self.verbose: print '\noptimization finished'
                 break
             

@@ -3,9 +3,10 @@ Training iterator
 
 '''   
 
-import time
 
+from mpi4py import MPI
 import numpy as np
+import time
 
 class P_iter(object):
 
@@ -30,7 +31,7 @@ class P_iter(object):
         self.current = 0
 
         self.mode = mode
-        self.verbose = self.config['verbose'] == 0
+        self.verbose = self.config['verbose']
 
         if self.mode == 'train':
             if self.config['train_mode'] == 'cdd':
@@ -103,39 +104,50 @@ class P_iter(object):
             
         self.filenames = filenames
         self.labels = labels
+        
+    def reset(self):
+        
+        self.current = 0
+        
+        self.icomm.isend('stop',dest=0,tag=40)
+        
+    def stop_load(self):
+        
+        # to stop the paraloading process
+        
+        self.icomm.isend('stop',dest=0,tag=40)
+        
+        self.icomm.isend('stop',dest=0,tag=40)
 
+        
     def next(self, recorder, count):	
         
         if self.current == 0:
             
             self.shuffle_data()
             
-            # 3. send train mode signal
-            self.icomm.send(self.mode,dest=0,tag=43) 
+            # 3. give load signal to load the very first file
             
-            # 4. send the shuffled filename list to parallel loading process
-            self.icomm.send(self.filenames,dest=0,tag=40) 
-                
-            # 5. give preload signal to load the very first file
-            
-            self.icomm.isend("calc_finished",dest=0,tag=35) 
+            self.icomm.isend(self.filenames[self.current],dest=0,tag=40)
             
         if self.current == self.len - 1:
             last_one = True
+            # Only to get the last copy_finished signal from load
+            self.icomm.isend(self.filenames[self.current],dest=0,tag=40) 
         else:
             last_one = False
+            # 4. give preload signal to load next file
+            self.icomm.isend(self.filenames[self.current+1],dest=0,tag=40)
 
-		
         if self.mode == 'train': recorder.start()
-        # 6. wait for the batch to be loaded into shared_x
-        from mpi4py import MPI
+        
+        # 5. wait for the batch to be loaded into shared_x
         msg = self.icomm.recv(source=MPI.ANY_SOURCE,tag=55) #
         assert msg == 'copy_finished'
              
         self.shared_y.set_value(self.labels[self.current])
         
         if self.mode == 'train': recorder.end('wait')
-        
 
         if self.mode == 'train':
             recorder.start()
@@ -146,23 +158,13 @@ class P_iter(object):
         else:
             cost,error,error_top5 = self.function()
             recorder.val_error(count, cost, error, error_top5)
-
-
+            
         if last_one == False:
-            # 5. give signal to load another file unless it's the last file now
-            self.icomm.isend("calc_finished",dest=0,tag=35) 
             self.current+=1
-
         else:
             self.current=0
-
             
         return recorder
-   
-# TODO make sure EASGD process are not started simultaneously
-                
-        
-        
     
         
             

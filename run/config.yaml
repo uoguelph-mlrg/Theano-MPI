@@ -6,16 +6,15 @@ name: alexnet # alexnet or googlenet
 # Resume Training, start from scratch or resume training
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
 load_epoch: 44
-load_path: /work/mahe6562/models-alexnet-8gpu-1000-cop7/ 
-#/work/mahe6562/pretrained-models/googlenet-32b/models-googlenet-8gpu-32b-cop7/
+load_path: /tmp/models # edit here to find your pretrained weights
 
 # Momentum
 use_momentum: True # def: True
 use_nesterov_momentum: False # def: False
 
 # Weight Average
-sync_rule: BSP # three hyper parameter in EASGD: number of processes, avg_freq, alpha
-avg_freq: 1 # def: 1 if average weights every iteration in BSP, and 8 in EASGD
+sync_rule: EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+avg_freq: 2 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
 alpha: 0.5 # EASGD specific parameter
 train_mode: avg # mode selection: avg or cdd
 cuda_aware: True
@@ -28,11 +27,11 @@ para_load: True # def: should be always true, training and loading data in paral
 data_source: hkl # hkl or lmdb or both
 
 # Directories
-lmdb_head: /work/mahe6562/prepdata_1000cat_128b/lmdb/   # base dir where lmdb training data is kept
+
 dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
-weights_dir : /tmp/models #others don't have write permission to /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+weights_dir : /tmp/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
 train_folder: /train_hkl_128b/   #/hkl_data/  
 val_folder: /val_hkl_128b/   

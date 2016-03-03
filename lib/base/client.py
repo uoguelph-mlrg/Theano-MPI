@@ -1,10 +1,3 @@
-#
-#   Hello World client in Python
-#   Connects REQ socket to tcp://localhost:5555
-#   Sends "Hello" to server, expects "World" back
-#
-#TODO warning other process can interupt this process with the same port number
-
 
 class Client(object):
     
@@ -18,15 +11,15 @@ class Client(object):
     
     def init_socket(self):
         
+        with open('ompi-server.txt', 'r') as f:
+            line = f.readline()
+            self.server_address = line.split('tcp://',1)[-1].split(',')[0]
+        
         # REQ-REP ZMQ SOCKET
         import zmq
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
-        self.socket.connect("tcp://localhost:{}".format(self.port))
-        
-        # basic socket
-        import socket as sock
-        self.client = sock.socket(sock.AF_INET, sock.SOCK_STREAM)
+        self.socket.connect("tcp://{}:{}".format(self.server_address, self.port))
     
     def request(self, message):
         

@@ -59,14 +59,14 @@ class Recorder(object):
 	
     	self.epoch_time = time.time()
 	
-    def end_epoch(self, count, epoch):
+    def end_epoch(self, count, uepoch):
 
         duration = time.time() - self.epoch_time
 
         self.info_dict['epoch_time'].append([count, duration])
 
         if self.verbose: 
-            print 'epoch %d took %.2f h' % (epoch, duration/3600.0)
+            print 'global epoch %d took %.2f h' % (uepoch, duration/3600.0)
             print ''
 
         self.epoch_time = None

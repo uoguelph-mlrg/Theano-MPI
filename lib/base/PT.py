@@ -40,7 +40,7 @@ class PTBase(object):
         self.config = config
         self.device = device
         if self.config['sync_rule'] == 'EASGD':
-            self.verbose = True 
+            self.verbose = True
         elif self.config['sync_rule'] == 'BSP':
             self.verbose = self.rank==0
 
@@ -108,7 +108,7 @@ class PTBase(object):
         train_labels, val_labels, img_mean) = unpack_configs(self.config)
 
         if self.config['debug']:
-            train_filenames = train_filenames[:16]
+            train_filenames = train_filenames[:100]
             val_filenames = val_filenames[:8]
 
         env_train=None
@@ -173,17 +173,22 @@ class PTServer(Server, PTBase):
         Server.__init__(self,port=port)
         PTBase.__init__(self,config=config,device=device)
         
+        #######
+        
+        self.info = MPI.INFO_NULL
+
+        self.port = MPI.Open_port(self.info)
+        
+        self.service = 'parallel-training'
+        
+        MPI.Publish_name(self.service, self.info, self.port)
+        
         self.worker_comm = {}
         
     def process_request(self, worker_id, message):
-        
+
         # override Server class method 
         reply = None
-        
-        if message == 'address':
-            
-            reply = self.address
-            print 'sending address to worker', worker_id
         
         return reply
         
@@ -193,16 +198,23 @@ class PTServer(Server, PTBase):
         
         if message == 'connect':
             
-            client = self.server.accept()[0]
-            assert client != None
-            fd = client.fileno()
-            intercomm = MPI.Comm.Join(fd)
-            self.worker_comm[str(worker_id)] = intercomm
-            client.close()
+            intercomm = MPI.COMM_WORLD.Accept(self.port, self.info, root=0)
+            
+            self.worker_comm[str(worker_id)] = intercomm #TODO BUG there's a small chance that worker processes started on different node have the same pid
+            
             test_intercomm(intercomm, rank=0)
                              
             reply = 'connected'
             print 'connected to worker', worker_id
+            
+        elif message == 'disconnect':
+            
+            intercomm = self.worker_comm[str(worker_id)]
+            intercomm.Disconnect()
+            self.worker_comm.pop(str(worker_id))
+            
+            reply = 'disconnected'
+            print 'disconnected with worker', worker_id
         
 
 
@@ -218,7 +230,13 @@ class PTWorker(Client, PTBase):
         Client.__init__(self, port = port)
         PTBase.__init__(self, config = config, device = device)
         
+        ###
+        
         self.config['worker_id'] = self.worker_id
+
+        
+    def prepare_worker(self):
+        
         self.compile_model()  # needs compile model before para_load_init
 
         if self.config['para_load'] == True:
@@ -234,19 +252,19 @@ class PTWorker(Client, PTBase):
         mpiinfo = MPI.Info.Create()
         mpiinfo.Set(key = 'host',value = hostname)
         ninfo = mpiinfo.Get_nkeys()
-        print ninfo
+        if self.verbose: print ninfo
         import sys
         mpicommand = sys.executable
 
         gpuid = self.device[-1] #str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-        print gpuid
+        if self.verbose: print gpuid
         socketnum = 0
         
         # adjust numactl according to the layout of copper nodes [1-8]
         if int(gpuid) > 3:
             socketnum=1 
         printstr = "rank" + str(self.rank) +":numa"+ str(socketnum)
-        print printstr
+        if self.verbose: print printstr
 
         # spawn loading process
         self.icomm= MPI.COMM_SELF.Spawn('numactl', \
@@ -288,7 +306,7 @@ class PTWorker(Client, PTBase):
     def para_load_close(self):
         
         # send an stop mode
-        self.icomm.send("stop",dest=0,tag=43)
+        self.icomm.send("stop",dest=0,tag=43) # TODO use this only when loading process is ready to receive mode
         self.icomm.Disconnect()
         
     def compile_model(self):
@@ -301,13 +319,49 @@ class PTWorker(Client, PTBase):
         if self.verbose: print 'compile_time %.2f s' % \
                                 (time.time() - compile_time)
                                 
+    def MPI_register(self):
+        
+        self.request('connect')
+        
+        info = MPI.INFO_NULL
+        
+        service = 'parallel-training'
+        
+        port = MPI.Lookup_name(service, info)
+        
+        self.intercomm = MPI.COMM_WORLD.Connect(port, info, root=0)
+        
+        self.config['irank'] = self.intercomm.rank 
+        # size on the local side
+        self.config['isize'] = self.intercomm.size 
+        # size on the remote side
+        self.config['iremotesize'] = self.intercomm.remote_size
+        
+        test_intercomm(self.intercomm, rank=1)
+        
+    def MPI_deregister(self):
+        
+        self.request('disconnect')
+        
+        self.intercomm.Disconnect()
+                                
     def run(self):
         
         # override Client class method
         
+        self.prepare_worker()
+        
         print 'worker started'
         
+        self.MPI_register()
+        
+        print 'worker registered'
+        
         self.para_load_close()
+        
+        self.MPI_deregister()
+        
+        
         
 
 if __name__ == '__main__':
