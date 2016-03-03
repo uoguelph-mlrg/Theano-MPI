@@ -1,50 +1,34 @@
-#! /usr/bin/env python
-
 from mpi4py import MPI
 
 rank = MPI.COMM_WORLD.Get_rank()
 
-def log(msg, *args):
-    if rank == 0:
-        print msg % args
-
-
-log('')
-
 info = MPI.INFO_NULL
 
 port = MPI.Open_port(info)
-log("opened port: '%s'", port)
+print "Server port: '%s'", port
 
-service = 'pyeval'
+service = 'cpi'
 MPI.Publish_name(service, info, port)
-log("published service: '%s'", service)
+print 'Service %s published', service
 
 root = 0
-log('waiting for client connection...')
+print 'Waiting for connection request'
 comm = MPI.COMM_WORLD.Accept(port, info, root)
-log('client connected...')
+print 'Connected to one client'
 
 while True:
-    done = False
-    if rank == root:
-        message = comm.recv(source=0, tag=0)
-        if message is None:
-            done = True
-        else:
-            try:
-                print 'eval(%r) -> %r' % (message, eval(message))
-            except StandardError:
-                print "invalid expression: %s" % message
-    done = MPI.COMM_WORLD.bcast(done, root)
-    if done:
+
+    message = comm.recv(source=0, tag=0)
+    if message == 'quit':
         break
+    else:
+        print 'Receive one message from client:%s' % message
 
-log('disconnecting client...')
 comm.Disconnect()
+print 'Connected with one client'
 
-log('upublishing service...')
 MPI.Unpublish_name(service, info, port)
+print 'Service unpublished'
 
-log('closing port...')
 MPI.Close_port(port)
+print 'Server port closed'
