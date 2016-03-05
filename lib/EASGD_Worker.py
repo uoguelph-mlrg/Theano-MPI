@@ -4,7 +4,8 @@ import numpy as np
 class EASGD_PTWorker(PTWorker):
     
     '''
-    Worker class based a specific synchronization rule (EASGD)
+    Worker class based on a specific synchronization rule (EASGD)
+    Executing training routine and periodically reporting results to server
     
     '''
     
@@ -13,11 +14,21 @@ class EASGD_PTWorker(PTWorker):
                                 config = config, \
                                 device = device)
                                 
-        self.verbose = self.config['verbose']
         self.worker_id = self.config['worker_id']
         
-        self.MPI_register() 
-        print 'worker registered'                      
+        if self.config['sync_start']:
+            # sync start register, 
+            # use the COMM_WORLD to communicate with server
+            self._MPI_register()
+            self.model.verbose = self.verbose 
+        else:
+            # async start register, 
+            # build a separate intercomm to communicate with server
+            self.MPI_register()
+            self.model.verbose = self.verbose
+            
+        #if self.verbose: print 'worker registered'
+                             
         self.prepare_worker()                        
         self.prepare_recorder()
         self.prepare_iterator()
@@ -141,13 +152,13 @@ class EASGD_PTWorker(PTWorker):
         self.exchanger.comm = self.intercomm
         self.action(message = 'copy_to_local', \
                     action=self.exchanger.copy_to_local)
-        if self.verbose: print '\nSynchronized parameter with server'
+        if self.verbose: print '\nSynchronized param with server'
                     
     def adjust_lr(self):
         
         self.uepoch, self.n_workers = self.request('uepoch')
         
-        print 'global epoch %d, %d workers online' % (self.uepoch, self.n_workers )
+        #if self.verbose: print 'global epoch %d, %d workers online' % (self.uepoch, self.n_workers )
         
         self.model.adjust_lr(self.uepoch, size = self.n_workers)
         
@@ -156,7 +167,7 @@ class EASGD_PTWorker(PTWorker):
         
         # override PTWorker class method
         
-        print 'worker started'
+        if self.verbose: print 'worker %s started' % self.worker_id
         
         self.prepare_param_exchanger()
         
@@ -198,8 +209,6 @@ class EASGD_PTWorker(PTWorker):
                 self.copy_to_local()
 
                 self.val()
-                
-                self.adjust_lr()
                     
                 self.recorder.save(self.count, self.model.lr.get_value(), \
                         filepath = self.config['record_dir'] + \
@@ -216,15 +225,25 @@ class EASGD_PTWorker(PTWorker):
                     epoch_start = False
                         
             if self.mode == 'stop':
+                
+                self.copy_to_local()
+
+                self.val()
+                
+                if epoch_start == True:
+                    self.recorder.end_epoch(self.count, self.uepoch)
+                    epoch_start = False
+                
                 self.train_iterator.stop_load()
-                if self.verbose: print '\noptimization finished'
+                if self.verbose: print '\nOptimization finished'
+                
                 break
         
         self.para_load_close() # TODO some workers blocked here can't disconnect
-        
+        self.ctx.pop()
         self.MPI_deregister()
         
-        print 'worker deregistered'
+        if self.verbose: print '\nWorker %s deregistered' % self.worker_id
         
    
 if __name__ == '__main__':

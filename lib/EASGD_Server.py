@@ -5,7 +5,8 @@ import numpy as np
 class EASGD_PTServer(PTServer):
     
     '''
-    Server class based a specific synchronization rule (EASGD)
+    Server class based on a specific synchronization rule (EASGD)
+    Manage traininng ralted request from workers
     
     '''
     
@@ -26,11 +27,11 @@ class EASGD_PTServer(PTServer):
         self.validFreq = len(self.data[0])
         self.uepoch = 0
         self.last_uepoch = 0
-        self.first_worker_id = None
         
         if self.config['resume_train']:
             self.uepoch = self.config['load_epoch']
-            self.udix['pretrained'] = self.uepoch * self.validFreq 
+            self.udix['pretrained'] = self.uepoch * self.validFreq
+                                
         
     def prepare_param_exchanger(self):
     
@@ -43,7 +44,7 @@ class EASGD_PTServer(PTServer):
                                     
     def process_request(self, worker_id, message):
         
-        # override PTServer class method
+        # override PTServer class method, for training related request
         
         reply = PTServer.process_request(self, worker_id, message)
         
@@ -61,20 +62,17 @@ class EASGD_PTServer(PTServer):
             self.adj_lr['%s' % worker_id] = False
             self.uidx['%s' % worker_id] = 0
             self.adj_lr = self.adj_lr.fromkeys(self.adj_lr, True) # when a new worker joins
-            
-        if self.first_worker_id == None:
-            self.first_worker_id = worker_id
-            print 'recording worker %s' % worker_id
-        
-        if self.last == None:
-            self.last = float(time.time())
         
         if message == 'next':
             
             if self.start_time is None:
                 self.start_time = time.time()
                 
-            if self.adj_lr['%s' % worker_id]:
+            if sum(self.uidx.values()) >= self.max_mb: # stop when finish all epochs
+                print "[Server] Total training time %.2fh" % ((time.time() - self.start_time)/3600.0)
+                reply = 'stop'
+                
+            elif self.adj_lr['%s' % worker_id]:
                 self.adj_lr['%s' % worker_id] = False
                 reply = 'adjust_lr'
                 
@@ -93,27 +91,25 @@ class EASGD_PTServer(PTServer):
         
             reply = [self.uepoch, len(self.worker_comm)]
                 
-        if message in ['next', 'uidx'] or 'done' in message:
-               
-            if sum(self.uidx.values()) >= self.max_mb: # stop when finish all epochs
-                reply = 'stop'
-                print "Training time {:.4f}s".format(time.time() - self.start_time)
-                print "Number of samples:", self.uidx['%s' % worker_id]
-    
+        if message in ['next', 'uepoch'] or 'done' in message:       
+            
             now_uidx = sum(self.uidx.values())
             self.uepoch = int(now_uidx/self.validFreq)
             if self.last_uepoch != self.uepoch:
-                print "now global epoch %d" % self.uepoch
+                #print "[Server] now global epoch %d" % self.uepoch
                 self.last_uepoch = self.uepoch 
                 self.adj_lr = self.adj_lr.fromkeys(self.adj_lr, True) # when a epoch is finished
                 #self.valid = self.valid.fromkeys(self.valid, True)
                 self.valid["%s" % self.first_worker_id] = True # only the first worker validates
                 
-            now = float(time.time())
-    
+            if self.last == None:
+                self.last = float(time.time())
+                
             if now_uidx - self.last_uidx >= 400:
+                
+                now = float(time.time())
         
-                print '%d time per 5120 images: %.2f s' % \
+                print '[Server] %d time per 5120 images: %.2f s' % \
                         (self.uepoch, (now - self.last)/(now_uidx - self.last_uidx)*40.0)
         
                 self.last_uidx = now_uidx
@@ -124,28 +120,27 @@ class EASGD_PTServer(PTServer):
                                         
     def action_after(self, worker_id, message):
         
-        # override PTServer class method
+        # override PTServer class method, for training related action
         
         PTServer.action_after(self, worker_id, message )
         
-        if message == 'connect':
+        if message in ['connect', 'sync_register']:
             
             self.prepare_param_exchanger()
             
         elif message == 'exchange':
             
             self.exchanger.comm = self.worker_comm[str(worker_id)]
+            self.exchanger.dest = self.worker_rank[str(worker_id)]
             
             self.exchanger.exchange()
             
         elif message == 'copy_to_local':
             
             self.exchanger.comm = self.worker_comm[str(worker_id)]
+            self.exchanger.dest = self.worker_rank[str(worker_id)]
             
             self.exchanger.copy_to_local()
-            
-
-
 
 if __name__ == '__main__':
     

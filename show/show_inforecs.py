@@ -20,7 +20,7 @@ def load(path,loadpath):
 
     with open(path, 'r') as f:
         config = yaml.load(f)
-    config['rank'] = 0        
+    config['verbose'] = False        
 
     sys.path.append('../lib/')
 

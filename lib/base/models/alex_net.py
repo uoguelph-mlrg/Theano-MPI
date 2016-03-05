@@ -15,7 +15,7 @@ class AlexNet(object):
     def __init__(self, config):
 
         self.config = config
-        self.verbose = self.config['rank'] == 0
+        self.verbose = self.config['verbose']
         self.name = 'alexnet'
         batch_size = config['batch_size']
         flag_datalayer = config['use_data_layer']

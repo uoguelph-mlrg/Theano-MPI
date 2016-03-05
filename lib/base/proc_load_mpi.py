@@ -172,5 +172,7 @@ if __name__ == '__main__':
             icomm.isend("copy_finished",dest=0,tag=55)
             
     icomm.Disconnect()
+    if verbose: print '[load] paraloading process closed'
+    ctx.pop()
 
 

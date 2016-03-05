@@ -13,9 +13,10 @@ use_momentum: True # def: True
 use_nesterov_momentum: False # def: False
 
 # Weight Average
-sync_rule: EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+sync_rule: EASGD # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+sync_start: True # start worker process together with server process in one mpirun call
 avg_freq: 2 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
-alpha: 0.5 # EASGD specific parameter
+alpha: 0.125 # EASGD specific parameter
 train_mode: avg # mode selection: avg or cdd
 cuda_aware: True
 fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
@@ -55,6 +56,5 @@ batch_crop_mirror: True  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 
 # gpu and socket
-gpushift: 0
 sock_data: 5011
 debug: False # def: False ; True: run a small sample of training data for shorter epoch testing time

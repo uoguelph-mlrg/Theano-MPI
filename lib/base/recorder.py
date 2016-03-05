@@ -43,7 +43,7 @@ class Recorder(object):
         self.info_dict['lr'] = []
 
         self.epoch_time = None
-        self.verbose = self.config['rank'] == 0
+        self.verbose = self.config['verbose']
 	
     def start(self):
 	

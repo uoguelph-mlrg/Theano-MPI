@@ -40,9 +40,9 @@ class PTBase(object):
         self.config = config
         self.device = device
         if self.config['sync_rule'] == 'EASGD':
-            self.verbose = True
+            self.verbose = (self.rank == 0)
         elif self.config['sync_rule'] == 'BSP':
-            self.verbose = self.rank==0
+            self.verbose = (self.rank == 0)
 
         self.process_config()
         self.get_data()
@@ -108,7 +108,7 @@ class PTBase(object):
         train_labels, val_labels, img_mean) = unpack_configs(self.config)
 
         if self.config['debug']:
-            train_filenames = train_filenames[:100]
+            train_filenames = train_filenames[:80]
             val_filenames = val_filenames[:8]
 
         env_train=None
@@ -166,7 +166,7 @@ class PTBase(object):
 class PTServer(Server, PTBase):
     '''
     Genearl Server class in Parallel Training framework
-    
+    Manage MPI connection requests from workers
     '''
     
     def __init__(self, port, config, device):
@@ -184,45 +184,77 @@ class PTServer(Server, PTBase):
         MPI.Publish_name(self.service, self.info, self.port)
         
         self.worker_comm = {}
+        self.worker_rank = {}
+        self.first_worker_id = None
+    
+    def close():
+        
+        MPI.Unpublish_name(self.service, self.info, self.port)
+        print '[Server] Service unpublished'
+
+        MPI.Close_port(self.port)
+        print '[Server] Service port closed'
         
     def process_request(self, worker_id, message):
 
-        # override Server class method 
+        # override Server class method, for connection related request
         reply = None
+        
+        if message in ['connect','sync_register']:
+            if self.first_worker_id == None:
+                self.first_worker_id = worker_id
+                print '[Server] recording worker is %s' % worker_id
+                reply = 'first'
         
         return reply
         
     def action_after(self, worker_id, message):
         
-        # override Server class method 
+        # override Server class method, for connection related action
         
-        if message == 'connect':
+        if message == 'connect': # Connecting asynchronously started workers
             
             intercomm = MPI.COMM_WORLD.Accept(self.port, self.info, root=0)
             
             self.worker_comm[str(worker_id)] = intercomm #TODO BUG there's a small chance that worker processes started on different node have the same pid
+            self.worker_rank[str(worker_id)] = 0 # remote size = 1, remote rank=0
             
             test_intercomm(intercomm, rank=0)
                              
-            reply = 'connected'
-            print 'connected to worker', worker_id
+            print '[Server] connected to worker', worker_id
+            
+        if 'sync_register' in message: # Connecting synchronously started workers
+            
+            self.worker_comm[str(worker_id)] = self.comm
+            
+            worker_rank = self.comm.recv(source = MPI.ANY_SOURCE, tag=int(worker_id))
+            
+            self.worker_rank[str(worker_id)] = int(worker_rank)
+            
+            print '[Server] registered worker', worker_id
             
         elif message == 'disconnect':
             
             intercomm = self.worker_comm[str(worker_id)]
-            intercomm.Disconnect()
+            try:
+                intercomm.Disconnect()
+            except:
+                pass
             self.worker_comm.pop(str(worker_id))
             
-            reply = 'disconnected'
-            print 'disconnected with worker', worker_id
-        
-
-
+            print '[Server] disconnected with worker', worker_id
+            
+            if bool(self.worker_comm) == False:
+                # empty dict
+                self.ctx.pop()
+                exit(0)
+            
     
 class PTWorker(Client, PTBase):
     
     '''
     General Worker class in Parallel Training framework
+    Build MPI connection with server
     
     '''
     
@@ -321,7 +353,9 @@ class PTWorker(Client, PTBase):
                                 
     def MPI_register(self):
         
-        self.request('connect')
+        first = self.request('connect')
+        
+        # self.verbose = (first == 'first')
         
         info = MPI.INFO_NULL
         
@@ -330,7 +364,7 @@ class PTWorker(Client, PTBase):
         port = MPI.Lookup_name(service, info)
         
         self.intercomm = MPI.COMM_WORLD.Connect(port, info, root=0)
-        
+
         self.config['irank'] = self.intercomm.rank 
         # size on the local side
         self.config['isize'] = self.intercomm.size 
@@ -338,12 +372,30 @@ class PTWorker(Client, PTBase):
         self.config['iremotesize'] = self.intercomm.remote_size
         
         test_intercomm(self.intercomm, rank=1)
+    
+    def _MPI_register(self):
+        
+        first = self.request('sync_register')
+        
+        self.verbose = (first == 'first')
+        self.config['verbose'] = self.verbose
+        
+        self.intercomm = self.comm
+        
+        self.comm.send(int(self.rank), dest=0, tag = int(self.worker_id))
+        
+        self.config['irank'] = self.intercomm.rank
+        
+        self.config['isize'] = self.intercomm.size 
         
     def MPI_deregister(self):
         
         self.request('disconnect')
         
-        self.intercomm.Disconnect()
+        try:
+            self.intercomm.Disconnect()
+        except:
+            pass
                                 
     def run(self):
         

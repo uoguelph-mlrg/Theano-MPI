@@ -1,4 +1,4 @@
-
+source set4theano.sh
 # server device default to gpu7, so numactl = 1
 
 if [[ -z $1 ]]; then
