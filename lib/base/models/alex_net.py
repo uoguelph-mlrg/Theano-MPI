@@ -272,29 +272,26 @@ class AlexNet(object):
                                                                 )                                                       
     def adjust_lr(self, epoch, size, val_error_list = None):
         
+        # lr is calculated every time as a function of epoch and size
+        
         if self.config['lr_policy'] == 'step':
             
-            if epoch >=20 and epoch < 40 and self.step_idx==0:
+            if epoch >=20 and epoch < 40:
 
                 self.step_idx = 1
-                if self.verbose: print 'Learning rate divided by 10'
-                
-                
-            elif epoch >=40 and epoch < 60 and self.step_idx==1:
+        
+            elif epoch >=40 and epoch < 60:
                 
                 self.step_idx = 2
-                if self.verbose: print 'Learning rate divided by 10'
-                
-                
-            elif epoch >=60 and epoch < 70 and self.step_idx==2:
+
+            elif epoch >=60 and epoch < 70:
                 
                 self.step_idx = 3
-                if self.verbose: print 'Learning rate divided by 10'
                 
             else:
                 pass
             
-            tuned_base_lr = self.base_lr * 1.0/pow(10,self.step_idx) 
+            tuned_base_lr = self.base_lr * 1.0/pow(10.0,self.step_idx) 
                 
         if self.config['lr_policy'] == 'auto':
             if epoch>5 and (val_error_list[-3] - val_error_list[-1] <

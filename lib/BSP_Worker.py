@@ -20,17 +20,17 @@ class BSP_PTWorker(PTWorker):
         self.prepare_recorder()
         self.prepare_iterator()
         
-        if self.config['resume_train'] == True:
-            self.epoch = self.config['load_epoch']
-            self.load_model(self.epoch)
-        else:
-            self.epoch = 0
-
-        self.train_len = len(self.data[0]) #self.config['avg_freq']
-        self.val_len = len(self.data[2])
         self.mode = None
         self.epoch = 0
         self.count = 0
+        
+        if self.config['resume_train'] == True:
+            self.epoch = self.config['load_epoch']
+            self.load_model(self.epoch)
+
+        self.train_len = len(self.data[0]) #self.config['avg_freq']
+        self.val_len = len(self.data[2])
+        
         
     def prepare_param_exchanger(self):
         
@@ -114,8 +114,6 @@ class BSP_PTWorker(PTWorker):
         
     def val(self):
         
-        self.comm.Barrier()
-        
         self.val_iterator.reset()
         
         self.model.set_dropout_off()
@@ -167,6 +165,8 @@ class BSP_PTWorker(PTWorker):
 
             elif self.mode == 'val':
                 
+                self.comm.Barrier()
+                
                 if self.verbose: 
                     print '\nNow validating'
 
@@ -190,7 +190,7 @@ class BSP_PTWorker(PTWorker):
                         
             elif self.mode == 'stop':
                 self.train_iterator.stop_load()
-                if self.verbose: print '\noptimization finished'
+                if self.verbose: print '\nOptimization finished'
                 break
             
             else:

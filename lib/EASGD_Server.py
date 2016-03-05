@@ -27,7 +27,10 @@ class EASGD_PTServer(PTServer):
         self.uepoch = 0
         self.last_uepoch = 0
         self.first_worker_id = None
-                                
+        
+        if self.config['resume_train']:
+            self.uepoch = self.config['load_epoch']
+            self.udix['pretrained'] = self.uepoch * self.validFreq 
         
     def prepare_param_exchanger(self):
     
