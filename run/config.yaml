@@ -23,7 +23,7 @@ fp: 16 # when cuda_aware == True, select parameter communication in float point 
 file_batch_size: 128 # def: choose according to the preprocessed hkl file size
 use_data_layer: False # def: False
 para_load: True # def: should be always true, training and loading data in parallel
-batch_crop_mirror: False  # if False, do randomly on each image separately
+batch_crop_mirror: True  # if False, do randomly on each image separately
 data_source: hkl # hkl or lmdb or both
 
 # Directories
