@@ -76,6 +76,7 @@ def crop_and_mirror(data, param_rand, flag_batch=True, cropsize=227):
             data_out[:, :, :, ind] = img
 
         data = data_out
+	time.sleep(2)
 
     return np.ascontiguousarray(data, dtype='float32')
 
@@ -148,7 +149,7 @@ if __name__ == '__main__':
             
             rand_arr = get_rand3d(config)
 
-            data = crop_and_mirror(data, rand_arr, flag_batch=True, cropsize = config['input_width'])
+            data = crop_and_mirror(data, rand_arr, flag_batch=config['batch_crop_mirror'], cropsize = config['input_width'])
 
             gpu_data.set(data)
             
