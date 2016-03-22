@@ -33,16 +33,15 @@ class EASGD_PTWorker(PTWorker):
         self.prepare_recorder()
         self.prepare_iterator()
         
+        self.uepoch = None
         if self.config['resume_train'] == True:
-            self.epoch = self.config['load_epoch']
-            self.load_model(self.epoch)
-        else:
-            self.epoch = 0
+            self.uepoch = self.config['load_epoch']
+            self.load_model(self.uepoch)
 
         self.train_len = self.config['avg_freq']
         self.val_len = len(self.data[2])
         self.mode = None
-        self.epoch = 0
+        self.lastmode = None
         self.count = 0
         
     def prepare_param_exchanger(self):
@@ -72,49 +71,51 @@ class EASGD_PTWorker(PTWorker):
         self.val_iterator = P_iter(self.config, self.model, \
                                     self.data[2], self.data[3], 'val')
                                     
+                                    
     def load_model(self, load_epoch):
         
         layers = self.model.layers
         path = self.config['load_path']
-        learning_rate = self.model.lr
+        s_lr = self.model.shared_lr
         vels = self.model.vels
 
-        if learning_rate != None: 
-            # TODO needs to verify the previous lr is when training with avg, scaled by size
-            import os  
-            learning_rate.set_value(np.load(os.path.join(path, 
-                      'lr_' + str(load_epoch) + '.npy')))
+        
+        # TODO needs to verify the previous lr is when training with avg, scaled by size
+        import os  
+        s_lr.set_value(np.load(os.path.join(path, 
+                  'lr_' + str(load_epoch) + '.npy')))
         
         from base.helper_funcs import load_weights, load_momentums
         load_weights(layers, path, load_epoch)
-        if vels != None:
-            load_momentums(vels, path, load_epoch)
+        #load_momentums(vels, path, load_epoch)
             
         if self.verbose: 
-            print '\nlearning rate loaded %f' % learning_rate.get_value()
-            print 'weights and momentums loaded from epoch %d' % load_epoch
+            print '\nlearning rate loaded %f' % s_lr.get_value()
+            print 'weights and momentums loaded from epoch %d in %s' % (load_epoch,path)
             
     def save_model(self): 
-      
+        
+        assert self.uepoch != None
         layers = self.model.layers
         path = self.config['weights_dir']
         vels = self.model.vels  
         
         from base.helper_funcs import save_weights, save_momentums
-        save_weights(layers, path, self.epoch)
-        np.save(path + 'lr_' + str(self.epoch) + \
-                        '.npy', self.model.lr.get_value())
-        save_momentums(vels, 
-                       self.config['weights_dir'], self.epoch)
+        save_weights(layers, path, self.uepoch)
+        np.save(path + 'lr_' + str(self.uepoch) + \
+                        '.npy', self.model.shared_lr.get_value())
+        #save_momentums(vels,self.config['weights_dir'], self.uepoch)
         if self.verbose:
-            print '\nweights and momentums saved at epoch %d' % self.epoch
+            print '\nweights and momentums saved at epoch %d' % self.uepoch
             
     def train(self):
         
         for i in range(self.train_len):
             
-            #print self.count
-            self.recorder = self.train_iterator.next(self.recorder,self.count)
+            for subb_ind in range(self.config['n_subb']):
+                #print self.count
+                self.train_iterator.next(self.recorder,self.count)
+            
             self.count += 1
             self.recorder.print_train_info(self.count)
             
@@ -126,17 +127,20 @@ class EASGD_PTWorker(PTWorker):
         self.action(message = 'exchange', \
                     action=self.exchanger.exchange)
         self.recorder.end('comm')
+        
+        self.lastmode = 'train'
 
         
     def val(self):
         
-        self.val_iterator.reset()
+        if self.lastmode == 'train':
+            self.train_iterator.reset()
         
         self.model.set_dropout_off()
         
         for i in range(self.val_len):
         
-            self.recorder = self.val_iterator.next(self.recorder,self.count)
+            self.val_iterator.next(self.recorder,self.count)
             
             if self.verbose: print '.',
         
@@ -144,7 +148,7 @@ class EASGD_PTWorker(PTWorker):
         
         self.model.set_dropout_on()
         
-        self.train_iterator.reset()
+        self.val_iterator.reset()
                                     
     
     def copy_to_local(self):
@@ -192,7 +196,6 @@ class EASGD_PTWorker(PTWorker):
                     epoch_start = True
                     if self.verbose: 
                         print '\nNow training'
-                        self.epoch+=1
 
                 self.train()
                 
@@ -209,15 +212,16 @@ class EASGD_PTWorker(PTWorker):
                 self.copy_to_local()
 
                 self.val()
-                    
-                self.recorder.save(self.count, self.model.lr.get_value(), \
+
+                self.recorder.save(self.count, self.model.shared_lr.get_value(), \
                         filepath = self.config['record_dir'] + \
                         'inforec_'+ str(self.worker_id) + '.pkl')
-                
-                if self.epoch % self.config['snapshot_freq'] == 0:
-                    if self.config['rank'] ==0 :
-                        self.save_model()
                         
+                self.uepoch, self.n_workers = self.request('uepoch')
+                
+                if self.uepoch % self.config['snapshot_freq'] == 0: # TODO BUG: if too few images in training set, uepoch may skip more than 1 per check
+                    self.save_model()
+                
                 self.copy_to_local()
                 
                 if epoch_start == True:
@@ -234,7 +238,6 @@ class EASGD_PTWorker(PTWorker):
                     self.recorder.end_epoch(self.count, self.uepoch)
                     epoch_start = False
                 
-                self.train_iterator.stop_load()
                 if self.verbose: print '\nOptimization finished'
                 
                 break

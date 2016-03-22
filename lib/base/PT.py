@@ -77,6 +77,7 @@ class PTBase(object):
                                      + '-'+str(self.config['size'])+'gpu-' \
                                      + str(self.config['batch_size'])+'b-' \
                                      + socket.gethostname() + date + '/'
+        self.config['n_subb'] = self.config['file_batch_size']//self.config['batch_size']
                                      
         if self.rank == 0:
             import os
@@ -106,9 +107,17 @@ class PTBase(object):
         from helper_funcs import unpack_configs, extend_data
         (flag_para_load, flag_top_5, train_filenames, val_filenames, \
         train_labels, val_labels, img_mean) = unpack_configs(self.config)
+        
+        if self.config['image_mean'] == 'RGB_mean':
+            
+            image_mean = img_mean.mean(axis=-1).mean(axis=-1).mean(axis=-1) 
+            #c01b to # c 
+            #print 'BGR_mean %s' % image_mean #[ 122.22585297  116.20915222  103.56548309]
+            import numpy as np
+            image_mean = image_mean[:,np.newaxis,np.newaxis,np.newaxis]
 
         if self.config['debug']:
-            train_filenames = train_filenames[:80]
+            train_filenames = train_filenames[:16]
             val_filenames = val_filenames[:8]
 
         env_train=None
@@ -152,13 +161,19 @@ class PTBase(object):
 
         if self.model_name=='googlenet':
         	from models.googlenet import GoogLeNet
-        	#from lib.googlenet import Dropout as drp
         	self.model = GoogLeNet(self.config)
 
         elif self.model_name=='alexnet':
         	from models.alex_net import AlexNet
-        	#from lib.layers import DropoutLayer as drp
         	self.model = AlexNet(self.config)
+            
+        elif self.model_name=='vggnet':
+            
+            if self.config['pretrain']:
+                from models.vggnet_11_shallow import VGGNet_16
+            else:
+                from models.vggnet_16 import VGGNet_16
+            self.model = VGGNet_16(self.config)
         else:
             raise NotImplementedError("wrong model name")
         
@@ -338,18 +353,18 @@ class PTWorker(Client, PTBase):
     def para_load_close(self):
         
         # send an stop mode
-        self.icomm.send("stop",dest=0,tag=43) # TODO use this only when loading process is ready to receive mode
+        self.icomm.send('stop',dest=0,tag=40) # TODO use this only when loading process is ready to receive mode
+        self.icomm.send('stop',dest=0,tag=40)
         self.icomm.Disconnect()
         
     def compile_model(self):
-        
-        from models.googlenet import updates_dict
 
         compile_time = time.time()
-        self.model.compile_train(self.config, updates_dict)
+        self.model.compile_train()
         self.model.compile_val()
         if self.verbose: print 'compile_time %.2f s' % \
                                 (time.time() - compile_time)
+        #self.model.test()
                                 
     def MPI_register(self):
         

@@ -109,18 +109,23 @@ def dtype_to_mpi(t):
         raise ValueError('cannot convert type')
     return mpi_type
 
-def get_rand3d(config):  
-
-    if config['random'] and config['rand_crop'] == True:
+def get_rand3d(config, mode):  
+    
+    if mode == 'val':
+        return np.float32([0.5, 0.5, 0])
         
-        time_seed = int(time.time())*int(config['worker_id'])%1000
-
-        np.random.seed(time_seed)
-        tmp_rand = np.float32(np.random.rand(3))
-        tmp_rand[2] = round(tmp_rand[2])
-        return tmp_rand
     else:
-        return np.float32([0.5, 0.5, 0]) 
+        
+        if config['random'] and config['rand_crop'] == True:
+        
+            time_seed = int(time.time())*int(config['worker_id'])%1000
+
+            np.random.seed(time_seed)
+            tmp_rand = np.float32(np.random.rand(3))
+            tmp_rand[2] = round(tmp_rand[2])
+            return tmp_rand
+        else:
+            return np.float32([0.5, 0.5, 0]) 
         
 def save_weights(layers, weights_dir, epoch):
     for idx in range(len(layers)):
@@ -145,8 +150,13 @@ def save_weights(layers, weights_dir, epoch):
 
 
 
-def load_weights(layers, weights_dir, epoch):
+def load_weights(layers, weights_dir, epoch, l_range=None):
+    
     for idx in range(len(layers)):
+        
+        if l_range !=None and (idx not in l_range):
+            continue
+            
         if hasattr(layers[idx], 'W'):
             layers[idx].W.load_weight(
                 weights_dir, 'W' + '_' + str(idx) + '_' + str(epoch))

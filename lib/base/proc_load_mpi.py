@@ -116,7 +116,7 @@ if __name__ == '__main__':
     try:
         sock.bind('tcp://*:{0}'.format(config['sock_data']))
     except zmq.error.ZMQError:
-        print '[load] rank %d zmq error' % rank
+        print '[load] rank %d port %d zmq error' % (rank,config['sock_data'])
         sock.close()
         zmq.Context().term()
         raise
@@ -134,31 +134,56 @@ if __name__ == '__main__':
     if verbose: print '[load] 2. img_mean received'
 
     count=0
+    mode=None
     import time
     while True:
         
         # 3. load the very first filename in 'train' or 'val' mode
-        filename = icomm.recv(source=MPI.ANY_SOURCE, tag=40)
+        message = icomm.recv(source=0, tag=40)
         
-        if filename == 'stop':
+        if message == 'stop':
             break
+        elif message == 'train':
+            mode = 'train'
+            continue
+        elif message == 'val':
+            mode = 'val'
+            continue
+        else:
+            filename = message
+            
+        if mode==None:
+            raise ValueError('[load] need to specify a mode (train or val) to proceed')
         
         while True:
 
             data = hkl.load(str(filename)) - img_mean
         
-            rand_arr = get_rand3d(config)
+            rand_arr = get_rand3d(config, mode)
 
             data = crop_and_mirror(data, rand_arr, \
-                        flag_batch=config['batch_crop_mirror'], cropsize = config['input_width'])
+                                    flag_batch=config['batch_crop_mirror'], \
+                                    cropsize = config['input_width'])
 
             gpu_data.set(data)
         
-            # 4. wait for computation on last minibatch to finish and get the next filename
-            filename = icomm.recv(source=MPI.ANY_SOURCE,tag=40)
-        
-            if filename =='stop': # this is used when switching to 'val' or 'stop' during 'train' mode
+            # 4. wait for computation on last minibatch to
+            # finish and get the next filename
+            message = icomm.recv(source=0,tag=40)
+            
+            # this is used when switching to 'val' 
+            # or 'stop' during 'train' mode
+            if message =='stop': 
+                mode = None
                 break
+            elif message == 'train':
+                mode = 'train'
+                break
+            elif message == 'val':
+                mode = 'val'
+                break
+            else:
+                filename = message
 
             drv.memcpy_dtod(gpu_data_remote.ptr,
                             gpu_data.ptr,

@@ -39,7 +39,7 @@ class BSP_PTWorker(PTWorker):
         self.exchanger = BSP_Exchanger(self.config, \
                                     self.drv, \
                                     self.ctx,
-                                    self.model)
+                                    self.model)          
                                     
     def prepare_recorder(self):
         
@@ -63,23 +63,24 @@ class BSP_PTWorker(PTWorker):
         
         layers = self.model.layers
         path = self.config['load_path']
-        learning_rate = self.model.lr
+        s_lr = self.model.shared_lr
         vels = self.model.vels
 
-        if learning_rate != None: 
-            # TODO needs to verify the previous lr is when training with avg, scaled by size
-            import os  
-            learning_rate.set_value(np.load(os.path.join(path, 
-                      'lr_' + str(load_epoch) + '.npy')))
+        
+        # TODO needs to verify the previous lr is when training with avg, scaled by size
+        import os  
+        s_lr.set_value(np.load(os.path.join(path, 
+                  'lr_' + str(load_epoch) + '.npy')))
         
         from base.helper_funcs import load_weights, load_momentums
+        #l_range = set(range(16))-set([1,3])
         load_weights(layers, path, load_epoch)
-        if vels != None:
-            load_momentums(vels, path, load_epoch)
+        #load_momentums(vels, path, load_epoch)
             
         if self.verbose: 
-            print '\nlearning rate loaded %f' % learning_rate.get_value()
+            print '\nlearning rate loaded %f' % s_lr.get_value()
             print 'weights and momentums loaded from epoch %d' % load_epoch
+            print 'in %s' % path
             
     def save_model(self): 
       
@@ -90,53 +91,68 @@ class BSP_PTWorker(PTWorker):
         from base.helper_funcs import save_weights, save_momentums
         save_weights(layers, path, self.epoch)
         np.save(path + 'lr_' + str(self.epoch) + \
-                        '.npy', self.model.lr.get_value())
-        save_momentums(vels, 
-                       self.config['weights_dir'], self.epoch)
+                        '.npy', self.model.shared_lr.get_value())
+        #save_momentums(vels, self.config['weights_dir'], self.epoch)
+        
         if self.verbose:
             print '\nweights and momentums saved at epoch %d' % self.epoch
+        
+        with open(path+"val_info.txt", "w") as f:
+            f.write("\nepoch: {} val_info {}:".format(self.epoch, \
+                                                    self.model.current_info))
+        
             
     def train(self):
         
+        # avoiding dots evaluation
+        i_next = self.train_iterator.next
+        r_start = self.recorder.start
+        exch = self.exchanger.exchange
+        r_end = self.recorder.end
+        r_print = self.recorder.print_train_info
+        
         for i in xrange(0,self.train_len,self.size):
             
-            self.recorder = self.train_iterator.next(self.recorder,self.count)
-            
-            if i % self.config['avg_freq'] == 0:
+            for subb_ind in range(self.config['n_subb']):
                 
-                self.recorder.start()
-                self.exchanger.exchange()
-                self.recorder.end('comm')
+                i_next(self.recorder,self.count)
+                
+                r_start()
+                exch()
+                r_end('comm')
                 
             self.count += self.size
             
-            self.recorder.print_train_info(self.count)
+            r_print(self.count)
+            
+        self.train_iterator.reset()
         
     def val(self):
-        
-        self.val_iterator.reset()
         
         self.model.set_dropout_off()
         
         for i in xrange(0,self.val_len,self.config['size']):
-        
-            self.recorder = self.val_iterator.next(self.recorder,self.count)
             
-            print '.',
+            for subb_ind in range(self.config['n_subb']):
+        
+                self.val_iterator.next(self.recorder,self.count)
+            
+                print '.',
             
         self.recorder.gather_val_info()
         
         self.recorder.print_val_info(self.count)
         
+        self.model.current_info = self.recorder.get_latest_val_info()
+        
         self.model.set_dropout_on()
         
-        self.train_iterator.reset()
+        self.val_iterator.reset()
     
     def adjust_lr(self):
         
         self.model.adjust_lr(self.epoch, size = self.size)
         
-
     def run(self):
         
         # override PTWorker class method
@@ -153,11 +169,12 @@ class BSP_PTWorker(PTWorker):
 
             if self.mode == 'train':
                 
+                self.comm.Barrier()
+                
                 self.recorder.start_epoch()
-
+                self.epoch+=1
                 if self.verbose: 
                     print '\nNow training'
-                    self.epoch+=1
 
                 self.train()
                 
@@ -174,7 +191,7 @@ class BSP_PTWorker(PTWorker):
                 
                 self.adjust_lr()
                     
-                self.recorder.save(self.count, self.model.lr.get_value(), \
+                self.recorder.save(self.count, self.model.shared_lr.get_value(), \
                         filepath = self.config['record_dir'] + 'inforec.pkl')
                 
                 if self.epoch % self.config['snapshot_freq'] == 0:
@@ -189,13 +206,11 @@ class BSP_PTWorker(PTWorker):
                     self.mode = 'train'
                         
             elif self.mode == 'stop':
-                self.train_iterator.stop_load()
                 if self.verbose: print '\nOptimization finished'
                 break
             
             else:
                 raise ValueError('wrong mode')
-                
         
         self.para_load_close()
         

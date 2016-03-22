@@ -22,7 +22,6 @@ class BSP_Exchanger(object):
         self.train_mode = config['train_mode']
         self.cuda_aware = config['cuda_aware']
         self.fp = config['fp']
-        self.avg_freq = config['avg_freq']
         
         # TODO make sure exchanger class doesn't keep a self copy of model, only the reference to its param list
         self.param_list = model.params
@@ -31,9 +30,17 @@ class BSP_Exchanger(object):
 
         self.avg_func_list = []
         
-        if self.train_mode == 'cdd':
+        if self.train_mode == 'cdd' and self.cuda_aware == False:
             
             self.cdd()
+            
+        elif self.train_mode == 'cdd' and self.cuda_aware == True \
+                                                and self.fp == 32:
+            
+            self.cdd_ca_fp32()
+            self.compile_fp32_kernels()
+            
+            self.d_f32_sumfloats, self.ranksize = self.fp32_kernels
             
         elif self.train_mode == 'avg' and self.cuda_aware == False:
             
@@ -123,6 +130,7 @@ class BSP_Exchanger(object):
                                           param_update_ga.ptr,
                                           param_update_ga.dtype.itemsize *
                                           param_update_ga.size)
+                    
 
             elif self.fp == 16:
 			
@@ -181,12 +189,73 @@ class BSP_Exchanger(object):
 
         # sum delta w
         elif self.train_mode == 'cdd' and self.size > 1:
+            
+            if self.cuda_aware == False:
 	    
-            self.comm.Barrier()
-            for vel,vel2, param_update in \
-                                zip(self.vels,self.vels2, self.param_update_list):
-                self.comm.Allreduce(vel.get_value(), param_update)
-                vel2.set_value(param_update)
+                self.comm.Barrier()
+                for vel,vel2, param_update in \
+                                    zip(self.vels,self.vels2, self.param_update_list):
+                    self.comm.Allreduce(vel.get_value(), param_update)
+                    vel2.set_value(param_update)
+                    
+            elif self.fp == 32:
+                
+                # copy weight from param_ga to param_update_ga
+                for vel, vel_update_ga in \
+                                zip(self.vels, self.vel_update_ga_list):
+
+                    vel_ga = \
+                     theano.misc.pycuda_utils.to_gpuarray(vel.container.value)
+
+                    self.drv.memcpy_dtod(vel_update_ga.ptr,
+                                          vel_ga.ptr,
+                                          vel_ga.dtype.itemsize *
+                                          vel_ga.size)
+                    del vel_ga
+                                          
+                # allreduce weight from param_update_ga to itself
+                                          
+                wcount=0
+                for vel_update_ga in self.vel_update_ga_list:
+			        
+                    self.comm.Alltoall(
+			                  [bufint(vel_update_ga), self.mpitp],
+			                  [bufint(self.d_param_32_tmps[wcount]),\
+                                                           self.mpitp])
+			    
+			        # sumfloats(float* f1, float* f2, int numElements,int ranksize,int reducesize)
+                    self.d_f32_sumfloats(self.d_param_32_tmps[wcount], \
+                                    self.d_param_32_sums[wcount],\
+			                        self.reducesizes[wcount],self.ranksize,\
+                                    self.reducesizes[wcount],\
+                                    block=(256,1,1),\
+                                    grid=self.grid_sum_sizes[wcount])
+                                    
+                    self.ctx.synchronize()
+                    self.comm.Allgather(\
+                                    [bufint(self.d_param_32_sums[wcount]),\
+                                        self.mpitp], [bufint(vel_update_ga),self.mpitp])
+                    #param.container.value.release_buffer(param_buf)
+                    
+                    wcount = wcount +1
+                    
+                # copy weight from param_reduce_ga back to param_ga
+                for vel2, vel_update_ga in \
+                                zip(self.vels2, self.vel_update_ga_list):
+    
+                    vel2_ga = \
+                     theano.misc.pycuda_utils.to_gpuarray(vel2.container.value)
+
+                    self.drv.memcpy_dtod(vel2_ga.ptr,
+                                          vel_update_ga.ptr,
+                                          vel_update_ga.dtype.itemsize *
+                                          vel_update_ga.size)
+                      
+                    del vel2_ga
+                                          
+            elif self.fp == 16:
+                raise NotImplementedError
+            
 		
     def avg(self):
 
@@ -500,6 +569,68 @@ __global__ void sumfloats(float* f1, float* f2, int numElements,int ranksize,int
             param_update_list.append(param_update)
 
         self.param_update_list=param_update_list
+        
+    def cdd_ca_fp32(self):
+        
+        vel_update_ga_list=[]
+
+        for vel in self.vels:
+            
+            vel_update = vel.get_value()
+            vel_update_ga = gpuarray.GPUArray(vel_update.shape,vel_update.dtype)
+            vel_update_ga_list.append(vel_update_ga)
+
+        # fp32 related parameters
+        block_size = np.int32(256)
+
+        param_32_sums=[]
+        param_32_tmps=[]
+
+        grid_sum_sizes=[]
+
+        numElements=[]
+        reducesizes=[]
+
+        for param in self.vels:
+	
+            param_update = np.zeros_like(param.get_value())
+            numElement = np.int32(param_update.size)
+            numElements.append(numElement)
+            reducesize = np.int32(numElement/self.size)
+            reducesizes.append(reducesize)
+
+            grid_sum_size = (reducesize / block_size + 1, 1)
+            grid_sum_sizes.append(grid_sum_size)
+
+            param_32_tmp = np.zeros(numElement, dtype=np.float32)
+            param_32_tmps.append(param_32_tmp)
+            param_32_sum = np.zeros(reducesize, dtype=np.float32)
+            param_32_sums.append(param_32_sum)
+            
+        # fp32 gpu device related parameters
+        
+        d_param_32_tmps=[]
+        d_param_32_sums=[]
+
+        wcount=0
+        for param in self.vels:
+
+        	d_param_32_tmp = gpuarray.to_gpu(param_32_tmps[wcount])
+        	d_param_32_tmps.append(d_param_32_tmp)
+        	d_param_32_sum = gpuarray.to_gpu(param_32_sums[wcount])
+        	d_param_32_sums.append(d_param_32_sum)
+
+        	wcount+=1
+
+        mpitp = dtype_to_mpi(d_param_32_tmps[0].dtype)
+
+        self.vel_update_ga_list=vel_update_ga_list
+        self.d_param_32_tmps=d_param_32_tmps
+        self.d_param_32_sums=d_param_32_sums
+        self.grid_sum_sizes=grid_sum_sizes
+        self.numElements=numElements
+        self.reducesizes=reducesizes
+        self.mpitp=mpitp
         
         
         

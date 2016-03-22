@@ -1,5 +1,0 @@
-# TODO 
-1. make sure EASGD server and workers started on different nodes can connect with each other (check)
-2. connect recorder to deep-dashboard
-3. Unpublish service on server
-4. Use MPI communicator to replace zmq socket messaging between worker and server

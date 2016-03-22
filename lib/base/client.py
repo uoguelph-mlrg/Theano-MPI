@@ -20,7 +20,7 @@ class Client(object):
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
         self.socket.connect("tcp://{}:{}".format(self.server_address, self.port))
-    
+
     def request(self, message):
         
         request = {'id': self.worker_id, 'message':message }

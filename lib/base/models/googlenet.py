@@ -11,6 +11,8 @@ warnings.filterwarnings("ignore")
 
 from pylearn2.expr.normalize import CrossChannelNormalization
 
+from modelbase import ModelBase
+
 rng = np.random.RandomState(23455)
 
 class Weight(object):
@@ -259,6 +261,17 @@ class Softmax(object):
             
 class Incept(object):
     
+    ''' Inception module [1]_.
+    
+    Parameters:
+        l_in: tensor
+        Theano input graph tensor
+    
+    References:
+        [1] https://gist.github.com/benanne/ae2a7adaab133c61a059
+    
+    '''
+    
     def __init__(self, l_in, input_shape = (192,28,28,128), 
                   n1x1=64, nr3x3=96, n3x3=128, nr5x5=16, n5x5=32, npj=32):   
         
@@ -399,7 +412,16 @@ class Incept(object):
         self.output = output     
         
 class aux_tower(object):
-    def __init__(self, input, input_shape, config):
+    '''    Auxilary classifier tower
+    
+    Parameters:
+        input: tensor
+        Theano input graph tensor
+        
+        input_shape: tuple
+    
+    '''
+    def __init__(self, input, input_shape, config=None):
         
         layers = []
         params = []
@@ -455,11 +477,29 @@ class aux_tower(object):
               
     
 
-class GoogLeNet(object): # c01b input
+class GoogLeNet(ModelBase):
+
+    """    GoogleNet classifier for ILSVRC.
     
-    def __init__(self,config):   
+    Parameters:
+    
+        config:  dict
+        training related and model related hyperparameter dict 
+    
+    References:
+    
+        [1] C Szegedy, W Liu, Y Jia, P Sermanet, S Reed, 
+            D Anguelov, D Erhan, V Vanhoucke, A Rabinovich (2014):
+            Going deeper with convolutions.
+            The IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2015, pp. 1-9
+    """
+    
+    def __init__(self,config):
+        ModelBase.__init__(self)
         
-        print 'GoogLeNet 7/5'
+        self.verbose = config['verbose']   
+        self.config = config
+        if self.verbose: print 'GoogLeNet 7/5'
         
         batch_size = config['batch_size']
         input_width = config['input_width']
@@ -478,7 +518,7 @@ class GoogLeNet(object): # c01b input
         x = T.ftensor4('x')
         y = T.lvector('y')
         
-        self.x = x
+        self.x = x # c01b
         self.y = y
         
         layers = []
@@ -687,25 +727,23 @@ class GoogLeNet(object): # c01b input
         self.output = softmax_layer.p_y_given_x
         self.cost = softmax_layer.negative_log_likelihood(y)+\
                 0.3*aux1.negative_log_likelihood(y)+0.3*aux2.negative_log_likelihood(y)        
-        self.errors = softmax_layer.errors(y)
-        self.errors_top_5 = softmax_layer.errors_top_x(y)
+        self.error = softmax_layer.errors(y)
+        self.error_top_5 = softmax_layer.errors_top_x(y)
         
         # training related
-        self.base_lr = float(config['learning_rate'])
-        self.lr = theano.shared(np.float32(config['learning_rate']))
+        self.base_lr = np.float32(config['learning_rate'])
+        self.shared_lr = theano.shared(self.base_lr)
         self.mu = config['momentum'] # def: 0.9 # momentum
         self.eta = config['weight_decay'] #0.0002 # weight decay
         
         self.shared_x = theano.shared(np.zeros((3, config['input_width'], 
                                                   config['input_height'], 
-                                                  config['batch_size']), 
+                                                  config['file_batch_size']), 
                                                   dtype=theano.config.floatX),  
                                                   borrow=True)
                                               
-        self.shared_y = theano.shared(np.zeros((config['batch_size'],), 
+        self.shared_y = theano.shared(np.zeros((config['file_batch_size'],), 
                                           dtype=int),   borrow=True)
-                                          
-        self.grads = T.grad(self.cost,self.params)
         
         # shared variable for storing momentum before exchanging momentum(delta w)
         self.vels = [theano.shared(param_i.get_value() * 0.)
@@ -729,42 +767,43 @@ class GoogLeNet(object): # c01b input
         
         Dropout.SetDropoutOn()
         
-    def compile_train(self, config, updates_dict):
-
+    def compile_train(self, updates_dict=None):                               
+    
         print 'compiling training function...'
         
         x = self.x
         y = self.y
+        
+        subb_ind = T.iscalar('subb')  # sub batch index
+        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        
+        cost = self.cost    
+        error = self.error
+        #errors_top_5 = self.output_layer.errors_top_x(y)
+                                          
+        self.grads = T.grad(cost,self.params)
+        
+        if updates_dict == None:
+            from modelbase import updates_dict
             
-        cost = self.cost 
-        error = self.errors
-        errors_top_5 = self.errors_top_5
-    
-        shared_x, shared_y = self.shared_x, self.shared_y
-               
-        params = self.params  
-        weight_types = self.weight_types 
-        grads = self.grads
-    
-        updates_w,updates_v,updates_dv = updates_dict(config, model, 
-                                    use_momentum=config['use_momentum'], 
-                                    use_nesterov_momentum=config['use_nesterov_momentum'])  
-                                      
+        updates_w,updates_v,updates_dv = updates_dict(self.config, self)
+        
 
-    
-        self.train= theano.function([], [cost,error], updates=updates_w,
+        
+        self.train= theano.function([subb_ind], [cost,error], updates=updates_w,
                                               givens=[(x, shared_x), 
                                                       (y, shared_y)]
                                                                           )
     
    
-        self.get_vel= theano.function([], [cost,error], updates=updates_v,
+        self.get_vel= theano.function([subb_ind], [cost,error], updates=updates_v,
                                               givens=[(x, shared_x), 
                                                       (y, shared_y)]
                                                                           )
                                 
                                                                                         
-        self.descent_vel = theano.function([],[],updates=updates_dv)     
+        self.descent_vel = theano.function([],[],updates=updates_dv)    
 
         
     def compile_inference(self):
@@ -783,14 +822,16 @@ class GoogLeNet(object): # c01b input
     
         x = self.x
         y = self.y
+        
+        subb_ind = T.iscalar('subb')  # sub batch index
+        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
             
-        cost = self.cost 
-        error = self.errors
-        errors_top_5 = self.errors_top_5
+        cost = self.cost  
+        error = self.error
+        error_top_5 = self.error_top_5
         
-        shared_x, shared_y = self.shared_x, self.shared_y
-        
-        self.val =  theano.function([], [cost,error,errors_top_5], updates=[], 
+        self.val =  theano.function([subb_ind], [cost,error,error_top_5], updates=[], 
                                           givens=[(x, shared_x),
                                                   (y, shared_y)]
                                                                 )
@@ -815,10 +856,10 @@ class GoogLeNet(object): # c01b input
         power = pow( (1. -  1.* epoch/240.0 ), 0.5 )
         tuned_base_lr = self.base_lr * pow(power,epoch)
             
-        self.lr.set_value(tuned_base_lr * size)
+        self.shared_lr.set_value(tuned_base_lr * size)
     
         if self.verbose: 
-            print 'Learning rate now: %.10f' % np.float32(self.lr.get_value())
+            print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())
     
   
 
@@ -838,13 +879,9 @@ def updates_dict(config, model,
     vels, vels2 = model.vels, model.vels2
     
     
-    lr = model.lr #T.scalar('lr')  # symbolic learning rate
+    lr = model.shared_lr #T.scalar('lr')  # symbolic learning rate
     mu = model.mu # def: 0.9 # momentum
-    eta = model.eta  #0.0002 # weight decay
-        
-    if verbose: print 'learning rate: %f' % model.lr.get_value()
-    if verbose: print 'momentum: %f' % mu
-    if verbose: print 'weight decay: %f' % eta        
+    eta = model.eta  #0.0002 # weight decay    
     
     updates_w = []
     updates_v = []

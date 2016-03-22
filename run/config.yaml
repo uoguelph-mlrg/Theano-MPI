@@ -1,22 +1,24 @@
 # If want to input None, use !!null
 
 # Model choose
-name: alexnet # alexnet or googlenet
+name: alexnet # alexnet or googlenet or vggnet
 
+pretrain: False
+monitor_grad: False
 # Resume Training, start from scratch or resume training
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
-load_epoch: 44
-load_path: /tmp/models # edit here to find your pretrained weights
+load_epoch: 1
+load_path: /work/mahe6562/pretrained-models/models-vggnet16-32b-from-scratch/ # edit here to find your pretrained weights
 
 # Momentum
 use_momentum: True # def: True
 use_nesterov_momentum: False # def: False
 
 # Weight Average
-sync_rule: EASGD # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+sync_rule: BSP # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
 sync_start: True # start worker process together with server process in one mpirun call
-avg_freq: 2 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
-alpha: 0.125 # EASGD specific parameter
+avg_freq: 4 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
+alpha: 0.7 # EASGD specific parameter
 train_mode: avg # mode selection: avg or cdd
 cuda_aware: True
 fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
@@ -26,13 +28,13 @@ file_batch_size: 128 # def: choose according to the preprocessed hkl file size
 use_data_layer: False # def: False
 para_load: True # def: should be always true, training and loading data in parallel
 data_source: hkl # hkl or lmdb or both
-
+image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 # Directories
 
 dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
-weights_dir : /tmp/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+weights_dir : /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
 train_folder: /train_hkl_128b/   #/hkl_data/  
 val_folder: /val_hkl_128b/   
@@ -54,7 +56,8 @@ shuffle: True # def: False, if shuffle the batches
 rand_crop: True # def: True, if False will likely be overfitting
 batch_crop_mirror: True  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
+dropout_init_seed: 0 # to change, see layer.py file
 
 # gpu and socket
-sock_data: 5011
+sock_data: 5020
 debug: False # def: False ; True: run a small sample of training data for shorter epoch testing time

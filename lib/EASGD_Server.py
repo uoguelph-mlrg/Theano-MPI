@@ -30,7 +30,7 @@ class EASGD_PTServer(PTServer):
         
         if self.config['resume_train']:
             self.uepoch = self.config['load_epoch']
-            self.udix['pretrained'] = self.uepoch * self.validFreq
+            self.uidx['pretrained'] = self.uepoch * self.validFreq
                                 
         
     def prepare_param_exchanger(self):
@@ -72,13 +72,13 @@ class EASGD_PTServer(PTServer):
                 print "[Server] Total training time %.2fh" % ((time.time() - self.start_time)/3600.0)
                 reply = 'stop'
                 
-            elif self.adj_lr['%s' % worker_id]:
-                self.adj_lr['%s' % worker_id] = False
-                reply = 'adjust_lr'
-                
             elif self.valid['%s' % worker_id]:
                 self.valid['%s' % worker_id] = False
                 reply = 'val'
+                
+            elif self.adj_lr['%s' % worker_id]:
+                self.adj_lr['%s' % worker_id] = False
+                reply = 'adjust_lr'
                 
             else:
                 reply = 'train' 

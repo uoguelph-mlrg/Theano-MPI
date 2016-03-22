@@ -1,6 +1,8 @@
 # Parallel Training
-Parallel training framework for training deep learning models built in Theano based on data-parallelism.
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD.
+Parallel training framework for training deep learning models built in Theano based on data-parallelism. 
+The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to theano_alexnet, aiming to scale up training framework to more than 8 GPUs and across nodes. 
+
+It is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as a theano shared variable. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variable. See wiki for a tutorial on building customized neural networks.
 
 ## Dependencies
 * [OpenMPI 1.8.7](http://www.open-mpi.org/) or at least MPI-2 standard equivalent.
@@ -36,7 +38,7 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   sync_rule: BSP
   avg_freq: 1
   ```
-  - 2) execute "./run_bsp_workers.sh N", in which N is the desired number of workers.
+  - 2) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. This will start worker processes inside a screen session named bspN.
  - to start a EASGD training session: 
   - 1) Decide if want to start server and workers in one communicator. Configure config.yaml file as follows:
    ```
@@ -53,15 +55,25 @@ Preprocessed data (1000 catagory, 128 batchsize) is located at /work/mahe6562/pr
 
 Make sure you have access to the data.
 
+To get the best running speed performance, the memory cache may need to be cleaned before running.
+
 ## Performance Testing
 
-<div class="fig figcenter fighighlight">
-  <img src="/show/train.pdf">
-  <div class="figcaption"> train </div>
-</div>
+###BSP
+Time per 5120 images in seconds: [allow_gc = True]
 
-<div class="fig figcenter fighighlight">
-  <img src="/show/val.pdf">
-  <div class="figcaption"> validation </div>
-</div>
+| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
+| :---: | :---: | :---: | :---: | :---: |
+| AlexNet-128b | 31.4 | 16.8 | 9.2 | 5.6 |
+| GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 |
+| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 |
 
+<img src=https://raw.githubusercontent.com/ugouelph-mlrg/Parallel-training/add-EASGD/show/train.png width=135/>
+<img src=https://raw.githubusercontent.com/ugouelph-mlrg/Parallel-training/add-EASGD/show/val.png width=135/>
+
+###EASGD
+
+(To be added)
+## How to customize your model and use this network
+
+See wiki (To be added)

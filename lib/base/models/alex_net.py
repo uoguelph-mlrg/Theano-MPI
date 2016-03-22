@@ -8,11 +8,13 @@ import numpy as np
 
 from layers import DataLayer, ConvPoolLayer, DropoutLayer, FCLayer, SoftmaxLayer
 
+from modelbase import ModelBase
 
 
-class AlexNet(object):
+class AlexNet(ModelBase):
 
     def __init__(self, config):
+        ModelBase.__init__(self)
 
         self.config = config
         self.verbose = self.config['verbose']
@@ -27,6 +29,7 @@ class AlexNet(object):
         x = T.ftensor4('x')
         y = T.lvector('y')
         rand = T.fvector('rand')
+        lr = T.scalar('lr')
 
         if self.verbose: print 'AlexNet 2/16'
         self.layers = []
@@ -158,28 +161,30 @@ class AlexNet(object):
         else:        
             self.errors_top_5 = softmax_layer8.errors_top_x(y, 5)       
         self.params = params
+        
+        # inputs
         self.x = x
         self.y = y
         self.rand = rand
-        self.weight_types = weight_types
-        self.batch_size = batch_size
-        
-        # training related
-        self.base_lr = float(config['learning_rate'])
-        self.division_factor = 1.0
-        self.lr = theano.shared(np.float32(config['learning_rate']))
-        self.step_idx = 0
-        self.mu = config['momentum'] # def: 0.9 # momentum
-        self.eta = config['weight_decay'] #0.0002 # weight decay
-        
+        self.lr = lr
         self.shared_x = theano.shared(np.zeros((3, config['input_width'], 
                                                   config['input_height'], 
-                                                  config['batch_size']), 
+                                                  config['file_batch_size']), # for loading large batch
                                                   dtype=theano.config.floatX),  
                                                   borrow=True)
                                               
-        self.shared_y = theano.shared(np.zeros((config['batch_size'],), 
+        self.shared_y = theano.shared(np.zeros((config['file_batch_size'],), 
                                           dtype=int),   borrow=True)
+        self.shared_lr = theano.shared(np.float32(config['learning_rate']))
+        
+        # training related
+        self.base_lr = np.float32(config['learning_rate'])
+        self.step_idx = 0
+        self.mu = config['momentum'] # def: 0.9 # momentum
+        self.eta = config['weight_decay'] #0.0002 # weight decay
+        self.weight_types = weight_types
+        self.batch_size = batch_size
+
                                           
         self.grads = T.grad(self.cost,self.params)
         
@@ -205,38 +210,49 @@ class AlexNet(object):
         
         DropoutLayer.SetDropoutOn()
         
-    def compile_train(self, config, updates_dict):
+    def compile_train(self, updates_dict=None):
 
         if self.verbose: print 'compiling training function...'
         
-        x = self.x
-        y = self.y
-            
+        x,y,lr = self.x, self.y, self.lr
+        subb_ind = T.iscalar('subb')  # sub batch index
+        #print self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].shape.eval()
+
+        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        shared_lr = self.shared_lr
+          
         cost = self.cost 
         error = self.errors
-        errors_top_5 = self.errors_top_5
-    
-        shared_x, shared_y = self.shared_x, self.shared_y
                
         params = self.params  
-        weight_types = self.weight_types 
         grads = self.grads
+        
+        if updates_dict == None:
+            from modelbase import updates_dict
     
-        updates_w,updates_v,updates_dv = updates_dict(config, model=self, 
-                                    use_momentum=config['use_momentum'], 
-                                    use_nesterov_momentum=config['use_nesterov_momentum'])  
-                                      
-
-    
-        self.train= theano.function([], [cost,error], updates=updates_w,
+        updates_w,updates_v,updates_dv = updates_dict(self.config, model=self) 
+        
+        if self.config['monitor_grad']:
+            
+            norms = [grad.norm(L=2) for grad in self.grads]
+            
+            self.get_norm = theano.function([subb_ind], norms,
                                               givens=[(x, shared_x), 
                                                       (y, shared_y)]
                                                                           )
     
-   
-        self.get_vel= theano.function([], [cost,error], updates=updates_v,
+        self.train= theano.function([subb_ind], [cost,error], updates=updates_w,
                                               givens=[(x, shared_x), 
-                                                      (y, shared_y)]
+                                                      (y, shared_y),
+                                                      (lr, shared_lr)]
+                                                                          )
+    
+   
+        self.get_vel= theano.function([subb_ind], [cost,error], updates=updates_v,
+                                              givens=[(x, shared_x), 
+                                                      (y, shared_y),
+                                                      (lr, shared_lr)]
                                                                           )
                                 
                                                                                         
@@ -259,14 +275,17 @@ class AlexNet(object):
     
         x = self.x
         y = self.y
+        
+        subb_ind = T.iscalar('subb')  # sub batch index
             
         cost = self.cost 
         error = self.errors
         errors_top_5 = self.errors_top_5
         
-        shared_x, shared_y = self.shared_x, self.shared_y
+        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
         
-        self.val =  theano.function([], [cost,error,errors_top_5], updates=[], 
+        self.val =  theano.function([subb_ind], [cost,error,errors_top_5], updates=[], 
                                           givens=[(x, shared_x),
                                                   (y, shared_y)]
                                                                 )                                                       
@@ -298,10 +317,21 @@ class AlexNet(object):
                                 self.config['lr_adapt_threshold']):
                 tuned_base_lr = self.base_lr / 10.0
                     
-        self.lr.set_value(tuned_base_lr * size)
+        if self.config['train_mode'] == 'cdd':
+            self.shared_lr.set_value(np.float32(tuned_base_lr))
+        elif self.config['train_mode'] == 'avg':
+            self.shared_lr.set_value(np.float32(tuned_base_lr*size))
         
         if self.verbose: 
-            print 'Learning rate now: %.10f' % np.float32(self.lr.get_value())
+            print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())
+            
+    def test(self):
+        
+        self.train(0)
+        self.val(0)
+        
+        print 'test passed'
+
     
         
 

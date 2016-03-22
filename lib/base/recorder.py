@@ -97,8 +97,8 @@ class Recorder(object):
 
             if self.verbose: print '%d %.4f %.4f'% (count, cost, error)
 
-            self.train_info['cost'] = []
-            self.train_info['error'] = []
+            self.train_info['cost'][:] = []
+            self.train_info['error'][:] = []
 
             # print time info
 
@@ -113,9 +113,9 @@ class Recorder(object):
                 print 'time per %d images: %.2f (train %.2f comm %.2f wait %.2f)' % \
                             (self.config['print_info_every'], t_all, calc, comm, wait)
              
-            self.all_time['calc'] = []
-            self.all_time['comm'] = []
-            self.all_time['wait'] = []
+            self.all_time['calc'][:] = []
+            self.all_time['comm'][:] = []
+            self.all_time['wait'][:] = []
             
     def gather_val_info(self):
         
@@ -146,9 +146,18 @@ class Recorder(object):
             print 'validation error:%.4f' % error
             print 'validation top_5_error:%.4f' % error_top5
     
-        self.val_info['cost'] = []
-        self.val_info['error'] = []
-        self.val_info['error_top5'] = []
+        self.val_info['cost'][:] = []
+        self.val_info['error'][:] = []
+        self.val_info['error_top5'][:] = []
+    
+    def get_latest_val_info(self):
+        
+        try:
+            latest = self.info_dict['val_info'][-1]
+        except:
+            latest = None
+            
+        return latest
     
     def save(self, count,lr, filepath = 'inforec/inforec.pkl'):
 
@@ -222,7 +231,7 @@ class Recorder(object):
         
         
         plt.suptitle('training info')
-        fig.savefig('train.pdf',format='pdf')
+        fig.savefig('train.png',format='png')
 
         # val error
         fig = plt.figure(2, figsize=(5,8))
@@ -249,7 +258,7 @@ class Recorder(object):
         ax.set_ylabel('top5 error')
         
         plt.suptitle('validation info')
-        fig.savefig('val.pdf',format='pdf')
+        fig.savefig('val.png',format='png')
 
         # time
         fig = plt.figure(3)
