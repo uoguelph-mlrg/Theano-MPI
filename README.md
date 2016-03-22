@@ -68,12 +68,11 @@ Time per 5120 images in seconds: [allow_gc = True]
 | GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 |
 | VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 |
 
-<img src=https://raw.githubusercontent.com/ugouelph-mlrg/Parallel-training/add-EASGD/show/train.png width=135/>
-<img src=https://raw.githubusercontent.com/ugouelph-mlrg/Parallel-training/add-EASGD/show/val.png width=135/>
+<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/train.png width=300/><img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/val.png width=300/>
 
 ###EASGD
 
 (To be added)
-## How to customize your model and use this network
+## How to customize your model and use this framework to train it
 
 See wiki (To be added)
