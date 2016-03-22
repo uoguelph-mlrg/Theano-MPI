@@ -32,14 +32,14 @@ base_compiledir = /tmp/USERNAME/.theano
 root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
 - 4. cd into run/ 
- - to start a BSP training session: 
+- to start a BSP training session: 
   - 1) configure config.yaml file as follows:
   ```
   sync_rule: BSP
   avg_freq: 1
   ```
   - 2) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. This will start worker processes inside a screen session named bspN.
- - to start a EASGD training session: 
+- to start a EASGD training session: 
   - 1) Decide if want to start server and workers in one communicator. Configure config.yaml file as follows:
    ```
    sync_rule: EASGD
