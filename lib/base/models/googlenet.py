@@ -852,14 +852,29 @@ class GoogLeNet(ModelBase):
         # since epoch* batch_len = iter
         # max_iter = 240 * batch_len
         # iter/max_iter = 1/240
+
+        # Poly lr policy according to
+        # https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
         
-        power = pow( (1. -  1.* epoch/240.0 ), 0.5 )
-        tuned_base_lr = self.base_lr * pow(power,epoch)
+        tuned_base_lr = self.base_lr
+        
+        for i in range(5, epoch+1):
+            tuned_base_lr = tuned_base_lr * \
+                pow( (1. -  1.* (i) /240.0), 0.5 )
+        
+        if self.config['train_mode'] == 'avg':
+            self.shared_lr.set_value(np.float32(tuned_base_lr*size))
+        else:
+            self.shared_lr.set_value(np.float32(tuned_base_lr))
             
-        self.shared_lr.set_value(tuned_base_lr * size)
+        # power = pow( (1. -  1.* epoch/240.0 ), 0.5 )
+        # tuned_base_lr = self.base_lr * pow(power,epoch)
+        #
+        # self.shared_lr.set_value(tuned_base_lr * size)
     
         if self.verbose: 
-            print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())
+            print 'Learning rate now: %.10f' % \
+                    np.float32(self.shared_lr.get_value())
     
   
 

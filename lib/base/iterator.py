@@ -76,6 +76,7 @@ class P_iter(object):
                 filenames= filenames_arr[indices]
             else:
                 filenames = filenames_arr
+                indices = np.arange(filenames_arr.shape[0])
 
             y=[]
             for index in range(len(indices)):

@@ -76,7 +76,6 @@ def crop_and_mirror(data, param_rand, flag_batch=True, cropsize=227):
             data_out[:, :, :, ind] = img
 
         data = data_out
-	#time.sleep(2)
 
     return np.ascontiguousarray(data, dtype='float32')
 

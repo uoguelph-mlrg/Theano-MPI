@@ -57,6 +57,8 @@ Make sure you have access to the data.
 
 To get the best running speed performance, the memory cache may need to be cleaned before running.
 
+To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use corrmm as lib_conv which will use GpuCorrMM and Pool_2d from theano.blas and downsampling instead of the indeterministic dnn.conv and dnn.pool from cudnn.
+
 ## Performance Testing
 
 ###BSP

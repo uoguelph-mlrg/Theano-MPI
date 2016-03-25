@@ -7,8 +7,8 @@ pretrain: False
 monitor_grad: False
 # Resume Training, start from scratch or resume training
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
-load_epoch: 1
-load_path: /work/mahe6562/pretrained-models/models-vggnet16-32b-from-scratch/ # edit here to find your pretrained weights
+load_epoch: 10
+load_path: /work/mahe6562/models-vggnet-8gpu-32b-cop6-3-21/ # edit here to find your pretrained weights
 
 # Momentum
 use_momentum: True # def: True
@@ -40,7 +40,7 @@ train_folder: /train_hkl_128b/   #/hkl_data/
 val_folder: /val_hkl_128b/   
 
 # conv library
-lib_conv: cudnn  # or 
+lib_conv: cudnn  # cuda_convnet, cudnn or corrmm
 #lib_conv: cudaconvnet #(to use pylearn2's convnet)
 
 # output
@@ -51,7 +51,7 @@ print_train_error: True
 print_freq: 2  # iteration frequency of printing training error rate def: 200
 
 # randomness
-random: True
+
 shuffle: True # def: False, if shuffle the batches
 rand_crop: True # def: True, if False will likely be overfitting
 batch_crop_mirror: True  # if False, do randomly on each image separately

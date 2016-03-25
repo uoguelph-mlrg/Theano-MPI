@@ -116,13 +116,13 @@ def get_rand3d(config, mode):
         
     else:
         
-        if config['random'] and config['rand_crop'] == True:
+        if config['rand_crop'] == True:
         
-            time_seed = int(time.time())*int(config['worker_id'])%1000
-
-            np.random.seed(time_seed)
+            # time_seed = int(time.time())*int(config['worker_id'])%1000
+            # np.random.seed(time_seed)
             tmp_rand = np.float32(np.random.rand(3))
             tmp_rand[2] = round(tmp_rand[2])
+
             return tmp_rand
         else:
             return np.float32([0.5, 0.5, 0]) 

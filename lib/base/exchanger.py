@@ -129,7 +129,7 @@ class BSP_Exchanger(object):
                 	self.drv.memcpy_dtod(param_ga.ptr,
                                           param_update_ga.ptr,
                                           param_update_ga.dtype.itemsize *
-                                          param_update_ga.size)
+                                          param_ga.size)
                     
 
             elif self.fp == 16:
@@ -184,7 +184,7 @@ class BSP_Exchanger(object):
                 	self.drv.memcpy_dtod(param_ga.ptr,
                                           param_update_ga.ptr,
                                           param_update_ga.dtype.itemsize *
-                                          param_update_ga.size)
+                                          param_ga.size)
     
 
         # sum delta w
@@ -249,7 +249,7 @@ class BSP_Exchanger(object):
                     self.drv.memcpy_dtod(vel2_ga.ptr,
                                           vel_update_ga.ptr,
                                           vel_update_ga.dtype.itemsize *
-                                          vel_update_ga.size)
+                                          vel2_ga.size)
                       
                     del vel2_ga
                                           
@@ -287,7 +287,24 @@ class BSP_Exchanger(object):
                 theano.misc.pycuda_utils.to_gpuarray(param.container.value)
             param_ga_list.append(param_ga)
             param_update = param.get_value()
-            param_update_ga = gpuarray.GPUArray(param_update.shape,param_update.dtype)
+            
+            size_tmp=self.size
+            if param_update.size % size_tmp != 0 and len(param_update.shape)==1:
+
+                param_update_shape = (param_update.shape[0]+ size_tmp - \
+                                         param_update.shape[0]%size_tmp,)
+
+                assert param_update_shape[0] % size_tmp == 0
+                print 'weight shape changed from %s to %s' % \
+                             (param_update.shape, param_update_shape)
+                             
+            elif param_update.size % size_tmp == 0:
+                param_update_shape = param_update.shape
+                
+            elif param_update.size % size_tmp != 0 and len(param_update.shape)!=1:
+                raise NotImplementedError
+            
+            param_update_ga = gpuarray.GPUArray(param_update_shape,param_update.dtype)
             param_update_ga_list.append(param_update_ga)
 
         # fp32 related parameters
@@ -301,10 +318,14 @@ class BSP_Exchanger(object):
         numElements=[]
         reducesizes=[]
 
-        for param in self.param_list:
+        for param_update_ga in param_update_ga_list:
 	
-            param_update = np.zeros_like(param.get_value())
-            numElement = np.int32(param_update.size)
+            numElement = np.int32(param_update_ga.size)
+            
+            if numElement%size_tmp!=0:
+                print numElement,'x',param_update.shape
+                raise
+                
             numElements.append(numElement)
             reducesize = np.int32(numElement/self.size)
             reducesizes.append(reducesize)
