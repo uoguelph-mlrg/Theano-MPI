@@ -64,11 +64,11 @@ To get deterministic and reproducible results, turn off all randomness in the co
 ###BSP
 Time per 5120 images in seconds: [allow_gc = True]
 
-| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
-| :---: | :---: | :---: | :---: | :---: |
-| AlexNet-128b | 31.4 | 16.8 | 9.2 | 5.6 |
-| GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 |
-| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 |
+| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  | 16GPU |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| AlexNet-128b | 31.4 | 16.8 | 9.2 | 5.6 | |
+| GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 | |
+| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 | 38.5 |
 
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/train.png width=300/><img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/val.png width=300/>
 
