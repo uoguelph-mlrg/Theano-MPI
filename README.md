@@ -1,6 +1,6 @@
 # Parallel Training
 Parallel training framework for training deep learning models built in Theano based on data-parallelism. 
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to theano_alexnet, aiming to scale up training framework to more than 8 GPUs and across nodes. 
+The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up training framework to more than 8 GPUs and across nodes. 
 
 It is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as a theano shared variable. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variable. See wiki for a tutorial on building customized neural networks.
 
@@ -64,11 +64,11 @@ To get deterministic and reproducible results, turn off all randomness in the co
 ###BSP
 Time per 5120 images in seconds: [allow_gc = True]
 
-| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
-| :---: | :---: | :---: | :---: | :---: |
-| AlexNet-128b | 31.4 | 16.8 | 9.2 | 5.6 |
-| GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 |
-| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 |
+| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  | 16GPU |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| AlexNet-128b | 31.4 | 16.8 | 9.2 | 5.6 | |
+| GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 | |
+| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 | 38.5 |
 
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/train.png width=300/><img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/val.png width=300/>
 
