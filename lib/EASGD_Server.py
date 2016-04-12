@@ -86,6 +86,7 @@ class EASGD_PTServer(PTServer):
         elif 'done' in message:
             
             self.uidx['%s' % worker_id] += message['done']
+            #print '[Server] uidx %d' % sum(self.uidx.values())
 
         elif message == 'uepoch':
         
@@ -102,6 +103,20 @@ class EASGD_PTServer(PTServer):
                 #self.valid = self.valid.fromkeys(self.valid, True)
                 self.valid["%s" % self.first_worker_id] = True # only the first worker validates
                 
+                # tunning server alpha
+                a_step1, a_step2, a_step3 = self.config['alpha_step']
+                if self.uepoch>a_step1 and self.uepoch< a_step2:
+                    step_idx = 1
+                elif self.uepoch>a_step2 and self.uepoch< a_step3:
+                    step_idx = 2
+                elif self.uepoch>a_step3:
+                    step_idx = 3
+                else:
+                    step_idx = 0
+                self.exchanger.alpha=self.config['server_alpha'] - self.config['alpha_minus']*step_idx
+                print 'server alpha changed to %f' % self.exchanger.alpha
+                
+                
             if self.last == None:
                 self.last = float(time.time())
                 
@@ -114,6 +129,8 @@ class EASGD_PTServer(PTServer):
         
                 self.last_uidx = now_uidx
                 self.last = now
+            
+                
         
         return reply
             

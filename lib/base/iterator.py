@@ -173,7 +173,8 @@ class P_iter(object):
             cost,error= self.function(self.subb)
             
             if self.verbose: 
-                print count, cost, error
+                #print count+self.config['rank'], cost, error
+                #if count+self.config['rank']>45: exit(0)
                 if self.config['monitor_grad']: 
                     print np.array(self.get_norm(self.subb))
                     #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]

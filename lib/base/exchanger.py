@@ -75,7 +75,7 @@ class BSP_Exchanger(object):
                 
                 self.comm.Barrier()
                 for param, param_update in \
-                            zip(self.param_list, self.param_updates):
+                            zip(self.param_list, self.param_update_list):
                     self.comm.Allreduce(param.get_value(), param_update)
                     param.set_value(param_update)
                     
@@ -323,7 +323,7 @@ class BSP_Exchanger(object):
             numElement = np.int32(param_update_ga.size)
             
             if numElement%size_tmp!=0:
-                print numElement,'x',param_update.shape
+                print numElement,'x',param_update_ga.shape
                 raise
                 
             numElements.append(numElement)
@@ -598,7 +598,24 @@ __global__ void sumfloats(float* f1, float* f2, int numElements,int ranksize,int
         for vel in self.vels:
             
             vel_update = vel.get_value()
-            vel_update_ga = gpuarray.GPUArray(vel_update.shape,vel_update.dtype)
+            
+            size_tmp=self.size
+            if vel_update.size % size_tmp != 0 and len(vel_update.shape)==1:
+
+                vel_update_shape = (vel_update.shape[0]+ size_tmp - \
+                                         vel_update.shape[0]%size_tmp,)
+
+                assert vel_update_shape[0] % size_tmp == 0
+                print 'weight shape changed from %s to %s' % \
+                             (vel_update.shape, vel_update_shape)
+                             
+            elif vel_update.size % size_tmp == 0:
+                vel_update_shape = vel_update.shape
+                
+            elif vel_update.size % size_tmp != 0 and len(vel_update.shape)!=1:
+                raise NotImplementedError
+                
+            vel_update_ga = gpuarray.GPUArray(vel_update_shape,vel_update.dtype)
             vel_update_ga_list.append(vel_update_ga)
 
         # fp32 related parameters
@@ -612,10 +629,14 @@ __global__ void sumfloats(float* f1, float* f2, int numElements,int ranksize,int
         numElements=[]
         reducesizes=[]
 
-        for param in self.vels:
+        for vel_update_ga in vel_update_ga_list:
 	
-            param_update = np.zeros_like(param.get_value())
-            numElement = np.int32(param_update.size)
+            numElement = np.int32(vel_update_ga.size)
+            
+            if numElement%size_tmp!=0:
+                print numElement,'x',vel_update_ga.shape
+                raise
+                
             numElements.append(numElement)
             reducesize = np.int32(numElement/self.size)
             reducesizes.append(reducesize)
@@ -666,12 +687,15 @@ class EASGD_Exchanger(object):
         self.param_list = param_list
 
         self.dest = 0 # size is 1 on both side of this intercomm, so server_rank=0, worker_rank=0
-        self.alpha = config['alpha'] # TODO not sure if 1.0/config['size'] is better
+        # TODO not sure if alpha = 1.0/config['size'] is better
+        
 
         if self.etype == 'server':
             self.prepare_server()
+            self.alpha = config['server_alpha']
         elif self.etype == 'worker':
             self.prepare_worker()
+            self.alpha = config['worker_alpha']
             
         self.update_func = self.mk_update_func()
         self.comm = None

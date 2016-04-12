@@ -6,6 +6,7 @@ import numpy as np
 
 import hickle as hkl
 
+np.random.seed(23455)
 
 def unpack_configs(config, ext_data='.hkl', ext_label='.npy'):
     flag_para_load = config['para_load']
@@ -96,7 +97,7 @@ def extend_data(config,filenames, labels, env):
 
 
 # for CUDA-aware MPI
-bufint_cn= lambda arr: arr.container.value.as_buffer(arr.container.value.size*4,0)
+#bufint_cn= lambda arr: arr.container.value.as_buffer(arr.container.value.size*4,0)
 bufint = lambda arr: arr.gpudata.as_buffer(arr.nbytes)
 
 def dtype_to_mpi(t):
@@ -128,6 +129,11 @@ def get_rand3d(config, mode):
             return np.float32([0.5, 0.5, 0]) 
         
 def save_weights(layers, weights_dir, epoch):
+    
+    if not os.path.exists(weights_dir):
+            os.makedirs(weights_dir)
+            print 'Creating folder: %s' % weights_dir
+            
     for idx in range(len(layers)):
         if hasattr(layers[idx], 'W'):
             layers[idx].W.save_weight(
@@ -178,6 +184,11 @@ def load_weights(layers, weights_dir, epoch, l_range=None):
 
 
 def save_momentums(vels, weights_dir, epoch):
+    
+    if not os.path.exists(weights_dir):
+            os.makedirs(weights_dir)
+            print 'Creating folder: %s' % weights_dir
+            
     for ind in range(len(vels)):
         np.save(os.path.join(weights_dir, 'mom_' + str(ind) + '_' + str(epoch)),
                 vels[ind].get_value())

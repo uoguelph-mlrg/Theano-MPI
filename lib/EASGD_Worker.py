@@ -93,6 +93,38 @@ class EASGD_PTWorker(PTWorker):
             print '\nlearning rate loaded %f' % s_lr.get_value()
             print 'weights and momentums loaded from epoch %d in %s' % (load_epoch,path)
             
+            record_file_path = self.config['record_dir'] + 'inforec.pkl' # bug which worker's inforec should be used
+            if os.path.exists(record_file_path):
+                import glob
+                history_folder = self.config['record_dir']+ 'history*' 
+                find = glob.glob(history_folder)
+                #print find
+                if find != []:
+                    history_folder = sorted(find)[-1]
+                    #print history_folder
+
+                    history_folder = history_folder.split('_')[0] + '_' + \
+                             "%d" % (int(history_folder.split('_')[-1])+1) + '/'
+                    
+                else:
+                    history_folder = self.config['record_dir']+ 'history_0' + '/'
+                
+                print 'creating inforec history folder: ' + history_folder
+                    
+                os.makedirs(history_folder)
+                import shutil
+                shutil.copy(record_file_path, history_folder+'inforec.pkl')
+                self.recorder.load(filepath = record_file_path)
+                # print type(self.recorder.info_dict['train_info'])
+                # print len(self.recorder.info_dict['train_info'])
+                #
+                # print type(self.recorder.info_dict['val_info'])
+                # print len(self.recorder.info_dict['val_info'])
+            
+            else:
+                raise OSError('record fle not found at %s ' % record_file_path)
+                
+            
     def save_model(self): 
         
         assert self.uepoch != None
@@ -118,7 +150,7 @@ class EASGD_PTWorker(PTWorker):
             
             self.count += 1
             self.recorder.print_train_info(self.count)
-            
+
             
         self.recorder.start()
         reply = self.request(dict(done=self.train_len))

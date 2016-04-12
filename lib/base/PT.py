@@ -95,6 +95,10 @@ class PTBase(object):
             else:
                 if self.verbose: print "folder exists: " + \
                                  self.config['record_dir']
+                                 
+                                 
+        if self.config['sync_start'] and self.config['sync_rule'] == 'EASGD':
+            self.config['size'] = 1
                              
         if self.verbose: print self.config
         
@@ -117,7 +121,7 @@ class PTBase(object):
             image_mean = image_mean[:,np.newaxis,np.newaxis,np.newaxis]
 
         if self.config['debug']:
-            train_filenames = train_filenames[:16]
+            train_filenames = train_filenames[:80]
             val_filenames = val_filenames[:8]
 
         env_train=None

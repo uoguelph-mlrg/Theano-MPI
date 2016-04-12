@@ -90,12 +90,12 @@ class Recorder(object):
 
             #print train info
             if self.verbose: print ''
-            cost = sum(self.train_info['cost'])/len(self.train_info['cost'])
-            error = sum(self.train_info['error'])/len(self.train_info['error'])
+            cost =sum(self.train_info['cost'])/len(self.train_info['cost'])
+            error =sum(self.train_info['error'])/len(self.train_info['error'])
 
             self.info_dict['train_info'].append([count, cost, error])
 
-            if self.verbose: print '%d %.4f %.4f'% (count, cost, error)
+            if self.verbose: print '%d %f %f'% (count, cost, error)
 
             self.train_info['cost'][:] = []
             self.train_info['error'][:] = []

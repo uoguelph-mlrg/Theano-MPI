@@ -117,6 +117,8 @@ class ConvPoolLayer(object):
         if lib_conv == 'cudaconvnet':
             self.conv_op = FilterActs(pad=self.padsize, stride=self.convstride,
                                       partial_sum=1)
+                                      
+            from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
             # Conv
             if group == 1:
@@ -143,8 +145,8 @@ class ConvPoolLayer(object):
                 conv_out = T.concatenate([conv_out0, conv_out1], axis=0)
 
             # ReLu
-            self.output = T.maximum(conv_out, 0)
             conv_out = gpu_contiguous(conv_out)
+            self.output = T.maximum(conv_out, 0)
 
             # Pooling
             if self.poolsize != 1:

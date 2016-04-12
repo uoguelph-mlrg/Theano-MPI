@@ -164,6 +164,7 @@ if __name__ == '__main__':
             data = crop_and_mirror(data, rand_arr, \
                                     flag_batch=config['batch_crop_mirror'], \
                                     cropsize = config['input_width'])
+                                    
 
             gpu_data.set(data)
         

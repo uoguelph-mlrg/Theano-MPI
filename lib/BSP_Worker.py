@@ -81,6 +81,38 @@ class BSP_PTWorker(PTWorker):
             print '\nlearning rate loaded %f' % s_lr.get_value()
             print 'weights and momentums loaded from epoch %d' % load_epoch
             print 'in %s' % path
+        
+            record_file_path = self.config['record_dir'] + 'inforec.pkl'
+            if os.path.exists(record_file_path):
+                import glob
+                history_folder = self.config['record_dir']+ 'history*' 
+                find = glob.glob(history_folder)
+                #print find
+                if find != []:
+                    history_folder = sorted(find)[-1]
+                    #print history_folder
+
+                    history_folder = history_folder.split('_')[0] + '_' + \
+                             "%d" % (int(history_folder.split('_')[-1])+1) + '/'
+                    
+                else:
+                    history_folder = self.config['record_dir']+ 'history_0' + '/'
+                
+                print 'creating inforec history folder: ' + history_folder
+                    
+                os.makedirs(history_folder)
+                import shutil
+                shutil.copy(record_file_path, history_folder+'inforec.pkl')
+                self.recorder.load(filepath = record_file_path)
+                # print type(self.recorder.info_dict['train_info'])
+                # print len(self.recorder.info_dict['train_info'])
+                #
+                # print type(self.recorder.info_dict['val_info'])
+                # print len(self.recorder.info_dict['val_info'])
+            
+            else:
+                raise OSError('record fle not found at %s ' % record_file_path)
+
             
     def save_model(self): 
       
@@ -97,7 +129,7 @@ class BSP_PTWorker(PTWorker):
         if self.verbose:
             print '\nweights and momentums saved at epoch %d' % self.epoch
         
-        with open(path+"val_info.txt", "w") as f:
+        with open(path+"val_info.txt", "a") as f:
             f.write("\nepoch: {} val_info {}:".format(self.epoch, \
                                                     self.model.current_info))
         
@@ -118,7 +150,9 @@ class BSP_PTWorker(PTWorker):
                 i_next(self.recorder,self.count)
                 
                 r_start()
+                #print self.model.params[0].get_value()[1][1][1][1]
                 exch()
+                
                 r_end('comm')
                 
             self.count += self.size
@@ -163,7 +197,11 @@ class BSP_PTWorker(PTWorker):
         
         self.adjust_lr()
         
-        self.mode = 'train'
+        if self.config['initial_val']:
+            self.mode = 'val'
+        else:
+            self.mode = 'train'
+        
         
         while True:
 
@@ -177,6 +215,8 @@ class BSP_PTWorker(PTWorker):
                     print '\nNow training'
 
                 self.train()
+                
+                self.recorder.end_epoch(self.count, self.epoch)
                 
                 self.mode = 'val'
 
@@ -197,8 +237,6 @@ class BSP_PTWorker(PTWorker):
                 if self.epoch % self.config['snapshot_freq'] == 0:
                     if self.config['rank'] ==0 :
                         self.save_model()
-
-                self.recorder.end_epoch(self.count, self.epoch)
                 
                 if self.epoch >= self.config['n_epochs']:
                     self.mode = 'stop'

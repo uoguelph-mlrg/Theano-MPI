@@ -7,18 +7,19 @@ pretrain: False
 monitor_grad: False
 # Resume Training, start from scratch or resume training
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
-load_epoch: 10
-load_path: /work/mahe6562/models-vggnet-8gpu-32b-cop6-3-21/ # edit here to find your pretrained weights
+load_epoch: 20
+load_path: /work/mahe6562/pretrained-models/models-alexnet-8gpu-64b-cop8-3-31/  # edit here to find your pretrained weights
+initial_val: False
 
 # Momentum
 use_momentum: True # def: True
 use_nesterov_momentum: False # def: False
 
 # Weight Average
-sync_rule: BSP # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+sync_rule: EASGD  # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
 sync_start: True # start worker process together with server process in one mpirun call
 avg_freq: 4 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
-alpha: 0.7 # EASGD specific parameter
+
 train_mode: avg # mode selection: avg or cdd
 cuda_aware: True
 fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
@@ -40,7 +41,7 @@ train_folder: /train_hkl_128b/   #/hkl_data/
 val_folder: /val_hkl_128b/   
 
 # conv library
-lib_conv: cudnn  # cuda_convnet, cudnn or corrmm
+lib_conv: cudnn  # cudaconvnet, cudnn or corrmm
 #lib_conv: cudaconvnet #(to use pylearn2's convnet)
 
 # output
@@ -54,7 +55,7 @@ print_freq: 2  # iteration frequency of printing training error rate def: 200
 
 shuffle: True # def: False, if shuffle the batches
 rand_crop: True # def: True, if False will likely be overfitting
-batch_crop_mirror: True  # if False, do randomly on each image separately
+batch_crop_mirror: False  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 dropout_init_seed: 0 # to change, see layer.py file
 

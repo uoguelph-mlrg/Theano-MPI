@@ -1,7 +1,7 @@
 source set4theano.sh
 # server
-host0='cop5' 
-device0='gpu7'
+host0='cop2' 
+device0='gpu3'
 if [[ $device0 -ge '4' ]]; then
 	numa0=1
 else
@@ -9,8 +9,8 @@ else
 fi
 
 # worker
-host1='cop4'
-device1='gpu0'
+host1='cop2'
+device1='gpu4'
 if [[ $device1 -ge '4' ]]; then
 	numa1=1
 else
@@ -18,8 +18,8 @@ else
 fi
 
 # worker
-host2='cop4'
-device2='gpu1'
+host2='cop2'
+device2='gpu5'
 if [[ $device2 -ge '4' ]]; then
 	numa2=1
 else
@@ -27,8 +27,8 @@ else
 fi
 
 # worker
-host3='cop4'
-device3='gpu2'
+host3='cop2'
+device3='gpu6'
 if [[ $device3 -ge '4' ]]; then
 	numa3=1
 else
@@ -36,8 +36,8 @@ else
 fi
 
 # worker
-host4='cop4'
-device4='gpu3'
+host4='cop2'
+device4='gpu7'
 if [[ $device4 -ge '4' ]]; then
 	numa4=1
 else

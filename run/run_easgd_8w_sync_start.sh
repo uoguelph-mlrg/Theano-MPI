@@ -1,6 +1,6 @@
 source set4theano.sh
 # server
-host0='cop6' 
+host0='cop2' 
 device0='gpu7'
 if [[ $device0 -ge '4' ]]; then
 	numa0=1
@@ -9,7 +9,7 @@ else
 fi
 
 # worker
-host1='cop6'
+host1='cop2'
 device1='gpu0'
 if [[ $device1 -ge '4' ]]; then
 	numa1=1
@@ -18,7 +18,7 @@ else
 fi
 
 # worker
-host2='cop6'
+host2='cop2'
 device2='gpu1'
 if [[ $device2 -ge '4' ]]; then
 	numa2=1
@@ -27,7 +27,7 @@ else
 fi
 
 # worker
-host3='cop6'
+host3='cop2'
 device3='gpu2'
 if [[ $device3 -ge '4' ]]; then
 	numa3=1
@@ -36,7 +36,7 @@ else
 fi
 
 # worker
-host4='cop6'
+host4='cop2'
 device4='gpu3'
 if [[ $device4 -ge '4' ]]; then
 	numa4=1
@@ -45,7 +45,7 @@ else
 fi
 
 # worker
-host5='cop6'
+host5='cop2'
 device5='gpu4'
 if [[ $device5 -ge '4' ]]; then
 	numa5=1
@@ -54,7 +54,7 @@ else
 fi
 
 # worker
-host6='cop6'
+host6='cop2'
 device6='gpu5'
 if [[ $device6 -ge '4' ]]; then
 	numa6=1
@@ -63,7 +63,7 @@ else
 fi
 
 # worker
-host7='cop6'
+host7='cop2'
 device7='gpu6'
 if [[ $device7 -ge '4' ]]; then
 	numa7=1
@@ -72,7 +72,7 @@ else
 fi
 
 # worker
-host8='cop6'
+host8='cop2'
 device8='gpu7'
 if [[ $device8 -ge '4' ]]; then
 	numa8=1
