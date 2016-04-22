@@ -576,7 +576,7 @@ class GoogLeNet(ModelBase):
         # output shape = (28x28x192)
 
 
-        incep3a = Incept(conv_3x3.output,input_shape = (192,28,28,128))
+        incep3a = Incept(conv_3x3.output,input_shape = (192,28,28,batch_size))
         
         layers += incep3a.layers
         params += incep3a.params
@@ -584,7 +584,7 @@ class GoogLeNet(ModelBase):
         print 'incep3a output shape: (28x28x256)'
         # output shape = (28x28x256)
         
-        incep3b = Incept(incep3a.output,input_shape = (256,28,28,128),
+        incep3b = Incept(incep3a.output,input_shape = (256,28,28,batch_size),
                           n1x1=128, nr3x3=128, n3x3=192, 
                           nr5x5=32, n5x5=96, npj=64)
         
@@ -602,7 +602,7 @@ class GoogLeNet(ModelBase):
                       mode = 'max' )        
         # output shape = (14x14x480)
         
-        incep4a = Incept(pool3.output, input_shape = (480,14,14,128), 
+        incep4a = Incept(pool3.output, input_shape = (480,14,14,batch_size), 
                           n1x1=192, nr3x3=96, n3x3=208, 
                           nr5x5=16, n5x5=48, npj=64)
         
@@ -612,7 +612,7 @@ class GoogLeNet(ModelBase):
         print 'incep4a output shape: (14x14x512)'
         # output shape = (14x14x512)
         
-        incep4b = Incept(incep4a.output, input_shape = (512,14,14,128), 
+        incep4b = Incept(incep4a.output, input_shape = (512,14,14,batch_size), 
                           n1x1=160, nr3x3=112, n3x3=224, 
                           nr5x5=24, n5x5=64, npj=64)
         
@@ -623,7 +623,7 @@ class GoogLeNet(ModelBase):
         # output shape = (14x14x512)          
         
 
-        incep4c = Incept(incep4b.output, input_shape = (512,14,14,128), 
+        incep4c = Incept(incep4b.output, input_shape = (512,14,14,batch_size), 
                           n1x1=128, nr3x3=128, n3x3=256, 
                           nr5x5=24, n5x5=64, npj=64)
         
@@ -633,7 +633,7 @@ class GoogLeNet(ModelBase):
         print 'incep4c output shape: (14x14x512)'        
         # output shape = (14x14x512) 
 
-        incep4d = Incept(incep4c.output, input_shape = (512,14,14,128), 
+        incep4d = Incept(incep4c.output, input_shape = (512,14,14,batch_size), 
                           n1x1=112, nr3x3=144, n3x3=288, 
                           nr5x5=32, n5x5=64, npj=64)
         
@@ -644,7 +644,7 @@ class GoogLeNet(ModelBase):
         # output shape = (14x14x528) 
          
         
-        incep4e = Incept(incep4d.output, input_shape = (528,14,14,128), 
+        incep4e = Incept(incep4d.output, input_shape = (528,14,14,batch_size), 
                           n1x1=256, nr3x3=160, n3x3=320, 
                           nr5x5=32, n5x5=128, npj=128)
         
@@ -662,7 +662,7 @@ class GoogLeNet(ModelBase):
                       mode = 'max' )        
         # output shape = (7x7x832)        
         
-        incep5a = Incept(pool4.output, input_shape = (832,7,7,128), 
+        incep5a = Incept(pool4.output, input_shape = (832,7,7,batch_size), 
                           n1x1=256, nr3x3=160, n3x3=320, 
                           nr5x5=32, n5x5=128, npj=128)
         
@@ -673,7 +673,7 @@ class GoogLeNet(ModelBase):
         # output shape = (7x7x832)   
         
         
-        incep5b = Incept(incep5a.output, input_shape = (832,7,7,128), 
+        incep5b = Incept(incep5a.output, input_shape = (832,7,7,batch_size), 
                           n1x1=384, nr3x3=192, n3x3=384, 
                           nr5x5=48, n5x5=128, npj=128)
         
@@ -708,14 +708,14 @@ class GoogLeNet(ModelBase):
         
         # auxilary classifier
         print 'auxilary classifier 1:'
-        aux1 = aux_tower(input=incep4a.output,input_shape=(512,14,14,128),config=config)
+        aux1 = aux_tower(input=incep4a.output,input_shape=(512,14,14,batch_size),config=config)
         
         layers += aux1.layers
         params += aux1.params
         weight_types += aux1.weight_types
         
         print 'auxilary classifier 2:'                               
-        aux2 = aux_tower(input=incep4d.output,input_shape=(528,14,14,128),config=config)
+        aux2 = aux_tower(input=incep4d.output,input_shape=(528,14,14,batch_size),config=config)
         
         layers += aux2.layers
         params += aux2.params
