@@ -39,7 +39,7 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   avg_freq: 1
   ```
   - 2) execute "./run_bsp_workers.sh N", in which N is the desired number of workers.
-  - 
+
 - to start a EASGD training session: 
   - 1) Decide if want to start server and workers in one communicator. Configure config.yaml file as follows:
    ```
