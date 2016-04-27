@@ -148,7 +148,7 @@ class BSP_PTWorker(PTWorker):
             for subb_ind in range(self.config['n_subb']):
                 
                 i_next(self.recorder,self.count)
-                
+                self.comm.Barrier()
                 r_start()
                 #print self.model.params[0].get_value()[1][1][1][1]
                 exch()
