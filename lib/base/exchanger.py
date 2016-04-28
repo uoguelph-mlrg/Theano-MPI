@@ -23,7 +23,6 @@ class BSP_Exchanger(object):
 
         self.train_mode = config['train_mode']
         self.cuda_aware = config['cuda_aware']
-        # self.fp = config['fp']
         
         # TODO make sure exchanger class doesn't keep a self copy of model, only the reference to its param list
         self.param_list = model.params
