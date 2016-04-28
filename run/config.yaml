@@ -42,7 +42,7 @@ train_folder: /train_hkl_128b/   #/hkl_data/
 val_folder: /val_hkl_128b/   
 
 # conv library
-lib_conv: cudaconvnet  # cudaconvnet, cudnn or corrmm
+lib_conv: cudnn  # cudaconvnet, cudnn or corrmm
 #lib_conv: cudaconvnet #(to use pylearn2's convnet)
 
 # output
