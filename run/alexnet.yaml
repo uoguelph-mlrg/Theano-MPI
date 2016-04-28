@@ -2,7 +2,7 @@
 
 # Learning Parameters
 n_epochs: 70 # def: 70 for  AlexNet, 90 for GoogLeNet
-learning_rate: 0.005  # def: 0.01 for both AlexNet (256b) and GoogLeNet (32b), scale down when batchsize lowered
+learning_rate: 0.01  # def: 0.01 for both AlexNet (256b) and GoogLeNet (32b), scale down when batchsize lowered
 lr_policy: step  # def: step or auto
 lr_adapt_threshold: 0.01
 lr_step: [20, 40, 60]   # def: 20, learning rate will be reduced by 10 times at these steps when training AlexNet

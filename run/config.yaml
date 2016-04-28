@@ -21,8 +21,9 @@ sync_start: True # start worker process together with server process in one mpir
 avg_freq: 4 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
 
 train_mode: avg # mode selection: avg or cdd
+exch_strategy: asa16 # asa32, asa16, copper or ar
 cuda_aware: True
-fp: 16 # when cuda_aware == True, select parameter communication in float point 16 or 32 
+fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
 
 # Data
 file_batch_size: 128 # def: choose according to the preprocessed hkl file size
@@ -35,13 +36,13 @@ image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
-weights_dir : /tmp/feimao/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+weights_dir : /tmp/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
 train_folder: /train_hkl_128b/   #/hkl_data/  
 val_folder: /val_hkl_128b/   
 
 # conv library
-lib_conv: cudnn  # cudaconvnet, cudnn or corrmm
+lib_conv: cudaconvnet  # cudaconvnet, cudnn or corrmm
 #lib_conv: cudaconvnet #(to use pylearn2's convnet)
 
 # output
