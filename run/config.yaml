@@ -1,3 +1,8 @@
+# This version of config.yaml is modified based on the theano_alexnet project. See the original project here:
+# https://github.com/uoguelph-mlrg/theano_alexnet, and its copy right:
+# Copyright (c) 2014, Weiguang Ding, Ruoyan Wang, Fei Mao and Graham Taylor
+# All rights reserved.
+
 # If want to input None, use !!null
 
 # Model choose
@@ -22,8 +27,8 @@ avg_freq: 4 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
 
 train_mode: avg # mode selection: avg or cdd
 exch_strategy: asa16 # asa32, asa16, copper or ar
-cuda_aware: True
-fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32 
+cuda_aware: True # deprecated in avg mode
+# fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32
 
 # Data
 file_batch_size: 128 # def: choose according to the preprocessed hkl file size

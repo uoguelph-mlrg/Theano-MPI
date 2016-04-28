@@ -1,3 +1,8 @@
+# This version of alex_net.py is modified based on the theano_alexnet project. See the original project here:
+# https://github.com/uoguelph-mlrg/theano_alexnet, and its copy right:
+# Copyright (c) 2014, Weiguang Ding, Ruoyan Wang, Fei Mao and Graham Taylor
+# All rights reserved.
+
 import sys
 sys.path.append('./lib')
 import theano
