@@ -58,7 +58,7 @@ Make sure you have access to the data.
 
 To get the best running speed performance, the memory cache may need to be cleaned before running.
 
-To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use corrmm as lib_conv which will use GpuCorrMM and Pool_2d from theano.blas and downsampling instead of the indeterministic dnn.conv and dnn.pool from cudnn.
+To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2 instead of the indeterministic dnn.conv and dnn.pool from cuDNN.
 
 ## Performance Testing
 
@@ -67,15 +67,12 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 | Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  | 16GPU |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| AlexNet-128b | 31.4 | 16.8 | 9.2 | 5.6 | |
-| GoogLeNet-32b | 147.2 | 81.7 | 57.2 | 57.5 | |
+| AlexNet-128b | 31.20 | 15.65 | 7.78 | 3.90 | |
+| GoogLeNet-32b | 134.90 | 67.38 | 33.60 | 16.81 | |
 | VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 | 38.5 |
 
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/train.png width=300/><img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/val.png width=300/>
 
-###EASGD
-
-(To be added)
-## How to customize your model and use this framework to train it
+## How to customize your model
 
 See wiki (To be added)
