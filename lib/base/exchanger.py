@@ -35,8 +35,7 @@ class BSP_Exchanger(object):
             
             self.cdd()
             
-        elif self.train_mode == 'cdd' and self.cuda_aware == True \
-                                                and self.fp == 32:
+        elif self.train_mode == 'cdd' and self.cuda_aware == True:
             
             self.cdd_ca_fp32()
             self.compile_fp32_kernels()
