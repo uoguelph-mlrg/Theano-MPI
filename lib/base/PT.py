@@ -178,6 +178,11 @@ class PTBase(object):
             else:
                 from models.vggnet_16 import VGGNet_16
             self.model = VGGNet_16(self.config)
+            
+        elif self.model_name=='customized':
+            from models.customized import Customized
+            self.model = Customized(self.config)
+            
         else:
             raise NotImplementedError("wrong model name")
         

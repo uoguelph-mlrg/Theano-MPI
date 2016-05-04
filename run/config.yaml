@@ -6,7 +6,7 @@
 # If want to input None, use !!null
 
 # Model choose
-name: googlenet # alexnet or googlenet or vggnet
+name: googlenet # alexnet, googlenet, vggnet or googlenet
 
 pretrain: False
 monitor_grad: False

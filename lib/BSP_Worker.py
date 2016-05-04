@@ -36,10 +36,10 @@ class BSP_PTWorker(PTWorker):
         
         from base.exchanger import BSP_Exchanger
 
-        self.exchanger = BSP_Exchanger(self.config, \
+        self.exchanger = BSP_Exchanger(self.config,\
                                     self.drv, \
                                     self.ctx,
-                                    self.model)          
+                                    self.model)
                                     
     def prepare_recorder(self):
         
@@ -139,7 +139,7 @@ class BSP_PTWorker(PTWorker):
         # avoiding dots evaluation
         i_next = self.train_iterator.next
         r_start = self.recorder.start
-        exch = self.exchanger.exchange
+        if self.size>1: exch = self.exchanger.exchange
         r_end = self.recorder.end
         r_print = self.recorder.print_train_info
         
@@ -151,7 +151,7 @@ class BSP_PTWorker(PTWorker):
                 self.comm.Barrier()
                 r_start()
                 #print self.model.params[0].get_value()[1][1][1][1]
-                exch()
+                if self.size>1: exch()
                 
                 r_end('comm')
                 
@@ -193,7 +193,7 @@ class BSP_PTWorker(PTWorker):
         
         print 'worker started'
         
-        self.prepare_param_exchanger()
+        if self.size>1: self.prepare_param_exchanger()
         
         self.adjust_lr()
         

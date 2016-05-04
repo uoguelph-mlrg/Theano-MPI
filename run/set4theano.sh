@@ -1,7 +1,7 @@
 export MKL_CBWR=COMPATIBLE
 module unload intel mkl openmpi hdf python cuda
 module load intel/15.0.3
-module load openmpi/intel-15.0.3/std/1.8.7
+module load openmpi/intel1503-std/1.8.7
 module load hdf/serial/5.1.8.11
 module load cuda/7.5.18
 module load python/intel/2.7.10
