@@ -156,6 +156,40 @@ class BSP_Exchanger(object):
                                           
             elif self.fp == 16:
                 raise NotImplementedError
+                
+    def compile_fp32_kernels(self):
+
+        from pycuda.compiler import SourceModule
+        mod = SourceModule("""
+        __global__ void sumfloats(float* f1, float* f2, int numElements,int ranksize,int reducesize)
+        {
+                int i =  blockDim.x * blockIdx.x + threadIdx.x;
+                //unsigned short t1,t2;
+                float t1,t2;
+                if (i < numElements)
+                {
+                        t2 = f1[i];
+                        //tf2 = __half2float(t2);
+
+                        for (int j=1;j<ranksize;j++)
+                        {
+                                t1 = f1[i + reducesize*j];
+                                //tf1 = __half2float(t1);
+                                //tf2 += tf1;
+                                t2 += t1;
+                        }
+
+                        //t2 = __float2half_rn(tf2);
+                        f2[i] = t2;
+                }
+
+        }
+        """)
+        
+        d_f32_sumfloats = mod.get_function("sumfloats")
+        ranksize = np.int32(self.size)
+
+        self.fp32_kernels =[ d_f32_sumfloats,ranksize ]
 
     def cdd(self):
 
