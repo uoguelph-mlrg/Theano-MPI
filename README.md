@@ -75,4 +75,4 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 ## How to customize your model
 
-See wiki (To be added)
+See wiki
