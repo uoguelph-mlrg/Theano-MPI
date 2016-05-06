@@ -104,6 +104,7 @@ class BSP_PTWorker(PTWorker):
                 import shutil
                 shutil.copy(record_file_path, history_folder+'inforec.pkl')
                 self.recorder.load(filepath = record_file_path)
+                self.recorder.cut(load_epoch)
                 # print type(self.recorder.info_dict['train_info'])
                 # print len(self.recorder.info_dict['train_info'])
                 #
@@ -210,7 +211,7 @@ class BSP_PTWorker(PTWorker):
                 self.comm.Barrier()
                 
                 self.recorder.start_epoch()
-                self.epoch+=1
+                self.epoch+=1# epoch starts from 1, not 0. 0 means training has not started.
                 if self.verbose: 
                     print '\nNow training'
 

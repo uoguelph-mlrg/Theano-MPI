@@ -1,4 +1,3 @@
-
 # Display results offline
 
 import numpy as np

@@ -93,7 +93,7 @@ class EASGD_PTWorker(PTWorker):
             print '\nlearning rate loaded %f' % s_lr.get_value()
             print 'weights and momentums loaded from epoch %d in %s' % (load_epoch,path)
             
-            record_file_path = self.config['record_dir'] + 'inforec.pkl' # bug which worker's inforec should be used
+            record_file_path = self.config['record_dir'] + 'inforec.pkl' # bug which worker's inforec should be used, use only recording worker's, if exist, put into history
             if os.path.exists(record_file_path):
                 import glob
                 history_folder = self.config['record_dir']+ 'history*' 

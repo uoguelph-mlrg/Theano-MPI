@@ -160,7 +160,12 @@ class Recorder(object):
         return latest
     
     def save(self, count,lr, filepath = 'inforec/inforec.pkl'):
-
+        
+        '''
+        save dictionaries to file inforec.pkl (from epoch=1 to current epoch)
+                
+        '''
+        
         self.info_dict['lr'].append([count,lr])
         
         import pickle
@@ -183,6 +188,20 @@ class Recorder(object):
              self.info_dict['epoch_time'].extend(load_dict['epoch_time'])
              self.info_dict['all_time'].extend(load_dict['all_time'])
              self.info_dict['lr'].extend(load_dict['lr'])
+             
+    def cut(self, load_epoch):
+        '''
+        cut those dictionaries loaded from inforec.pkl when resuming training
+    
+        '''
+        
+        self.info_dict['train_info'] = self.info_dict['train_info'][0:load_epoch]
+        self.info_dict['val_info'] = self.info_dict['val_info'][0:load_epoch]
+        self.info_dict['epoch_time'] = self.info_dict['epoch_time'][0:load_epoch]
+        self.info_dict['all_time'] = self.info_dict['all_time'][0:load_epoch]
+        self.info_dict['lr'] = self.info_dict['lr'][0:load_epoch]
+             
+             
             
     def show(self, label='', color_id = 0, show=True):
         
@@ -302,7 +321,7 @@ class Recorder(object):
 	        plt.xlabel('epoch')
 	        plt.ylabel('time per epoch')
 	
-	        plt.ylim([0,3])
+            # plt.ylim([0,3])
 	        
 	        plt.suptitle('epoch time')
         
