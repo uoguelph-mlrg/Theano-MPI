@@ -44,6 +44,11 @@ class EASGD_PTWorker(PTWorker):
         self.lastmode = None
         self.count = 0
         
+        if self.verbose:
+            self.rec_name = 'inforec.pkl'
+        else:
+            self.rec_name = 'inforec_'+ str(self.worker_id) + '.pkl'
+        
     def prepare_param_exchanger(self):
         
         from base.exchanger import EASGD_Exchanger
@@ -244,10 +249,9 @@ class EASGD_PTWorker(PTWorker):
                 self.copy_to_local()
 
                 self.val()
-
+                
                 self.recorder.save(self.count, self.model.shared_lr.get_value(), \
-                        filepath = self.config['record_dir'] + \
-                        'inforec_'+ str(self.worker_id) + '.pkl')
+                        filepath = self.config['record_dir'] + self.rec_name)
                         
                 self.uepoch, self.n_workers = self.request('uepoch')
                 
