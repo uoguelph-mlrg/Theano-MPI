@@ -31,17 +31,17 @@ base_compiledir = /tmp/USERNAME/.theano
 
 root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
-- 4. cd into run/ 
+- 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model.
 - to start a BSP training session: 
-  - 1) configure config.yaml file as follows:
+  - 1) In the "weight exchange" section in config.yaml, choose as follows:
   ```
   sync_rule: BSP
-  avg_freq: 1
   ```
-  - 2) execute "./run_bsp_workers.sh N", in which N is the desired number of workers.
+  - 2) choose a parameter exchanging strategy from "ar", "asa32", "asa16" and "copper", where "ar" means using Allreduce() from mpi4py, "asa32" and "asa16" mean using the Alltoall-sum-Allgather strategy with float32 and float16 respectively, "copper" means using the binary reduction strategy designed for copper GPU topology.
+  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers.
 
 - to start a EASGD training session: 
-  - 1) Decide if want to start server and workers in one communicator. Configure config.yaml file as follows:
+  - 1) If you want to start server and workers in one communicator, configure config.yaml file as follows:
    ```
    sync_rule: EASGD
    sync_start: True 
