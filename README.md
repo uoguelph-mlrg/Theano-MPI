@@ -31,7 +31,7 @@ base_compiledir = /tmp/USERNAME/.theano
 
 root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
-- 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model.
+- 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model, e.g., alexnet.yaml, googlenet.yaml, vggnet.yaml or customized.yaml.
 - to start a BSP training session: 
   - 1) In the "weight exchange" section in config.yaml, choose as follows:
   ```
