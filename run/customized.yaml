@@ -1,0 +1,22 @@
+# GoogLeNet model and training hyperparameters
+
+# Learning Parameters
+n_epochs: 10 # def: 74 for  VGGNet
+learning_rate: 0.01  # def: 0.01 for AlexNet, GoogLeNet and VGGNet
+lr_policy: step
+lr_step: [20, 40, 60] # def: 20, 40, 60
+
+# Weight Decay
+weight_decay: 0.0005 # def: 0.0005 for VGGNet
+
+# Momentum
+momentum: 0.9 # def: 0.9
+
+# Model info
+name: customized
+input_width: 64 # def: 227 for AlexNet, 224 for GoogLeNet 
+input_height: 64 # def: 227 for AlexNet, 224 for GoogLeNet 
+
+n_softmax_out: 1000
+
+batch_size: 128 # def: 256 for VGGNet, 32 used by caffe, the maximun batch_size is file_batch_size

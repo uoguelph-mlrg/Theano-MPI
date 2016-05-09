@@ -31,11 +31,12 @@ class Exch_allreduce(Exch_strategy):
     paramter transfer passing host memory
     
     '''
-    def __init__(self, comm):
+    def __init__(self, comm, avg=True):
         Exch_strategy.__init__(self)
         
         self.comm = comm
         self.size = self.comm.size
+        self.avg = avg
         
         
     def prepare(self, param_list):
@@ -47,15 +48,18 @@ class Exch_allreduce(Exch_strategy):
     	for param in self.param_list:
     	    param_update = param.get_value()
     	    self.param_update_list.append(param_update)
+            
+        if self.avg:
         
-        division_factor = 1.0 / self.size
-        self.avg_func = theano.function([], \
-                        updates=[(param, param * division_factor) \
-                        for param in self.param_list])
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function([], \
+                            updates=[(param, param * division_factor) \
+                            for param in self.param_list])
         
     def exchange(self):
         
-        self.avg_func()
+        if self.avg:
+            self.avg_func()
             
         self.comm.Barrier()
         
@@ -73,12 +77,13 @@ class Exch_asa32(Exch_strategy):
     alltoall-sum-allgather strategy in float32
     
     '''
-    def __init__(self, comm):
+    def __init__(self, comm, avg=True):
         Exch_strategy.__init__(self)
         
         self.comm = comm
         self.size = self.comm.size
         self.rank = self.comm.rank
+        self.avg = avg
     
     def verify_shape(self, param_update):
         
@@ -186,15 +191,17 @@ class Exch_asa32(Exch_strategy):
 
         self.mpidtype = dtype_to_mpi(self.d_param_32_tmp_list[0].dtype)
 
-        division_factor = 1.0 / self.size
-        self.avg_func = theano.function([], \
-                        updates=[(param, param * division_factor) \
-                        for param in self.param_list])
+        if self.avg:
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function([], \
+                            updates=[(param, param * division_factor) \
+                            for param in self.param_list])
     
     def exchange(self):
         
         mpidtype = self.mpidtype
-        self.avg_func()
+        if self.avg:
+            self.avg_func()
         
         # copy weight from param_ga to param_update_ga
         for param, param_update_ga in \
@@ -254,12 +261,13 @@ class Exch_asa16(Exch_strategy):
     TODO: debug indeterministic behaviour
     
     '''
-    def __init__(self, comm):
+    def __init__(self, comm, avg=True):
         Exch_strategy.__init__(self)
         
         self.comm = comm
         self.size = self.comm.size
         self.rank = self.comm.rank
+        self.avg = avg
     
     def verify_shape(self, param_update):
         
@@ -445,15 +453,17 @@ class Exch_asa16(Exch_strategy):
 
         self.mpidtype = dtype_to_mpi(self.d_param_16_tmp_list[0].dtype)
 
-        division_factor = 1.0 / self.size
-        self.avg_func = theano.function([], \
-                        updates=[(param, param * division_factor) \
-                        for param in self.param_list])
+        if self.avg:
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function([], \
+                            updates=[(param, param * division_factor) \
+                            for param in self.param_list])
     
     def exchange(self):
         
         mpidtype = self.mpidtype
-        self.avg_func()
+        if self.avg:
+            self.avg_func()
         
         # copy weight from param_ga to param_update_ga
         for param, param_update_ga in \
@@ -516,12 +526,13 @@ class Exch_copper(Exch_strategy):
     except when self.ranksize=8 and parameter size > 16MB
     
     '''
-    def __init__(self, comm):
+    def __init__(self, comm, avg=True):
         Exch_strategy.__init__(self)
         
         self.comm = comm
         self.size = self.comm.size
         self.rank = self.comm.rank
+        self.avg = avg
     
     def prepare(self, param_list, ctx, drv):
         
@@ -575,17 +586,18 @@ class Exch_copper(Exch_strategy):
             # self.d_param_32_sum_list.append(d_param_32_sum)
 
         self.mpidtype = dtype_to_mpi(self.d_param_32_tmp_list[0].dtype)
-
-        division_factor = 1.0 / self.size
-        self.avg_func = theano.function([], \
-                        updates=[(param, param * division_factor) \
-                        for param in self.param_list])
+        if self.avg:
+            
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function([], \
+                            updates=[(param, param * division_factor) \
+                            for param in self.param_list])
     
     def exchange(self):
         
         mpidtype = self.mpidtype
         
-        self.avg_func()
+        if self.avg: self.avg_func()
         
         # copy weight from param_ga to param_update_ga
         for param, param_update_ga in \
