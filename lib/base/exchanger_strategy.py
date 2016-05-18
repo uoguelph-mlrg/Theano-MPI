@@ -485,6 +485,8 @@ class Exch_asa16(Exch_strategy):
             self.float2half(param_update_ga, self.d_param_16_list[wcount], \
                                 self.numElements_list[wcount], self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
+                                
+            self.ctx.synchronize()
 
             self.comm.Alltoall(
                             [bufint(self.d_param_16_list[wcount]), mpidtype],\
@@ -494,6 +496,8 @@ class Exch_asa16(Exch_strategy):
                      self.reduce_size_list[wcount],self.ranksize,\
                      self.reduce_size_list[wcount], \
                      block=(256,1,1),grid=self.grid_sum_size_list[wcount])
+                     
+            self.ctx.synchronize()
 
             self.comm.Allgather(
                         [bufint(self.d_param_16_sum_list[wcount]),mpidtype],\
@@ -502,6 +506,8 @@ class Exch_asa16(Exch_strategy):
             self.half2float(self.d_param_16_update_list[wcount], param_update_ga, \
                                 self.numElements_list[wcount],self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount]) # d_param_16_update_list redundant
+                                
+            self.ctx.synchronize()
 
             wcount+=1
             
