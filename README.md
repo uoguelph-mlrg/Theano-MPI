@@ -25,7 +25,7 @@ mode = FAST_RUN
 
 floatX = float32
 
-base_compiledir = /tmp/USERNAME/.theano
+base_compiledir = /home/USERNAME/.theano
 
 [cuda]
 
