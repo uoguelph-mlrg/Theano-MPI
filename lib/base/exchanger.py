@@ -99,7 +99,7 @@ class BSP_Exchanger(object):
                     self.comm.Allreduce(vel.get_value(), param_update)
                     vel2.set_value(param_update)
                     
-            elif self.fp == 32:
+            else:
                 
                 # copy weight from param_ga to param_update_ga
                 for vel, vel_update_ga in \
@@ -112,6 +112,7 @@ class BSP_Exchanger(object):
                                           vel_ga.ptr,
                                           vel_ga.dtype.itemsize *
                                           vel_ga.size)
+                    self.ctx.synchronize()
                     del vel_ga
                                           
                 # allreduce weight from param_update_ga to itself
@@ -151,11 +152,9 @@ class BSP_Exchanger(object):
                                           vel_update_ga.ptr,
                                           vel_update_ga.dtype.itemsize *
                                           vel2_ga.size)
+                    self.ctx.synchronize()
                       
                     del vel2_ga
-                                          
-            elif self.fp == 16:
-                raise NotImplementedError
                 
     def compile_fp32_kernels(self):
 

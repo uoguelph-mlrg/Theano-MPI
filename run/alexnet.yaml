@@ -13,10 +13,10 @@ lr_step: [20, 40, 60]   # def: 20, learning rate will be reduced by 10 times at 
 # alpha_step: [10, 30, 40] # asymmetric alpha, every step server_alpha will minus 0.3
 # alpha_minus: 0.2
 
-server_alpha: 0.9
+server_alpha: 0.5
 worker_alpha: 0.5
 alpha_step: [10, 30, 50] 
-alpha_minus: 0.3 # asymmetric alpha, every step server_alpha will minus 0.3
+alpha_minus: 0 # asymmetric alpha, every step server_alpha will minus this
 
 # Weight Decay
 weight_decay: 0.0005 # def: 0.0005 for AlexNet, 0.0002 for GoogLeNet

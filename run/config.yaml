@@ -6,7 +6,7 @@
 # If want to input None, use !!null
 
 # Model choose
-name: googlenet # alexnet, googlenet, vggnet or googlenet
+name: alexnet # alexnet, googlenet, vggnet or googlenet
 
 pretrain: False
 monitor_grad: False
@@ -41,7 +41,7 @@ image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
-weights_dir : /tmp/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+weights_dir : /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
 train_folder: /train_hkl_128b/   #/hkl_data/  
 val_folder: /val_hkl_128b/   
@@ -59,9 +59,9 @@ print_freq: 2  # iteration frequency of printing training error rate def: 200
 
 # randomness
 
-shuffle: False # def: False, if shuffle the batches
-rand_crop: False # def: True, if False will likely be overfitting
-batch_crop_mirror: True  # if False, do randomly on each image separately
+shuffle: True # def: False, if shuffle the batches
+rand_crop: True # def: True, if False will likely be overfitting
+batch_crop_mirror: False  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 dropout_init_seed: 0 # to change, see layer.py file
 

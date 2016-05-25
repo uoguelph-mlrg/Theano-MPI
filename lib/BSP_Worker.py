@@ -262,9 +262,15 @@ if __name__ == '__main__':
         
     #device = 'gpu' + str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
     import sys
-    device = sys.argv[1]
-    if device == None:
-        raise ValueError('Need to specify a GPU device')
+    try:
+        device = sys.argv[1]
+    except IndexError:
+        # raise ValueError('Need to specify a GPU device')
+        import os
+        gpuid = str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
+        device = 'gpu'+gpuid
+        print device
+        
     worker = BSP_PTWorker(port=5555, config=config, device=device)
     
     worker.run()
