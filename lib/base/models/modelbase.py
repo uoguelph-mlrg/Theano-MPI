@@ -6,6 +6,7 @@ class ModelBase(object):
     def __init__(self):
         self.name = None
         self.current_info = None
+        self.img_mean = None
     def build_model(self):
     	pass
 	

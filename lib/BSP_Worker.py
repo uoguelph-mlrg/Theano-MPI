@@ -269,7 +269,6 @@ if __name__ == '__main__':
         import os
         gpuid = str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
         device = 'gpu'+gpuid
-        print device
         
     worker = BSP_PTWorker(port=5555, config=config, device=device)
     

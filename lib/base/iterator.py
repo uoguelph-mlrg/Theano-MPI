@@ -18,20 +18,37 @@ class P_iter(object):
     def __init__(self, config, model, filenames,labels,mode='train'):
 
         self.config = config
-        self.icomm = self.config['icomm']
+        
+        self.paraload = self.config['para_load']
 
         self.shared_y = model.shared_y
         self.raw_filenames = filenames
         self.raw_labels = labels
-        self.filenames = None
+        self.filenames = None # the filename list
         self.labels = None
+        
+        if config['para_load']:
+            
+            self.icomm = self.config['icomm']
+            
+        else:
+            
+            self.shared_x = model.shared_x
+            self.img_mean = model.img_mean
+            
+            from helper_funcs import get_rand3d
+            from proc_load_mpi import crop_and_mirror
+            import hickle as hkl
+            self.hkl = hkl
+            self.get_rand3d = get_rand3d
+            self.crop_and_mirror = crop_and_mirror
         
         self.len = len(self.raw_filenames)
 
-        self.current = 0
-        self.last_one = False
+        self.current = 0 # current filename pointer in the filename list
+        self.last_one = False # if pointer is pointing to the last filename in the list
         self.n_subb = self.config['n_subb']
-        self.subb = 0
+        self.subb = 0 # sub-batch index
 
         self.mode = mode
         self.verbose = self.config['verbose']
@@ -61,6 +78,8 @@ class P_iter(object):
         return self
         
     def shuffle_data(self):
+        
+        # this function need to be called at the begining of an epoch
         
         raw_filenames, raw_labels = self.raw_filenames, self.raw_labels
         
@@ -134,38 +153,61 @@ class P_iter(object):
         
     def next(self, recorder, count):	
         
-        if self.subb == 0:
+        if self.subb == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
             
-            if self.current == 0:
+            if self.paraload:
+            
+                if self.current == 0:
         
-                self.shuffle_data()
+                    self.shuffle_data()
         
-                # 3.0 give mode signal to adjust loading mode between train and val
+                    # 3.0 give mode signal to adjust loading mode between train and val
         
-                self.icomm.isend(self.mode,dest=0,tag=40)
+                    self.icomm.isend(self.mode,dest=0,tag=40)
         
-                # 3.1 give load signal to load the very first file
+                    # 3.1 give load signal to load the very first file
         
-                self.icomm.isend(self.filenames[self.current],dest=0,tag=40)
+                    self.icomm.isend(self.filenames[self.current],dest=0,tag=40)
         
-            if self.current == self.len - 1:
-                self.last_one = True
-                # Only to get the last copy_finished signal from load
-                self.icomm.isend(self.filenames[self.current],dest=0,tag=40) 
-            else:
-                self.last_one = False
-                # 4. give preload signal to load next file
-                self.icomm.isend(self.filenames[self.current+1],dest=0,tag=40)
+                if self.current == self.len - 1:
+                    self.last_one = True
+                    # Only to get the last copy_finished signal from load
+                    self.icomm.isend(self.filenames[self.current],dest=0,tag=40) 
+                else:
+                    self.last_one = False
+                    # 4. give preload signal to load next file
+                    self.icomm.isend(self.filenames[self.current+1],dest=0,tag=40)
 
-            if self.mode == 'train': recorder.start()
+                if self.mode == 'train': recorder.start()
         
-            # 5. wait for the batch to be loaded into shared_x
-            msg = self.icomm.recv(source=0,tag=55) #
-            assert msg == 'copy_finished'
+                # 5. wait for the batch to be loaded into shared_x
+                msg = self.icomm.recv(source=0,tag=55) #
+                assert msg == 'copy_finished'
              
-            self.shared_y.set_value(self.labels[self.current])
+                self.shared_y.set_value(self.labels[self.current])
         
-            if self.mode == 'train': recorder.end('wait')
+                if self.mode == 'train': recorder.end('wait')
+                
+            else:
+                
+                if self.current == 0:
+        
+                    self.shuffle_data()
+                
+                if self.mode == 'train': recorder.start()
+                
+                data = self.hkl.load(str(self.filenames[self.current])) - self.img_mean
+        
+                rand_arr = self.get_rand3d(self.config, self.mode)
+
+                data = self.crop_and_mirror(data, rand_arr, \
+                                        flag_batch=self.config['batch_crop_mirror'], \
+                                        cropsize = self.config['input_width'])
+                self.shared_x.set_value(data)
+                self.shared_y.set_value(self.labels[self.current])
+                
+                if self.mode == 'train': recorder.end('wait')
+                
         
         if self.mode == 'train':
             recorder.start()
@@ -186,7 +228,7 @@ class P_iter(object):
             cost,error,error_top5 = self.function(self.subb)
             recorder.val_error(count, cost, error, error_top5)
             
-        if (self.subb+1)//self.n_subb == 1:
+        if (self.subb+1)//self.n_subb == 1: # test if next sub-batch is in another file
             
             if self.last_one == False:
                 self.current+=1

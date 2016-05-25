@@ -185,6 +185,8 @@ class PTBase(object):
             
         else:
             raise NotImplementedError("wrong model name")
+            
+        self.model.img_mean = self.data[4]
         
         
 class PTServer(Server, PTBase):
@@ -295,7 +297,7 @@ class PTWorker(Client, PTBase):
         
         self.compile_model()  # needs compile model before para_load_init
 
-        if self.config['para_load'] == True:
+        if self.config['para_load']:
             self.spawn_load()
             self.para_load_init()
            
