@@ -37,10 +37,22 @@ class BSP_Exchanger(object):
             self.exch = Exch_allreduce(self.comm, avg=False)
             self.exch.prepare(self.vels, self.vels2)
             
+        elif self.train_mode == 'cdd' and self.exch_strategy == 'copper': #c
+            
+            from exchanger_strategy import Exch_copper
+            self.exch = Exch_copper(self.comm, avg=False)
+            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            
         elif self.train_mode == 'cdd' and self.exch_strategy == 'asa32': #c
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm, avg=False)
+            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            
+        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa16': #c
+            
+            from exchanger_strategy import Exch_asa16
+            self.exch = Exch_asa16(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
         
         #TODO adjust ctx, drv locations in all strategies
@@ -51,7 +63,7 @@ class BSP_Exchanger(object):
             self.exch = Exch_allreduce(self.comm)
             self.exch.prepare(self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'copper':
+        elif self.train_mode == 'avg' and self.exch_strategy == 'copper': #c
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm)
@@ -63,7 +75,7 @@ class BSP_Exchanger(object):
             self.exch = Exch_asa32(self.comm)
             self.exch.prepare(self.ctx, self.drv, self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'asa16': 
+        elif self.train_mode == 'avg' and self.exch_strategy == 'asa16': #c
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm)
@@ -98,9 +110,19 @@ class BSP_Exchanger(object):
                 
                 self.exch.exchange()
                 
+            elif self.exch_strategy == 'copper':
+                
+                self.exch.exchange()
+                
             elif self.exch_strategy == 'asa32':
 
                 self.exch.exchange()
+                
+            elif self.exch_strategy == 'asa16':
+                
+                self.exch.exchange()
+                
+                
         
 class EASGD_Exchanger(object):
     '''
