@@ -39,13 +39,18 @@ class Exch_allreduce(Exch_strategy):
         self.avg = avg
         
         
-    def prepare(self, param_list):
+    def prepare(self, source_param_list, dest_param_list=None):
         
-    	self.param_list = param_list
+    	self.source_param_list = source_param_list
+        if dest_param_list!=None:
+            self.dest_param_list = dest_param_list
+        else:
+            self.dest_param_list = self.source_param_list
+            
         self.param_update_list = []
 
     	
-    	for param in self.param_list:
+    	for param in self.source_param_list:
     	    param_update = param.get_value()
     	    self.param_update_list.append(param_update)
             
@@ -54,7 +59,7 @@ class Exch_allreduce(Exch_strategy):
             division_factor = 1.0 / self.size
             self.avg_func = theano.function([], \
                             updates=[(param, param * division_factor) \
-                            for param in self.param_list])
+                            for param in self.source_param_list])
         
     def exchange(self):
         
@@ -63,10 +68,10 @@ class Exch_allreduce(Exch_strategy):
             
         self.comm.Barrier()
         
-        for param, param_update in \
-                        zip(self.param_list, self.param_update_list):
-            self.comm.Allreduce(param.get_value(), param_update)
-            param.set_value(param_update)
+        for source_param, param_update, dest_param in \
+            zip(self.source_param_list, self.param_update_list, self.dest_param_list):
+            self.comm.Allreduce(source_param.get_value(), param_update)
+            dest_param.set_value(param_update)
         
         
         
@@ -113,9 +118,14 @@ class Exch_asa32(Exch_strategy):
             print numElements,'x',param_update_shape
             raise
             
-    def prepare(self, param_list, ctx, drv):
+    def prepare(self, ctx, drv, source_param_list, dest_param_list=None):
         
-        self.param_list = param_list
+    	self.source_param_list = source_param_list
+        if dest_param_list!=None:
+            self.dest_param_list = dest_param_list
+        else:
+            self.dest_param_list = self.source_param_list
+            
         self.ctx = ctx
         self.drv = drv
     
@@ -160,7 +170,7 @@ class Exch_asa32(Exch_strategy):
         
         block_size = np.int32(256)
 
-        for param in self.param_list:
+        for param in self.source_param_list:
             
             # Prepare data in host (CPU) memory
             param_update = param.get_value()
@@ -195,17 +205,19 @@ class Exch_asa32(Exch_strategy):
             division_factor = 1.0 / self.size
             self.avg_func = theano.function([], \
                             updates=[(param, param * division_factor) \
-                            for param in self.param_list])
+                            for param in self.source_param_list])
     
     def exchange(self):
         
         mpidtype = self.mpidtype
+        
+        # divding source param first before exchanging
         if self.avg:
             self.avg_func()
         
         # copy weight from param_ga to param_update_ga
         for param, param_update_ga in \
-                        zip(self.param_list, self.param_update_ga_list):
+                        zip(self.source_param_list, self.param_update_ga_list):
 
             param_ga = \
              theano.misc.pycuda_utils.to_gpuarray(param.container.value)
@@ -243,7 +255,7 @@ class Exch_asa32(Exch_strategy):
             
         # copy weight from param_reduce_ga back to param_ga
         for param, param_update_ga in \
-                        zip(self.param_list, self.param_update_ga_list):
+                        zip(self.dest_param_list, self.param_update_ga_list):
 
         	param_ga = \
              theano.misc.pycuda_utils.to_gpuarray(param.container.value)
