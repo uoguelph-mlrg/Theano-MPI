@@ -74,8 +74,8 @@ Time per 5120 images in seconds: [allow_gc = True]
 | GoogLeNet-32b | 134.90 | 67.38 | 33.60 | 16.81 | |
 | VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 | 38.5 |
 
-<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/val_a.png width=300/>
-<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/add-EASGD/show/val_g.png width=300/>
+<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_a.png width=500/>
+<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_g.png width=500/>
 
 ## How to customize your model
 
