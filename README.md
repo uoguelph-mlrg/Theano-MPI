@@ -17,6 +17,11 @@ It is compatible for training models built in different framework libraries, e.g
 * [hickle](https://github.com/telegraphic/hickle)
 
 ## How to run
+
+### Prepare image data batches
+Follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set the *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
+
+### Run training sessions on copper
 - 1. ssh copper.sharcnet.ca
 - 2. ssh to one computing node e.g., cop3
 - 3. set .theanorc to the following:
@@ -53,10 +58,6 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   - 3) execute your ./run.sh.
 
 ## Note
-
-Preprocessed data (1000 catagory, 128 batchsize) is located at /work/mahe6562/prepdata/. 
-
-Make sure you have access to the data.
 
 To get the best running speed performance, the memory cache may need to be cleaned before running.
 
