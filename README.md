@@ -12,11 +12,11 @@ It is compatible for training models built in different framework libraries, e.g
 * [numpy](http://www.numpy.org/)
 * [Theano](http://deeplearning.net/software/theano/)
 * [Pylearn2](http://deeplearning.net/software/pylearn2/)
-* [PyCUDA](http://mathema.tician.de/software/pycuda/)
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
 * [CUDA 7.0](https://developer.nvidia.com/cuda-toolkit-70)
 * [cuDNN](https://developer.nvidia.com/cudnn)
+* [PyCUDA](http://mathema.tician.de/software/pycuda/)
 
 ## How to run
 
