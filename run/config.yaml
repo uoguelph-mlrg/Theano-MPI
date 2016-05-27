@@ -13,7 +13,7 @@ monitor_grad: False
 # Resume Training, start from scratch or resume training
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
 load_epoch: 20
-load_path: /work/mahe6562/pretrained-models/models-alexnet-8gpu-64b-cop8-3-31/  # edit here to find your pretrained weights
+load_path: ./pretrained-models/ # edit here to find your pretrained weights
 initial_val: False
 
 # Momentum
@@ -23,7 +23,7 @@ use_nesterov_momentum: False # def: False
 # Weight Average
 sync_rule: BSP  # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
 sync_start: True # start worker process together with server process in one mpirun call
-avg_freq: 4 # def: 1 if average weights every iteration in BSP, and 2 in EASGD
+avg_freq: 1 # def: 1, if average weights every iteration in EASGD
 
 train_mode: avg # mode selection: avg or cdd
 exch_strategy: ar # asa32, asa16, copper or ar
@@ -38,17 +38,16 @@ data_source: hkl # hkl or lmdb or both
 image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 # Directories
 
-dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
+dir_head : ./prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
-weights_dir : /work/mahe6562/models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+weights_dir : ./models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
 train_folder: /train_hkl_128b/   #/hkl_data/  
 val_folder: /val_hkl_128b/   
 
 # conv library
-lib_conv: cudaconvnet  # cudaconvnet, cudnn or corrmm
-#lib_conv: cudaconvnet #(to use pylearn2's convnet)
+lib_conv: cudnn  # cudaconvnet, cudnn or corrmm
 
 # output
 flag_top_5: True
@@ -59,9 +58,9 @@ print_freq: 2  # iteration frequency of printing training error rate def: 200
 
 # randomness
 
-shuffle: False # def: False, if shuffle the batches
-rand_crop: False # def: True, if False will likely be overfitting
-batch_crop_mirror: True  # if False, do randomly on each image separately
+shuffle: True # def: True, if shuffle the batches
+rand_crop: True # def: True, if False will likely be overfitting
+batch_crop_mirror: False  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 dropout_init_seed: 0 # to change, see layer.py file
 
