@@ -47,6 +47,7 @@ class Customized(ModelBase): # c01b input
         self.shared_y = theano.shared(np.zeros((self.config['file_batch_size'],), 
                                           dtype=int),   borrow=True)                                  
         
+        # build model
         self.build_model()
         
         self.output = self.output_layer.output
@@ -59,6 +60,7 @@ class Customized(ModelBase): # c01b input
         self.params, self.weight_types = get_params(self.layers) 
         # if multi-stream layers exist, redefine and abstract into one layer class in layers2.py
         
+        # count params
         self.count_params()
         
         # shared variable for storing momentum before exchanging momentum(delta w)

@@ -174,9 +174,11 @@ class PTBase(object):
         elif self.model_name=='vggnet':
             
             if self.config['pretrain']:
-                from models.vggnet_11_shallow import VGGNet_16
+                from models.vggnet_11_shallow import VGGNet_11
             else:
                 from models.vggnet_16 import VGGNet_16
+                #from models.lasagne_model_zoo.vgg_cnn_s import VGGNet_16
+                
             self.model = VGGNet_16(self.config)
             
         elif self.model_name=='customized':

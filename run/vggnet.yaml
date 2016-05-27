@@ -1,7 +1,7 @@
 # GoogLeNet model and training hyperparameters
 
 # Learning Parameters
-n_epochs: 74 # def: 74 for  VGGNet
+n_epochs: 44 # def: 74 for  VGGNet
 learning_rate: 0.002  # def: 0.01 for AlexNet, GoogLeNet and VGGNet
 lr_policy: step
 lr_step: [20, 40, 60] # def: 20, 40, 60

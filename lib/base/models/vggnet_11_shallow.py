@@ -9,7 +9,7 @@ from modelbase import ModelBase
 # other tools minerva, chainer
 
 
-class VGGNet_16(ModelBase): # c01b input
+class VGGNet_11(ModelBase): # c01b input
     
     def __init__(self,config): 
         ModelBase.__init__(self)  
