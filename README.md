@@ -1,6 +1,6 @@
 # Theano-MPI
 Theano-MPI is a distributed framework for training deep learning models built in Theano based on data-parallelism. 
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up training framework to more than 8 GPUs and across nodes. Please see this [technical report](https://arxiv.org/submit/1571385/view) for an overview of implementation details.
+The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up training framework to more than 8 GPUs and across nodes. Please see this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details.
 
 It is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as a theano shared variable. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variable. See wiki for a tutorial on building customized neural networks.
 
