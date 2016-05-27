@@ -11,7 +11,7 @@ The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and E
 }
 ```
 
-It is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as a theano shared variable. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variable. See wiki for a tutorial on building customized neural networks.
+Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as a theano shared variable. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variable. See wiki for a tutorial on building customized neural networks.
 
 
 
