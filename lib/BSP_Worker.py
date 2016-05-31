@@ -22,7 +22,7 @@ permissions and limitations under the License.
 class BSP_PTWorker(PTWorker):
     
     '''
-    Worker class based a specific synchronization rule (EASGD)
+    Worker class based a specific synchronization rule (BSP)
     
     '''
     
