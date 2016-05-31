@@ -1,6 +1,6 @@
 # Theano-MPI
 Theano-MPI is a distributed framework for training deep learning models built in Theano based on data-parallelism. 
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up training framework to more than 8 GPUs and across nodes. Please see this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
+The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please see this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
 
 ```bibtex
 @article{ma2016theano,
@@ -30,7 +30,7 @@ Theano-MPI is compatible for training models built in different framework librar
 ## How to run
 
 ### Prepare image data batches
-Follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set the *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
+Follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
 
 ### Run training sessions on copper
 - 1. ssh copper.sharcnet.ca
@@ -58,7 +58,7 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   - 2) choose a parameter exchanging strategy from "ar", "asa32", "asa16" and "copper", where "ar" means using Allreduce() from mpi4py, "asa32" and "asa16" mean using the Alltoall-sum-Allgather strategy with float32 and float16 respectively, "copper" means using the binary reduction strategy designed for copper GPU topology.
   - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers.
 
-- to start a EASGD training session: 
+- to start an EASGD training session: 
   - 1) If you want to start server and workers in one communicator, configure config.yaml file as follows:
    ```
    sync_rule: EASGD
