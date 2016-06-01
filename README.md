@@ -1,6 +1,6 @@
 # Theano-MPI
 Theano-MPI is a distributed framework for training deep learning models built in Theano based on data-parallelism. 
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please see this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
+The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
 
 ```bibtex
 @article{ma2016theano,
@@ -16,16 +16,16 @@ Theano-MPI is compatible for training models built in different framework librar
 
 
 ## Dependencies
-* [OpenMPI 1.8.7](http://www.open-mpi.org/) or at least MPI-2 standard equivalent.
-* [mpi4py](https://pypi.python.org/pypi/mpi4py)
+* [OpenMPI 1.8.7](http://www.open-mpi.org/) or an MPI-2 standard equivalent that supports CUDA.
+* [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI 1.8.7
 * [numpy](http://www.numpy.org/)
-* [Theano](http://deeplearning.net/software/theano/)
+* [Theano](http://deeplearning.net/software/theano/) 0.8 or higher
 * [Pylearn2](http://deeplearning.net/software/pylearn2/)
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
 * [CUDA 7.0](https://developer.nvidia.com/cuda-toolkit-70)
 * [cuDNN](https://developer.nvidia.com/cudnn)
-* [PyCUDA](http://mathema.tician.de/software/pycuda/)
+* [PyCUDA](http://mathema.tician.de/software/pycuda/) built on CUDA 7.0
 
 ## How to run
 
