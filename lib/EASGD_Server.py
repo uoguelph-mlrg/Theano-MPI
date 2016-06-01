@@ -6,7 +6,10 @@ class EASGD_PTServer(PTServer):
     
     '''
     Server class based on a specific synchronization rule (EASGD)
-    Manage traininng ralted request from workers
+    Manage traininng related request from workers
+    
+    This class reimplements the "controller" in platoon. See the original implementation here:
+    https://github.com/mila-udem/platoon/blob/master/platoon/channel.py
     
     '''
     
