@@ -204,6 +204,7 @@ if __name__ == '__main__':
             
     icomm.Disconnect()
     if verbose: print '[load] paraloading process closed'
-    ctx.pop()
+    ctx.detach()
+    #ctx.pop()
 
 

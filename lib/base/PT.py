@@ -121,7 +121,7 @@ class PTBase(object):
             image_mean = image_mean[:,np.newaxis,np.newaxis,np.newaxis]
 
         if self.config['debug']:
-            train_filenames = train_filenames[:80]
+            train_filenames = train_filenames[:40]
             val_filenames = val_filenames[:8]
 
         env_train=None
@@ -369,6 +369,8 @@ class PTWorker(Client, PTBase):
         self.icomm.send('stop',dest=0,tag=40) # TODO use this only when loading process is ready to receive mode
         self.icomm.send('stop',dest=0,tag=40)
         self.icomm.Disconnect()
+        self.ctx.detach()
+        
         
     def compile_model(self):
 
