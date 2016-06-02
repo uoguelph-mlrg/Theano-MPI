@@ -245,7 +245,7 @@ class Softmax(object):
             raise TypeError('y should have the same shape as self.y_pred',
                             ('y', y.type, 'y_pred', self.y_pred.type))                            
                                     
-        if num_top != 5: print 'val errors from top %d' % num_top ############TOP 5 VERSION##########        
+        if num_top != 5: print 'val errors from top %d' % num_top    
         
         # check if y is of the correct datatype
         if y.dtype.startswith('int'):
@@ -492,6 +492,8 @@ class GoogLeNet(ModelBase):
             D Anguelov, D Erhan, V Vanhoucke, A Rabinovich (2014):
             Going deeper with convolutions.
             The IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2015, pp. 1-9
+            
+        [2] https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
     """
     
     def __init__(self,config):
@@ -851,7 +853,7 @@ class GoogLeNet(ModelBase):
         # batch_len = len(train_batches) = 10008
         # since epoch* batch_len = iter
         # max_iter = 240 * batch_len
-        # iter/max_iter = 1/240
+        # iter/max_iter = epoch/240
 
         # Poly lr policy according to
         # https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
@@ -866,11 +868,6 @@ class GoogLeNet(ModelBase):
             self.shared_lr.set_value(np.float32(tuned_base_lr*size))
         else:
             self.shared_lr.set_value(np.float32(tuned_base_lr))
-            
-        # power = pow( (1. -  1.* epoch/240.0 ), 0.5 )
-        # tuned_base_lr = self.base_lr * pow(power,epoch)
-        #
-        # self.shared_lr.set_value(tuned_base_lr * size)
     
         if self.verbose: 
             print 'Learning rate now: %.10f' % \
@@ -894,9 +891,9 @@ def updates_dict(config, model,
     vels, vels2 = model.vels, model.vels2
     
     
-    lr = model.shared_lr #T.scalar('lr')  # symbolic learning rate
-    mu = model.mu # def: 0.9 # momentum
-    eta = model.eta  #0.0002 # weight decay    
+    lr = model.shared_lr 
+    mu = model.mu 
+    eta = model.eta
     
     updates_w = []
     updates_v = []
@@ -947,17 +944,4 @@ def updates_dict(config, model,
                 
             updates_dv.append((param_i, param_i + vel_i2))
                
-    return updates_w, updates_v, updates_dv                                
-                                
-                                              
-
-
-
-    
-    
-
-    
-    
-    
-    
-    
+    return updates_w, updates_v, updates_dv
