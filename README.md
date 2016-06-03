@@ -35,7 +35,7 @@ Follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano
 ### Run training sessions on copper
 - 1. ssh copper.sharcnet.ca
 - 2. ssh to one computing node e.g., cop3
-- 3. set .theanorc to the following:
+- 3. set ~/.theanorc to the following:
 ```
 [global]
 
