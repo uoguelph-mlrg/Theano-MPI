@@ -327,9 +327,11 @@ class PTWorker(Client, PTBase):
         if self.verbose: print printstr
 
         # spawn loading process
-        self.icomm= MPI.COMM_SELF.Spawn('numactl', \
-                args=['-N',str(socketnum),mpicommand,\
-                        '../lib/base/proc_load_mpi.py',gpuid],\
+        # self.icomm= MPI.COMM_SELF.Spawn('numactl', \
+        #         args=['-N',str(socketnum),mpicommand,\
+        #                         '../lib/base/proc_load_mpi.py',gpuid],\
+        self.icomm= MPI.COMM_SELF.Spawn(mpicommand, \
+                args=['../lib/base/proc_load_mpi.py', gpuid],\
                 info = mpiinfo, maxprocs = num_spawn)
         self.config['icomm'] = self.icomm
                 

@@ -9,16 +9,16 @@ fi
 
 case $size in
 	1)
-		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 python -u ../lib/BSP_Worker.py
+		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none python -u ../lib/BSP_Worker.py
 		;;
 	2)
-		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 2 python -u ../lib/BSP_Worker.py
+		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 2 --bind-to none python -u ../lib/BSP_Worker.py
 		;;
 	4)
-		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 4 python -u ../lib/BSP_Worker.py
+		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 4 --bind-to none python -u ../lib/BSP_Worker.py
 		;;
 	8)
-		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 8 python -u ../lib/BSP_Worker.py
+		mpirun --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 8 --bind-to none python -u ../lib/BSP_Worker.py
 		;;
 		
 	16)
