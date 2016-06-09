@@ -17,6 +17,8 @@ class VGGNet_16(ModelBase): # c01b input
         self.config = config
         self.verbose = self.config['verbose']
         self.build_model()
+        # count params
+        if self.verbose: self.count_params()
         
     def build_model(self):
         
@@ -308,6 +310,19 @@ class VGGNet_16(ModelBase): # c01b input
         self.inference = None
         self.get_vel = None
         self.descent_vel = None
+        
+    def count_params(self):
+        
+        size=0
+        for param in self.params:
+            
+            size+=param.size.eval()
+            
+            print param.shape.eval()
+            
+        self.model_size = size
+            
+        print 'model size %d' % int(self.model_size)
     
     def compile_train(self, updates_dict=None):
         

@@ -1,4 +1,6 @@
-# GoogLeNet model and training hyperparameters
+# VGGNet model and training hyperparameters
+
+source: Theano-MPI # def: Theano-MPI,  Theano-MPI or lasagne
 
 # Learning Parameters
 n_epochs: 44 # def: 74 for  VGGNet

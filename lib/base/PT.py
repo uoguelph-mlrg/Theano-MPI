@@ -174,12 +174,16 @@ class PTBase(object):
         elif self.model_name=='vggnet':
             
             if self.config['pretrain']:
-                from models.vggnet_11_shallow import VGGNet_11
+                from models.vggnet_11_shallow import VGGNet_11 as VGGNet
             else:
-                from models.vggnet_16 import VGGNet_16
-                #from models.lasagne_model_zoo.vgg_cnn_s import VGGNet_16
+                if self.config['source'] == 'lasagne':
+                    from models.lasagne_model_zoo.vgg import VGG as VGGNet
+                elif self.config['source'] == 'Theano-MPI':
+                    from models.vggnet_16 import VGGNet_16 as VGGNet
+                else:
+                    raise NotImplementedError
                 
-            self.model = VGGNet_16(self.config)
+            self.model = VGGNet(self.config)
             
         elif self.model_name=='customized':
             from models.customized import Customized

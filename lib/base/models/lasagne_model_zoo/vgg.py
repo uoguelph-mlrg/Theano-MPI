@@ -11,7 +11,73 @@ from lasagne.layers import LocalResponseNormalization2DLayer as LRNLayer
 from lasagne.nonlinearities import softmax, linear
 
 
-def build_model(input_shape):
+
+def build_model_vgg16(input_shape, verbose):
+    
+    '''
+    See Lasagne Modelzoo:
+    https://github.com/Lasagne/Recipes/blob/master/modelzoo/vgg16.py
+    
+    '''
+    
+    if verbose: print 'VGG16 (from lasagne model zoo)'
+    
+    
+    net = {}
+    net['input'] = InputLayer(input_shape)
+    net['conv1_1'] = ConvLayer(
+        net['input'], 64, 3, pad=1, flip_filters=False)
+    net['conv1_2'] = ConvLayer(
+        net['conv1_1'], 64, 3, pad=1, flip_filters=False)
+    net['pool1'] = PoolLayer(net['conv1_2'], 2)
+    net['conv2_1'] = ConvLayer(
+        net['pool1'], 128, 3, pad=1, flip_filters=False)
+    net['conv2_2'] = ConvLayer(
+        net['conv2_1'], 128, 3, pad=1, flip_filters=False)
+    net['pool2'] = PoolLayer(net['conv2_2'], 2)
+    net['conv3_1'] = ConvLayer(
+        net['pool2'], 256, 3, pad=1, flip_filters=False)
+    net['conv3_2'] = ConvLayer(
+        net['conv3_1'], 256, 3, pad=1, flip_filters=False)
+    net['conv3_3'] = ConvLayer(
+        net['conv3_2'], 256, 3, pad=1, flip_filters=False)
+    net['pool3'] = PoolLayer(net['conv3_3'], 2)
+    net['conv4_1'] = ConvLayer(
+        net['pool3'], 512, 3, pad=1, flip_filters=False)
+    net['conv4_2'] = ConvLayer(
+        net['conv4_1'], 512, 3, pad=1, flip_filters=False)
+    net['conv4_3'] = ConvLayer(
+        net['conv4_2'], 512, 3, pad=1, flip_filters=False)
+    net['pool4'] = PoolLayer(net['conv4_3'], 2)
+    net['conv5_1'] = ConvLayer(
+        net['pool4'], 512, 3, pad=1, flip_filters=False)
+    net['conv5_2'] = ConvLayer(
+        net['conv5_1'], 512, 3, pad=1, flip_filters=False)
+    net['conv5_3'] = ConvLayer(
+        net['conv5_2'], 512, 3, pad=1, flip_filters=False)
+    net['pool5'] = PoolLayer(net['conv5_3'], 2)
+    net['fc6'] = DenseLayer(net['pool5'], num_units=4096)
+    net['fc6_dropout'] = DropoutLayer(net['fc6'], p=0.5)
+    net['fc7'] = DenseLayer(net['fc6_dropout'], num_units=4096)
+    net['fc7_dropout'] = DropoutLayer(net['fc7'], p=0.5)
+    net['fc8'] = DenseLayer(
+        net['fc7_dropout'], num_units=1000, nonlinearity=None)
+    net['prob'] = NonlinearityLayer(net['fc8'], softmax)
+                                    
+    # for layer in net.values():
+    #     print str(lasagne.layers.get_output_shape(layer))
+        
+    return net
+    
+
+def build_model_vgg_cnn_s(input_shape, verbose):
+    
+    '''
+    See Lasagne Modelzoo:
+    https://github.com/Lasagne/Recipes/blob/master/modelzoo/vgg_cnn_s.py
+    
+    '''
+    if verbose: print 'VGG_cnn_s (from lasagne model zoo)'
     
     net = {}
     net['input'] = InputLayer(input_shape)
@@ -30,8 +96,8 @@ def build_model(input_shape):
     net['drop7'] = DropoutLayer(net['fc7'], p=0.5)
     net['fc8'] = DenseLayer(net['drop7'], num_units=1000, nonlinearity=lasagne.nonlinearities.softmax)
                                     
-    for layer in net.values():
-        print str(lasagne.layers.get_output_shape(layer))
+    # for layer in net.values():
+    #     print str(lasagne.layers.get_output_shape(layer))
         
     return net
     
@@ -45,7 +111,7 @@ import sys
 sys.path.append('../lib/base/models/')
 from customized import Customized 
 
-class VGGNet_16(Customized): # c01b input
+class VGG(Customized): # c01b input
 
     '''
 
@@ -96,16 +162,14 @@ class VGGNet_16(Customized): # c01b input
                                           
         # build model                                 
         net = self.build_model(input_shape=(self.batch_size, 3, self.input_width, self.input_height)) # bc01
-        self.output_layer = net['fc8'] 
+        #self.output_layer = net['fc8'] 
+        self.output_layer = net['prob']
         
         from lasagne.layers import get_all_params
         self.params = lasagne.layers.get_all_params(self.output_layer, trainable=True)
         
-        # test number 10
-        del self.params[10]
-        
         # count params
-        self.count_params()
+        if self.verbose: self.count_params()
                                           
         # shared variable for storing momentum before exchanging momentum(delta w)
         self.vels = [theano.shared(param_i.get_value() * 0.)
@@ -123,9 +187,7 @@ class VGGNet_16(Customized): # c01b input
         
     def build_model(self, input_shape):
         
-        if self.verbose: print 'VGGNet (from lasagne model zoo)'
-        
-        return build_model(input_shape)
+        return build_model_vgg16(input_shape, self.verbose)
         
     def count_params(self):
         
