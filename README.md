@@ -68,12 +68,6 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   - 2) check the example ./run_easgd_4w_sync_start.sh (or ./run_easgd_4w.sh if sync_start==False),  decide how many workers you want to run and which hosts and GPUs you want to use for each worker and the server, make your customized run.sh script. 
   - 3) execute your ./run.sh.
 
-## Note
-
-To get the best running speed performance, the memory cache may need to be cleaned before running.
-
-To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2 instead of the indeterministic dnn.conv and dnn.pool from cuDNN.
-
 ## Performance Testing
 
 ###BSP
@@ -90,4 +84,14 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 ## How to customize your model
 
-See wiki
+See wiki for a tutorial of customizing a MLP model in the framework.
+
+Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/lib/base/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to use Theano-MPI.
+
+## Note
+
+To get the best running speed performance, the memory cache may need to be cleaned before running.
+
+To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2 instead of the indeterministic dnn.conv and dnn.pool from cuDNN.
+
+Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
