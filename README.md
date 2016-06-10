@@ -94,4 +94,4 @@ To get the best running speed performance, the memory cache may need to be clean
 
 To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2 instead of the indeterministic dnn.conv and dnn.pool from cuDNN.
 
-Some known bugs are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
+Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
