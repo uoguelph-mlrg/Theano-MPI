@@ -167,9 +167,11 @@ class VGG(Customized): # c01b input
         
         from lasagne.layers import get_all_params
         self.params = lasagne.layers.get_all_params(self.output_layer, trainable=True)
+        self.extract_weight_types()
         
         # count params
         if self.verbose: self.count_params()
+        
                                           
         # shared variable for storing momentum before exchanging momentum(delta w)
         self.vels = [theano.shared(param_i.get_value() * 0.)
@@ -178,6 +180,7 @@ class VGG(Customized): # c01b input
         # shared variable for accepting momentum during exchanging momentum(delta w)
         self.vels2 = [theano.shared(param_i.get_value() * 0.)
             for param_i in self.params]
+            
                                           
         self.train = None
         self.val = None
@@ -201,6 +204,23 @@ class VGG(Customized): # c01b input
         self.model_size = size
             
         print 'model size %d' % int(self.model_size)
+        
+    def extract_weight_types(self):
+        
+        self.weight_types = []
+        for param in self.params:
+            
+            if len(param.shape.eval())>1:
+                
+                weight_type= 'W'
+            else:
+                weight_type= 'b'
+                
+            self.weight_types.append(weight_type)
+                
+            #print param.shape.eval(), weight_type
+            
+            
                                           
         
     def errors(self, p_y_given_x, y):
@@ -233,7 +253,7 @@ class VGG(Customized): # c01b input
         else:
             raise NotImplementedError()             
         
-    def compile_train(self):
+    def compile_train(self, updates_dict=None):
 
         print 'compiling training function...'
         
@@ -255,14 +275,20 @@ class VGG(Customized): # c01b input
                 # 0.3*aux1.negative_log_likelihood(y)+0.3*aux2.negative_log_likelihood(y)
                                           
         self.grads = T.grad(loss,self.params)
-
-    
-        # updates_w,updates_v,updates_dv = updates_dict(config, model,
-        #                             use_momentum=config['use_momentum'],
-        #                             use_nesterov_momentum=config['use_nesterov_momentum'])
         
-        updates_w = lasagne.updates.nesterov_momentum(
-                loss, self.params, learning_rate=self.shared_lr.get_value(), momentum=self.mu)
+        
+        
+        if self.config['train_mode'] == 'cdd':
+            
+            if updates_dict == None:
+                from modelbase import updates_dict
+    
+            updates_w,updates_v,updates_dv = updates_dict(self.config, self)
+            
+        else:
+        
+            updates_w = lasagne.updates.nesterov_momentum(
+                    loss, self.params, learning_rate=self.shared_lr.get_value(), momentum=self.mu)
                 
         if self.config['monitor_grad']:
             
@@ -283,13 +309,13 @@ class VGG(Customized): # c01b input
                                                       (y, shared_y)]
                                                                           )
                                                                           
-        # self.get_vel= theano.function([subb_ind], [cost,error], updates=updates_v,
-        #                                       givens=[(x, shared_x),
-        #                                               (y, shared_y)]
-        #                                                                   )
-        #
-        #
-        # self.descent_vel = theano.function([],[],updates=updates_dv)
+        self.get_vel= theano.function([subb_ind], [loss,error], updates=updates_v,
+                                              givens=[(x, shared_x),
+                                                      (y, shared_y)]
+                                                                          )
+
+
+        self.descent_vel = theano.function([],[],updates=updates_dv)
         
     def compile_inference(self):
 

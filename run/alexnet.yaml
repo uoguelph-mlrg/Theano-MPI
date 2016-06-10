@@ -32,3 +32,5 @@ input_height: 227 # def: 227 for AlexNet, 224 for GoogLeNet
 n_softmax_out: 1000
 
 batch_size: 128 # def: 128 # def: 128 for AlexNet, 32 for GoogleNet 
+
+image_mean: img_mean

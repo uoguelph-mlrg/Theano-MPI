@@ -20,3 +20,5 @@ input_height: 64 # def: 227 for AlexNet, 224 for GoogLeNet
 n_softmax_out: 1000
 
 batch_size: 128 # def: 256 for VGGNet, 32 used by caffe, the maximun batch_size is file_batch_size
+
+image_mean: img_mean
