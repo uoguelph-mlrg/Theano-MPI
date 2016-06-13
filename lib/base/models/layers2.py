@@ -22,6 +22,7 @@ class Weight(object):
         super(Weight, self).__init__()
         
         self.val = None
+        self.shape = None
         
     def save_weight(self, dir, name):
         #print 'weight saved: ' + name
@@ -30,6 +31,8 @@ class Weight(object):
     def load_weight(self, dir, name):
         #print 'weight loaded: ' + name
         np_values = np.load(dir + name + '.npy')
+        
+        print self.shape, np_values.shape
         
         if self.shape != np_values.shape:
             raise ValueError('The weight to be loaded must be of the same shape. %s != %s' % (self.shape,np_values.shape))
@@ -166,7 +169,8 @@ class Layer(object):
     '''
     def __init__(self):
         
-        pass
+        self.W=None
+        self.b=None
         
     def get_input_shape(self,input,input_shape):
     

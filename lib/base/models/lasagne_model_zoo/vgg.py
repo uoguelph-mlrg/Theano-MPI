@@ -109,18 +109,19 @@ rng = np.random.RandomState(23455)
 
 import sys
 sys.path.append('../lib/base/models/')
-from customized import Customized 
+from modelbase import ModelBase 
 
-class VGG(Customized): # c01b input
+class VGG(ModelBase): # c01b input
 
     '''
 
-    overwrite those methods in the Customized class
+    overwrite those methods in the ModelBase class
 
 
     '''
     
     def __init__(self,config): 
+        ModelBase.__init__(self)
         
         self.config = config
         self.verbose = config['verbose']
@@ -168,6 +169,7 @@ class VGG(Customized): # c01b input
         from lasagne.layers import get_all_params
         self.params = lasagne.layers.get_all_params(self.output_layer, trainable=True)
         self.extract_weight_types()
+        self.pack_layers()
         
         # count params
         if self.verbose: self.count_params()
@@ -199,7 +201,7 @@ class VGG(Customized): # c01b input
             
             size+=param.size.eval()
             
-            print param.shape.eval()
+            #print param.shape.eval()
             
         self.model_size = size
             
@@ -220,8 +222,44 @@ class VGG(Customized): # c01b input
                 
             #print param.shape.eval(), weight_type
             
+    def pack_layers(self):
+        
+        from layers2 import Layer
+        from layers2 import Weight
+        from pprint import pprint
+        
+        self.layers = []
+        
+        for param in self.params:
             
-                                          
+            if len(param.shape.eval())>1:
+                
+                layer = Layer()
+                
+                W = Weight()
+                W.val = param
+                W.shape = tuple(param.shape.eval())
+                layer.W = W
+            else:
+                
+                b = Weight()
+                b.val = param
+                b.shape = tuple(param.shape.eval())
+                layer.b = b
+                
+                self.layers.append(layer)
+                
+           # if self.verbose: pprint(vars(layer))
+            
+        # for layer in self.layers:
+        #
+        #     print hasattr(layer.W.val, 'get_value')
+        #     print hasattr(layer.b.val, 'get_value')
+        #
+        #
+        # print len(self.layers)
+        #
+        # exit(0)                  
         
     def errors(self, p_y_given_x, y):
         
@@ -407,7 +445,7 @@ class VGG(Customized): # c01b input
         if self.verbose: 
             print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())  
             
-            
+        
     def load_params(self):
         
         # wget !wget https://s3.amazonaws.com/lasagne/recipes/pretrained/imagenet/vgg_cnn_s.pkl
@@ -421,4 +459,5 @@ class VGG(Customized): # c01b input
         # MEAN_IMAGE = model['mean image']
 
         lasagne.layers.set_all_param_values(self.output_layer, model['values'])
+    
     
