@@ -2,6 +2,7 @@
 from mpi4py import MPI
 from server import Server
 from client import Client
+from pprint import pprint
 import time
 
 def test_intercomm(intercomm,rank):
@@ -100,7 +101,7 @@ class PTBase(object):
         if self.config['sync_start'] and self.config['sync_rule'] == 'EASGD':
             self.config['size'] = 1
                              
-        if self.verbose: print self.config
+        if self.verbose: pprint(self.config)
         
     def get_data(self):
 
