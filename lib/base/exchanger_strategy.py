@@ -92,7 +92,11 @@ class Exch_asa32(Exch_strategy):
     
     def verify_shape(self, param_update):
         
-        size_tmp=self.size
+        if self.size<8:
+            size_tmp=8
+        else:
+            size_tmp=self.size
+        
         if param_update.size % size_tmp != 0 and len(param_update.shape)==1:
 
             param_update_shape = (param_update.shape[0]+ size_tmp - \
@@ -287,7 +291,11 @@ class Exch_asa16(Exch_strategy):
     
     def verify_shape(self, param_update):
         
-        size_tmp=self.size
+        if self.size<8:
+            size_tmp=8
+        else:
+            size_tmp=self.size
+            
         if param_update.size % size_tmp != 0 and len(param_update.shape)==1:
 
             param_update_shape = (param_update.shape[0]+ size_tmp - \

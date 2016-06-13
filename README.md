@@ -56,7 +56,7 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   sync_rule: BSP
   ```
   - 2) choose a parameter exchanging strategy from "ar", "asa32", "asa16" and "copper", where "ar" means using Allreduce() from mpi4py, "asa32" and "asa16" mean using the Alltoall-sum-Allgather strategy with float32 and float16 respectively, "copper" means using the binary reduction strategy designed for copper GPU topology.
-  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers.
+  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. N can only be a power of 2 if chosing strategies like "asa" and "copper".
 
 - to start an EASGD training session: 
   - 1) If you want to start server and workers in one communicator, configure config.yaml file as follows:
