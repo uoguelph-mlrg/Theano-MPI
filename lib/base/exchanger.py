@@ -31,51 +31,63 @@ class BSP_Exchanger(object):
 
         self.avg_func_list = []
         
-        if self.train_mode == 'cdd' and self.exch_strategy == 'ar': #c
+        if self.train_mode == 'cdd' and self.exch_strategy == 'ar':
             
             from exchanger_strategy import Exch_allreduce
             self.exch = Exch_allreduce(self.comm, avg=False)
             self.exch.prepare(self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'copper': #c
+        elif self.train_mode == 'cdd' and self.exch_strategy == 'copper':
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa32': #c
+        elif self.train_mode == 'cdd' and self.exch_strategy == 'copper16':
+            
+            from exchanger_strategy import Exch_copper16
+            self.exch = Exch_copper16(self.comm, avg=False)
+            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            
+        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa32':
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa16': #c
+        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa16':
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
         
-        #TODO adjust ctx, drv locations in all strategies
+        
          
-        elif self.train_mode == 'avg' and self.exch_strategy == 'ar': #c
+        elif self.train_mode == 'avg' and self.exch_strategy == 'ar':
             
             from exchanger_strategy import Exch_allreduce
             self.exch = Exch_allreduce(self.comm)
             self.exch.prepare(self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'copper': #c
+        elif self.train_mode == 'avg' and self.exch_strategy == 'copper':
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm)
             self.exch.prepare(self.ctx, self.drv, self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'asa32': #c
+        elif self.train_mode == 'avg' and self.exch_strategy == 'copper16':
+            
+            from exchanger_strategy import Exch_copper16
+            self.exch = Exch_copper16(self.comm)
+            self.exch.prepare(self.ctx, self.drv, self.param_list)
+            
+        elif self.train_mode == 'avg' and self.exch_strategy == 'asa32':
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm)
             self.exch.prepare(self.ctx, self.drv, self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'asa16': #c
+        elif self.train_mode == 'avg' and self.exch_strategy == 'asa16':
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm)
@@ -102,6 +114,10 @@ class BSP_Exchanger(object):
             elif self.exch_strategy == 'asa16':
                 
                 self.exch.exchange()
+                
+            elif self.exch_strategy == 'copper16':
+            
+                self.exch.exchange()
 
         # sum delta w
         elif self.train_mode == 'cdd' and self.size > 1:
@@ -120,6 +136,10 @@ class BSP_Exchanger(object):
                 
             elif self.exch_strategy == 'asa16':
                 
+                self.exch.exchange()
+                
+            elif self.exch_strategy == 'copper16':
+            
                 self.exch.exchange()
                 
                 

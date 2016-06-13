@@ -966,6 +966,420 @@ class Exch_copper(Exch_strategy):
             self.ctx.synchronize() 
     
     
+    
+class Exch_copper16(Exch_strategy):
+    '''
+    designed by Fei
+    fp16 version of "copper" strategy
+    specific to copper GPU-CPU topology
+    
+    '''
+    def __init__(self, comm, avg=True):
+        Exch_strategy.__init__(self)
+        
+        self.comm = comm
+        self.size = self.comm.size
+        self.rank = self.comm.rank
+        self.avg = avg
+    
+    def prepare(self, ctx, drv, source_param_list, dest_param_list=None):
+        
+    	self.source_param_list = source_param_list
+        if dest_param_list!=None:
+            self.dest_param_list = dest_param_list
+        else:
+            self.dest_param_list = self.source_param_list
+            
+        self.ctx = ctx
+        self.drv = drv
+    
+        mod = SourceModule("""
+        __global__ void vecadd(float* current, float* temp, int numElements)
+        {
+        	int i =  blockDim.x * blockIdx.x + threadIdx.x;
+	
+        	if (i < numElements)
+        	current[i] += temp[i];
+        }
+        """)
+        self.vecadd = mod.get_function("vecadd")
+        
+        self.param_update_ga_list=[]
+        self.d_param_32_tmp_list=[]
+        self.numElements_list=[]
+        self.grid_size_list=[]
+        
+        block_size = np.int32(256)
+
+        for param in self.source_param_list:
+            
+            # Prepare data in host (CPU) memory
+            param_update = param.get_value()
+            
+            numElements = np.int32(param_update.size)
+            self.numElements_list.append(numElements)
+            # reducesize = np.int32(numElement/self.size)
+            # reducesizes.append(reducesize)
+            grid_size = (numElements / block_size + 1, 1)
+            self.grid_size_list.append(grid_size)
+            
+            param_32_tmp = np.zeros(numElements, dtype=np.float32)
+
+            # param_32_sum = np.zeros(reducesize, dtype=np.float32)
+            
+            #Prepare data in decive (GPU) memory
+            param_update_ga = gpuarray.to_gpu(param_update)
+            self.param_update_ga_list.append(param_update_ga)
+
+            d_param_32_tmp = gpuarray.to_gpu(param_32_tmp)
+            self.d_param_32_tmp_list.append(d_param_32_tmp)
+
+            # d_param_32_sum = gpuarray.to_gpu(param_32_sum)
+            # self.d_param_32_sum_list.append(d_param_32_sum)
+
+        self.mpidtype = dtype_to_mpi(self.d_param_32_tmp_list[0].dtype)
+        if self.avg:
+            
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function([], \
+                            updates=[(param, param * division_factor) \
+                            for param in self.source_param_list])
+    
+    def exchange(self):
+        
+        mpidtype = self.mpidtype
+        
+        if self.avg: self.avg_func()
+        
+        # copy weight from param_ga to param_update_ga
+        for param, param_update_ga in \
+                        zip(self.source_param_list, self.param_update_ga_list):
+
+            param_ga = \
+             theano.misc.pycuda_utils.to_gpuarray(param.container.value)
+
+            self.drv.memcpy_dtod(param_update_ga.ptr,
+                                  param_ga.ptr,
+                                  param_ga.dtype.itemsize *
+                                  param_ga.size)
+                                  
+            self.ctx.synchronize() 
+                                  
+        
+        if (self.size == 2):
+            
+            for param_update_ga,d_param_tmp,numElements,grid_size in \
+                    zip(self.param_update_ga_list, \
+                        self.d_param_32_tmp_list, \
+                        self.numElements_list, \
+                        self.grid_size_list):
+
+                '''
+                Summing and Sharing GPU Data
+                Sendrecv Pairing: 0 and 1
+                '''
+    
+                if (self.rank == 1):
+                    self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                        dest=0, recvbuf=[bufint(d_param_tmp), mpidtype], source=0)
+                    self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                        block=(256, 1, 1), grid=grid_size)
+                    self.ctx.synchronize() 
+                    #should synchronize context after a kernel call 
+                    # to make sure the kernel has been finished
+   	
+                elif (self.rank == 0):
+                    self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                        dest=1, recvbuf=[bufint(d_param_tmp), mpidtype], source=1)
+                    self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                        block=(256, 1, 1), grid=grid_size)
+                    self.ctx.synchronize() 
+                    #should synchronize context after a kernel call 
+                    # to make sure the kernel has been finished
+   	
+                self.comm.Barrier()
+
+
+
+        elif (self.size == 4):
+            
+            for param_update_ga,d_param_tmp,numElements,grid_size in \
+                    zip(self.param_update_ga_list, \
+                        self.d_param_32_tmp_list, \
+                        self.numElements_list, \
+                        self.grid_size_list):
+    
+                '''
+                Summing GPU Data
+                Step 1
+                Source GPU -> Destination GPU
+                1 -> 0, 3 -> 2
+                '''
+    
+                if (self.rank %2 == 1):
+                   	self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank-1)
+   	
+                elif (self.rank %2 == 0):
+                   	self.comm.Recv([bufint(d_param_tmp), mpidtype], source=self.rank+1)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize()
+    
+                '''
+                Step 2
+                Sendrecv Pairing: 0 and 2
+                '''
+                if (self.rank == 2):
+                   	self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                            dest=0, recvbuf=[bufint(d_param_tmp), mpidtype], source=0)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                            block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+   	
+                elif (self.rank == 0):
+                   	self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                            dest=2, recvbuf=[bufint(d_param_tmp), mpidtype], source=2)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                            block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+    
+    
+                '''
+                Broadcasting Result
+                Source GPU -> Destination GPU
+                0 -> 1, 2 -> 3
+                '''
+    
+                if (self.rank %2 == 0):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank+1)
+   	
+                elif (self.rank %2 == 1):
+               	        self.comm.Recv([bufint(param_update_ga), mpidtype], source=self.rank-1)
+   	
+                self.comm.Barrier()
+
+
+
+        elif (self.size == 8):
+    
+            # Use this for parameter size < 16MB
+            # Use Fei's implementation for parameter size > 16MB
+            
+            for param_update_ga,d_param_tmp,numElements,grid_size in \
+                    zip(self.param_update_ga_list, \
+                        self.d_param_32_tmp_list, \
+                        self.numElements_list, \
+                        self.grid_size_list):
+    
+                '''
+                Summing GPU Data
+                Step 1
+                Source GPU -> Destination GPU
+                1 -> 0, 3 -> 2, 5 -> 4, 7 -> 6
+                '''
+    
+                if (self.rank %2 == 1):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank-1)
+   	
+                elif (self.rank %2 == 0):
+                   	self.comm.Recv([bufint(d_param_tmp), mpidtype], source=self.rank+1)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+    
+    
+                '''
+                Step 2
+                Source GPU -> Destination GPU
+                0 -> 2, 4 -> 6
+                '''
+                if (self.rank %4 == 0):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank+2)
+   	
+                elif (self.rank == 2) or (self.rank == 6):
+                   	self.comm.Recv([bufint(d_param_tmp), mpidtype], source=self.rank-2)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+    
+    
+                '''
+                Step 3
+                Sendrecv Pairing: 2 and 6
+                '''
+                if (self.rank == 2):
+                   	self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                            dest=6, recvbuf=[bufint(d_param_tmp), mpidtype], source=6)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                    block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+   	
+                elif (self.rank == 6):
+                   	self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                            dest=2, recvbuf=[bufint(d_param_tmp), mpidtype], source=2)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                    block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize()
+    
+    
+                '''
+                Broadcasting Results
+                Step 1
+                Source GPU -> Destination GPU
+                2 -> 0, 6 -> 4
+                '''
+                if  (self.rank == 2) or (self.rank == 6):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank-2)
+   	
+                elif (self.rank %4 == 0):
+               	        self.comm.Recv([bufint(param_update_ga), mpidtype], source=self.rank+2)
+    
+    
+                '''
+                Step 2
+                Source GPU -> Destination GPU
+                0 -> 1, 2 -> 3, 4 -> 5, 6 -> 7
+                '''
+    
+                if (self.rank %2 == 0):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank+1)
+   	
+                elif (self.rank %2 == 1):
+               	        self.comm.Recv([bufint(param_update_ga), mpidtype], source=self.rank-1)
+   	
+    
+                self.comm.Barrier()
+
+
+
+        elif (self.size == 16):
+            
+            for param_update_ga,d_param_tmp,numElements,grid_size in \
+                    zip(self.param_update_ga_list, \
+                        self.d_param_32_tmp_list, \
+                        self.numElements_list, \
+                        self.grid_size_list):
+    
+                '''
+                Summing GPU Data
+                Step 1
+                Source GPU -> Destination GPU
+                1 -> 0, 3 -> 2, 5 -> 4, 7 -> 6, 9 -> 8, 11 -> 10, 13 -> 12, 15 -> 14
+                '''
+    
+                if (self.rank %2 == 1):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank-1)
+   	
+                elif (self.rank %2 == 0):
+                   	self.comm.Recv([bufint(d_param_tmp), mpidtype], source=self.rank+1)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                    block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+    
+    
+                '''
+                Step 2
+                Source GPU -> Destination GPU
+                0 -> 2, 4 -> 6, 8 -> 10, 12 -> 14
+                '''
+                if (self.rank %4 == 0):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank+2)
+   	
+                elif (self.rank == 2) or (self.rank == 6) or (self.rank == 10) or (self.rank == 14):
+                   	self.comm.Recv([bufint(d_param_tmp), mpidtype], source=self.rank-2)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                        block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize()
+    
+    
+                '''
+                Step 3
+                Source GPU -> Destination GPU
+                2 -> 6, 10 -> 14
+                '''
+                if (self.rank == 2) or (self.rank == 10):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank+4)
+   	
+                elif (self.rank == 6) or (self.rank == 14):
+                   	self.comm.Recv([bufint(d_param_tmp), mpidtype], source=self.rank-4)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                        block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize()
+    
+    
+                '''
+                Step 4
+                Sendrecv Pairing: 6 and 14
+                '''
+                if (self.rank == 6):
+                   	self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                            dest=14, recvbuf=[bufint(d_param_tmp), mpidtype], source=14)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                        block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+   	
+                elif (self.rank == 14):
+                   	self.comm.Sendrecv([bufint(param_update_ga), mpidtype], \
+                                dest=6, recvbuf=[bufint(d_param_tmp), mpidtype], source=6)
+                   	self.vecadd(param_update_ga, d_param_tmp, numElements, \
+                                                        block=(256, 1, 1), grid=grid_size)
+                   	self.ctx.synchronize() 
+
+    
+                '''
+                Broadcasting Result
+                Step 1
+                Source GPU -> Destination GPU
+                6 -> 2, 14 -> 10
+                '''
+                if (self.rank == 6) or (self.rank == 14):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank-4)
+   	
+                elif (self.rank == 2) or (self.rank == 10):
+               	        self.comm.Recv([bufint(param_update_ga), mpidtype], source=self.rank+4)
+    
+    
+                '''
+                Step 2
+                Source GPU -> Destination GPU
+                2 -> 0, 6 -> 4, 10 -> 8, 14 -> 12
+                '''
+                if  (self.rank == 2) or (self.rank == 6) or (self.rank == 10) or (self.rank == 14):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank-2)
+   	
+                elif (self.rank %4 == 0):
+               	        self.comm.Recv([bufint(param_update_ga), mpidtype], source=self.rank+2)
+    
+    
+                '''
+                Step 3
+                Source GPU -> Destination GPU
+                0 -> 1, 2 -> 3, 4 -> 5, 6 -> 7, 8 -> 9, 10 -> 11, 12 -> 13, 14 -> 15
+                '''
+    
+                if (self.rank %2 == 0):
+               	        self.comm.Send([bufint(param_update_ga), mpidtype], dest=self.rank+1)
+   	
+                elif (self.rank %2 == 1):
+               	        self.comm.Recv([bufint(param_update_ga), mpidtype], source=self.rank-1)
+   	
+                self.comm.Barrier()
+                
+                
+                
+        # copy weight from param_update_ga back to param_ga
+        for param, param_update_ga in \
+                        zip(self.dest_param_list, self.param_update_ga_list):
+
+            param_ga = \
+             theano.misc.pycuda_utils.to_gpuarray(param.container.value)
+
+            self.drv.memcpy_dtod(param_ga.ptr,
+                                  param_update_ga.ptr,
+                                  param_update_ga.dtype.itemsize *
+                                  param_ga.size)
+                      
+            self.ctx.synchronize() 
 
     
     
