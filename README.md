@@ -64,6 +64,9 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
    sync_rule: EASGD
    sync_start: True 
    avg_freq: 2 or desired value
+   
+   # randomness
+   shuffle: True
    ```
   - 2) check the example ./run_easgd_4w_sync_start.sh (or ./run_easgd_4w.sh if sync_start==False),  decide how many workers you want to run and which hosts and GPUs you want to use for each worker and the server, make your customized run.sh script. 
   - 3) execute your ./run.sh.
