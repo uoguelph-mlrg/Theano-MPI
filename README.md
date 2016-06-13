@@ -64,6 +64,9 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
    sync_rule: EASGD
    sync_start: True 
    avg_freq: 2 or desired value
+   
+   # randomness
+   shuffle: True
    ```
   - 2) check the example ./run_easgd_4w_sync_start.sh (or ./run_easgd_4w.sh if sync_start==False),  decide how many workers you want to run and which hosts and GPUs you want to use for each worker and the server, make your customized run.sh script. 
   - 3) execute your ./run.sh.
@@ -93,5 +96,7 @@ Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano
 To get the best running speed performance, the memory cache may need to be cleaned before running.
 
 To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2 instead of the indeterministic dnn.conv and dnn.pool from cuDNN.
+
+Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
 
 Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
