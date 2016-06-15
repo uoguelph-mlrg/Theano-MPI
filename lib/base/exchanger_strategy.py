@@ -1096,9 +1096,9 @@ class Exch_copper16(Exch_strategy):
         	            f[i+ offset*7] = t17;
         	    }
         }
-        __global__ void vecaddhalf(unsighed short* current, unsigned short* temp, int numElements)
+        __global__ void vecaddhalf(unsigned short* current, unsigned short* temp, int numElements)
         {	
-        	unsighed short t1,t2;
+        	unsigned short t1,t2;
         	float tf1, tf2;
         	int i =  blockDim.x * blockIdx.x + threadIdx.x;
 	
