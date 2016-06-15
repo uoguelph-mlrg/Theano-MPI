@@ -1116,7 +1116,7 @@ class Exch_copper16(Exch_strategy):
         """)
         self.float2half = mod.get_function("float2half")
         self.half2float = mod.get_function("half2float")
-        self.vecadd = mod.get_function("vecaddhalf")
+        self.vecaddhalf = mod.get_function("vecaddhalf")
         
         self.param_update_ga_list=[]
         self.d_param_16_list = []
