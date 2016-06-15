@@ -1167,7 +1167,7 @@ class Exch_copper16(Exch_strategy):
             self.d_param_16_tmp_list.append(d_param_16_tmp)
 
             #d_param_16_sum = gpuarray.to_gpu(param_16_sum)
-            s#elf.d_param_16_sum_list.append(d_param_16_sum)
+            #self.d_param_16_sum_list.append(d_param_16_sum)
             
             d_param_16 =gpuarray.to_gpu(param_16)
             self.d_param_16_list.append(d_param_16)
