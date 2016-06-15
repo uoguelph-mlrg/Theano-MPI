@@ -1221,7 +1221,7 @@ class Exch_copper16(Exch_strategy):
                 if (self.rank == 1):
                     self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                         dest=0, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=0)
-                    self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                    self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                         block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                     self.ctx.synchronize() 
                     #should synchronize context after a kernel call 
@@ -1230,7 +1230,7 @@ class Exch_copper16(Exch_strategy):
                 elif (self.rank == 0):
                     self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                         dest=1, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=1)
-                    self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                    self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                         block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                     self.ctx.synchronize() 
                     #should synchronize context after a kernel call 
@@ -1264,7 +1264,7 @@ class Exch_copper16(Exch_strategy):
    	
                 elif (self.rank %2 == 0):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank+1)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
     
@@ -1275,14 +1275,14 @@ class Exch_copper16(Exch_strategy):
                 if (self.rank == 2):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=0, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=0)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
    	
                 elif (self.rank == 0):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=2, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=2)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
     
@@ -1332,7 +1332,7 @@ class Exch_copper16(Exch_strategy):
    	
                 elif (self.rank %2 == 0):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank+1)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
     
@@ -1347,7 +1347,7 @@ class Exch_copper16(Exch_strategy):
    	
                 elif (self.rank == 2) or (self.rank == 6):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank-2)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
     
@@ -1359,14 +1359,14 @@ class Exch_copper16(Exch_strategy):
                 if (self.rank == 2):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=6, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=6)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
    	
                 elif (self.rank == 6):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=2, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=2)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
     
@@ -1426,7 +1426,7 @@ class Exch_copper16(Exch_strategy):
    	
                 elif (self.rank %2 == 0):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank+1)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
     
@@ -1441,7 +1441,7 @@ class Exch_copper16(Exch_strategy):
    	
                 elif (self.rank == 2) or (self.rank == 6) or (self.rank == 10) or (self.rank == 14):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank-2)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
     
@@ -1456,7 +1456,7 @@ class Exch_copper16(Exch_strategy):
    	
                 elif (self.rank == 6) or (self.rank == 14):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank-4)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
     
@@ -1468,14 +1468,14 @@ class Exch_copper16(Exch_strategy):
                 if (self.rank == 6):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=14, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=14)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
    	
                 elif (self.rank == 14):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                                 dest=6, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=6)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], numElements, \
+                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
 
