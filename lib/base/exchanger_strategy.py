@@ -1108,7 +1108,7 @@ class Exch_copper16(Exch_strategy):
         		t2 = temp[i];
         		tf1 = __half2float(t1);
         		tf2 = __half2float(t2);
-        		ft2 += tf1;
+        		tf2 += tf1;
         		t2 = __float2half_rn(tf2);
         		current[i] = t2;
         	}
