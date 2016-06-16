@@ -63,7 +63,11 @@ class PTBase(object):
         self.config['size'] = self.size
         #self.config['syncrule'] = self.syncrule #TODO add syncrule into config
         self.config['device'] = self.device
-        self.config['sock_data'] += int(self.device[-1]) #int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
+        
+        import os
+        pid = os.getpid()
+        self.config['sock_data'] += int(pid) #int(self.device[-1])
+        
         self.config['verbose'] = self.verbose
         
         self.model_name=self.config['name']
