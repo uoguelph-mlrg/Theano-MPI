@@ -17,13 +17,13 @@ if rank==0: print 'original array %s' % arr
 
 # prepare copper exchanger
 
-from exchanger_strategy import Exch_copper
-exch = Exch_copper(comm, avg=False)
+from exchanger_strategy import Exch_copper16
+exch = Exch_copper16(comm, avg=False)
 
 exch.prepare(ctx, drv, [shared_x])
 exch.exchange()
 
-if rank==0: print 'copper summation: %s' % shared_x.get_value()
+if rank==0: print 'copper16 summation: %s' % shared_x.get_value()
 
 
 # prepare ar exchanger
