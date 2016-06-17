@@ -1120,9 +1120,9 @@ class Exch_copper16(Exch_strategy):
         
         self.param_update_ga_list=[]
         self.d_param_16_list = []
-        self.d_param_16_update_list = []
+        #self.d_param_16_update_list = []
         self.d_param_16_tmp_list=[]
-        self.d_param_16_sum_list=[]
+        #self.d_param_16_sum_list=[]
         
         self.numElements_list=[]
         self.reduce_size_list = []
@@ -1156,7 +1156,7 @@ class Exch_copper16(Exch_strategy):
             param_16 = np.zeros(numElements, dtype=np.ushort)
             param_16_tmp = np.zeros(numElements, dtype=np.ushort)
             #param_16_sum = np.zeros(reducesize, dtype=np.ushort)
-            param_16_update = np.zeros(numElements, dtype=np.ushort)
+            #param_16_update = np.zeros(numElements, dtype=np.ushort)
             
 
             #Prepare data in decive (GPU) memory
@@ -1172,8 +1172,8 @@ class Exch_copper16(Exch_strategy):
             d_param_16 =gpuarray.to_gpu(param_16)
             self.d_param_16_list.append(d_param_16)
             
-            d_param_16_update =gpuarray.to_gpu(param_16_update)
-            self.d_param_16_update_list.append(d_param_16_update)
+            #d_param_16_update =gpuarray.to_gpu(param_16_update)
+            #self.d_param_16_update_list.append(d_param_16_update)
 
         self.mpidtype = dtype_to_mpi(self.d_param_16_tmp_list[0].dtype)
 
