@@ -20,7 +20,7 @@ if rank==0: print 'original array %s' % arr
 from exchanger_strategy import Exch_asa16
 exch = Exch_asa16(comm, avg=False)
 
-exch.prepare([shared_x], ctx, drv)
+exch.prepare(ctx, drv, [shared_x])
 exch.exchange()
 
 if rank==0: print 'asa16 summation: %s' % shared_x.get_value()
