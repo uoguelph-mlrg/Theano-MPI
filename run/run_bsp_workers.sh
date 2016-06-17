@@ -9,7 +9,7 @@ fi
 
 case $size in
 	1)
-		mpirun --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none python -u ../lib/BSP_Worker.py
+		mpirun --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 -n 1 --bind-to none python -u ../lib/BSP_Worker.py
 		;;
 	2)
 		mpirun --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 2 --bind-to none python -u ../lib/BSP_Worker.py
