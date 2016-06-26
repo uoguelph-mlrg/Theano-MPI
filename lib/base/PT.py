@@ -66,7 +66,7 @@ class PTBase(object):
         
         import os
         pid = os.getpid()
-        self.config['sock_data'] += int(pid) #int(self.device[-1])
+        self.config['sock_data'] = (self.config['sock_data'] + int(pid)) % 65535 #int(self.device[-1])
         
         self.config['verbose'] = self.verbose
         
