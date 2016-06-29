@@ -42,10 +42,6 @@ class BSP_PTWorker(PTWorker):
         self.epoch = 0
         self.count = 0
         
-        if self.config['resume_train'] == True:
-            self.epoch = self.config['load_epoch']
-            self.load_model(self.epoch)
-
         self.train_len = len(self.data[0]) #self.config['avg_freq']
         self.val_len = len(self.data[2])
         
@@ -211,6 +207,10 @@ class BSP_PTWorker(PTWorker):
         # override PTWorker class method
         
         print 'worker started'
+        
+        if self.config['resume_train'] == True:
+            self.epoch = self.config['load_epoch']
+            self.load_model(self.epoch)
         
         if self.size>1: self.prepare_param_exchanger()
         

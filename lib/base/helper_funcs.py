@@ -187,6 +187,65 @@ def load_weights(layers, weights_dir, epoch, l_range=None):
             layers[idx].b1.load_weight(
                 weights_dir, 'b1' + '_' + str(idx) + '_' + str(epoch))
 
+def collect_weight_path(layers, weights_dir, epoch, l_range=None):
+    
+    weight_path_list = []
+    
+    for idx in range(len(layers)):
+        
+        if l_range !=None and (idx not in l_range):
+            continue
+            
+        if hasattr(layers[idx], 'W'):
+            weight_path_list.append(
+                weights_dir + 'W' + '_' + str(idx) + '_' + str(epoch) + '.npy')
+        if hasattr(layers[idx], 'W0'):
+            weight_path_list.append(
+                weights_dir+ 'W0' + '_' + str(idx) + '_' + str(epoch)+ '.npy')
+        if hasattr(layers[idx], 'W1'):
+            weight_path_list.append(
+                weights_dir+ 'W1' + '_' + str(idx) + '_' + str(epoch)+ '.npy')
+        if hasattr(layers[idx], 'b'):
+            weight_path_list.append(
+                weights_dir+ 'b' + '_' + str(idx) + '_' + str(epoch)+ '.npy')
+        if hasattr(layers[idx], 'b0'):
+            weight_path_list.append(
+                weights_dir+ 'b0' + '_' + str(idx) + '_' + str(epoch)+ '.npy')
+        if hasattr(layers[idx], 'b1'):
+            weight_path_list.append(
+                weights_dir+ 'b1' + '_' + str(idx) + '_' + str(epoch)+ '.npy')
+    
+    return weight_path_list
+    
+def load_weights_from_memory(layers, weights_list, l_range=None):
+    
+    
+    i_list=0
+    for idx in range(len(layers)):
+        
+        if l_range !=None and (idx not in l_range):
+            continue
+            
+        if hasattr(layers[idx], 'W'):
+            layers[idx].W.val.set_value(weights_list[i_list])
+            i_list +=1
+        if hasattr(layers[idx], 'W0'):
+            layers[idx].W0.val.set_value(weights_list[i_list])
+            i_list +=1
+        if hasattr(layers[idx], 'W1'):
+            layers[idx].W1.val.set_value(weights_list[i_list])
+            i_list +=1
+        if hasattr(layers[idx], 'b'):
+            layers[idx].b.val.set_value(weights_list[i_list])
+            i_list +=1
+        if hasattr(layers[idx], 'b0'):
+            layers[idx].b0.val.set_value(weights_list[i_list])
+            i_list +=1
+        if hasattr(layers[idx], 'b1'):
+            layers[idx].b1.val.set_value(weights_list[i_list])
+            i_list +=1
+    
+    
 
 def save_momentums(vels, weights_dir, epoch):
     
