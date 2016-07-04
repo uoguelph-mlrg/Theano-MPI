@@ -95,7 +95,7 @@ Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano
 
 To get the best running speed performance, the memory cache may need to be cleaned before running.
 
-To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2 instead of the indeterministic dnn.conv and dnn.pool from cuDNN.
+To get deterministic and reproducible results, turn off all randomness in the config 'random' section and use cudaconvnet from pylearn2.
 
 Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
 
