@@ -1,7 +1,6 @@
 # Server and worker process for asynchronous parallel training
 from mpi4py import MPI
 from server import Server
-from client import Client
 from pprint import pprint
 import time
 import os

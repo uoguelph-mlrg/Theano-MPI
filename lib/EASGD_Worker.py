@@ -1,4 +1,5 @@
 from base.PT import PTWorker, test_intercomm
+from base.client import Client
 import numpy as np
 
 class EASGD_PTWorker(Client,PTWorker):
@@ -11,8 +12,7 @@ class EASGD_PTWorker(Client,PTWorker):
     
     def __init__(self, port, config, device):
         Client.__init__(self, port = port)        
-        PTWorker.__init__(self, port = port, \
-                                config = config, \
+        PTWorker.__init__(self, config = config, \
                                 device = device)
                                 
         self.config['worker_id'] = self.worker_id
