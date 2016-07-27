@@ -4,6 +4,7 @@ from server import Server
 from client import Client
 from pprint import pprint
 import time
+import os
 
 def test_intercomm(intercomm,rank):
     
@@ -64,8 +65,8 @@ class PTBase(object):
         #self.config['syncrule'] = self.syncrule #TODO add syncrule into config
         self.config['device'] = self.device
         
-        import os
         pid = os.getpid()
+        self.config['worker_id'] = pid
         self.config['sock_data'] = (self.config['sock_data'] + int(pid)) % 65535 #int(self.device[-1])
         
         self.config['verbose'] = self.verbose
@@ -85,7 +86,6 @@ class PTBase(object):
         self.config['n_subb'] = self.config['file_batch_size']//self.config['batch_size']
                                      
         if self.rank == 0:
-            import os
             if not os.path.exists(self.config['weights_dir']):
                 os.makedirs(self.config['weights_dir'])
                 if self.verbose: print "Creat folder: " + \
@@ -287,22 +287,17 @@ class PTServer(Server, PTBase):
                 exit(0)
             
     
-class PTWorker(Client, PTBase):
+class PTWorker(PTBase):
     
     '''
     General Worker class in Parallel Training framework
-    Build MPI connection with server
+    Start parallel loading process if needed
+    Compile training and validation functions
     
     '''
     
-    def __init__(self, port, config, device):
-        Client.__init__(self, port = port)
+    def __init__(self, config, device):
         PTBase.__init__(self, config = config, device = device)
-        
-        ###
-        
-        self.config['worker_id'] = self.worker_id
-
         
     def prepare_worker(self):
         
@@ -339,8 +334,11 @@ class PTWorker(Client, PTBase):
         # self.icomm= MPI.COMM_SELF.Spawn('numactl', \
         #         args=['-N',str(socketnum),mpicommand,\
         #                         '../lib/base/proc_load_mpi.py',gpuid],\
+        
+        file_dir = os.path.dirname(os.path.realpath(__file__)) # get the dir of PT.py
+        
         self.icomm= MPI.COMM_SELF.Spawn(mpicommand, \
-                args=['../lib/base/proc_load_mpi.py', gpuid],\
+                args=[file_dir+'/proc_load_mpi.py', gpuid],\
                 info = mpiinfo, maxprocs = num_spawn)
         self.config['icomm'] = self.icomm
                 
@@ -392,67 +390,18 @@ class PTWorker(Client, PTBase):
                                 (time.time() - compile_time)
         #self.model.test()
                                 
-    def MPI_register(self):
-        
-        first = self.request('connect')
-        
-        # self.verbose = (first == 'first')
-        
-        info = MPI.INFO_NULL
-        
-        service = 'parallel-training'
-        
-        port = MPI.Lookup_name(service, info)
-        
-        self.intercomm = MPI.COMM_WORLD.Connect(port, info, root=0)
-
-        self.config['irank'] = self.intercomm.rank 
-        # size on the local side
-        self.config['isize'] = self.intercomm.size 
-        # size on the remote side
-        self.config['iremotesize'] = self.intercomm.remote_size
-        
-        test_intercomm(self.intercomm, rank=1)
-    
-    def _MPI_register(self):
-        
-        first = self.request('sync_register')
-        
-        self.verbose = (first == 'first')
-        self.config['verbose'] = self.verbose
-        
-        self.intercomm = self.comm
-        
-        self.comm.send(int(self.rank), dest=0, tag = int(self.worker_id))
-        
-        self.config['irank'] = self.intercomm.rank
-        
-        self.config['isize'] = self.intercomm.size 
-        
-    def MPI_deregister(self):
-        
-        self.request('disconnect')
-        
-        try:
-            self.intercomm.Disconnect()
-        except:
-            pass
-                                
+                 
     def run(self):
         
         # override Client class method
         
         self.prepare_worker()
         
-        print 'worker started'
-        
-        self.MPI_register()
-        
-        print 'worker registered'
-        
         self.para_load_close()
         
-        self.MPI_deregister()
+
+        
+
         
         
         

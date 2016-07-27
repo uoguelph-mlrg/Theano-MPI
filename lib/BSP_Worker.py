@@ -26,13 +26,11 @@ class BSP_PTWorker(PTWorker):
     
     '''
     
-    def __init__(self, port, config, device):
-        PTWorker.__init__(self, port = port, \
-                                config = config, \
+    def __init__(self, config, device):
+        PTWorker.__init__(self, config = config, \
                                 device = device)
                                 
         self.verbose = self.config['verbose']
-        self.worker_id = self.config['worker_id']
         
         self.prepare_worker()                         
         self.prepare_recorder()
@@ -288,7 +286,7 @@ if __name__ == '__main__':
         gpuid = str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
         device = 'gpu'+gpuid
         
-    worker = BSP_PTWorker(port=5555, config=config, device=device)
+    worker = BSP_PTWorker(config=config, device=device)
     
     worker.run()
 

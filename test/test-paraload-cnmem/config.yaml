@@ -1,0 +1,69 @@
+# This version of config.yaml is modified based on the theano_alexnet project. See the original project here:
+# https://github.com/uoguelph-mlrg/theano_alexnet, and its copy right:
+# Copyright (c) 2014, Weiguang Ding, Ruoyan Wang, Fei Mao and Graham Taylor
+# All rights reserved.
+
+# If want to input None, use !!null
+
+# Model choose
+name: alexnet # alexnet, googlenet, vggnet or customized
+
+pretrain: False
+monitor_grad: False
+# Resume Training, start from scratch or resume training
+resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
+load_epoch: 20
+load_path: ./pretrained-models/ # edit here to find your pretrained weights
+initial_val: False
+
+# Momentum
+use_momentum: True # def: True
+use_nesterov_momentum: False # def: False
+
+# Weight Average
+sync_rule: BSP  # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
+sync_start: True # start worker process together with server process in one mpirun call
+avg_freq: 1 # def: 1, if average weights every iteration in EASGD
+
+train_mode: cdd # mode selection: avg or cdd
+exch_strategy: ar # asa32, asa16, copper, copper16 or ar
+# cuda_aware: True # deprecated in avg mode
+# fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32
+
+# Data
+file_batch_size: 128 # def: choose according to the preprocessed hkl file size
+use_data_layer: False # def: False
+para_load: True # def: should be always true, training and loading data in parallel
+data_source: hkl # hkl or lmdb or both
+image_mean: img_mean # def: img_mean, RGB_mean or img_mean
+# Directories
+
+dir_head : /scratch/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
+label_folder : /labels/  # 
+mean_file : /misc/img_mean.npy   
+weights_dir : ./models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
+record_dir: ./inforec/
+train_folder: /train_hkl_128b/   #/hkl_data/  
+val_folder: /val_hkl_128b/   
+
+# conv library
+lib_conv: cudnn  # cudaconvnet, cudnn or corrmm
+
+# output
+flag_top_5: True
+print_info_every: 5120 # print time and error info every 5120 images
+snapshot_freq: 2  # epoch frequency of saving weights def: 20
+print_train_error: True
+print_freq: 2  # iteration frequency of printing training error rate def: 200
+
+# randomness
+
+shuffle: True # def: True, if shuffle the batches
+rand_crop: True # def: True, if False will likely be overfitting
+batch_crop_mirror: False  # if False, do randomly on each image separately
+weight_init_seed: 23455 # to change, see layer.py file
+dropout_init_seed: 0 # to change, see layer.py file
+
+# gpu and socket
+sock_data: 5020
+debug: False # def: False ; True: run a small sample of training data for shorter epoch testing time

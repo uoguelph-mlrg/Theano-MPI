@@ -1,7 +1,7 @@
 from base.PT import PTWorker, test_intercomm
 import numpy as np
 
-class EASGD_PTWorker(PTWorker):
+class EASGD_PTWorker(Client,PTWorker):
     
     '''
     Worker class based on a specific synchronization rule (EASGD)
@@ -9,12 +9,13 @@ class EASGD_PTWorker(PTWorker):
     
     '''
     
-    def __init__(self, port, config, device):        
+    def __init__(self, port, config, device):
+        Client.__init__(self, port = port)        
         PTWorker.__init__(self, port = port, \
                                 config = config, \
                                 device = device)
                                 
-        self.worker_id = self.config['worker_id']
+        self.config['worker_id'] = self.worker_id
         
         if self.config['sync_start']:
             # sync start register, 
@@ -48,6 +49,53 @@ class EASGD_PTWorker(PTWorker):
             self.rec_name = 'inforec.pkl'
         else:
             self.rec_name = 'inforec_'+ str(self.worker_id) + '.pkl'
+            
+    def MPI_register(self):
+        
+        first = self.request('connect')
+        
+        # self.verbose = (first == 'first')
+        
+        info = MPI.INFO_NULL
+        
+        service = 'parallel-training'
+        
+        port = MPI.Lookup_name(service, info)
+        
+        self.intercomm = MPI.COMM_WORLD.Connect(port, info, root=0)
+
+        self.config['irank'] = self.intercomm.rank 
+        # size on the local side
+        self.config['isize'] = self.intercomm.size 
+        # size on the remote side
+        self.config['iremotesize'] = self.intercomm.remote_size
+        
+        test_intercomm(self.intercomm, rank=1)
+    
+    def _MPI_register(self):
+        
+        first = self.request('sync_register')
+        
+        self.verbose = (first == 'first')
+        self.config['verbose'] = self.verbose
+        
+        self.intercomm = self.comm
+        
+        self.comm.send(int(self.rank), dest=0, tag = int(self.worker_id))
+        
+        self.config['irank'] = self.intercomm.rank
+        
+        self.config['isize'] = self.intercomm.size 
+        
+    def MPI_deregister(self):
+        
+        self.request('disconnect')
+        
+        try:
+            self.intercomm.Disconnect()
+        except:
+            pass
+    
         
     def prepare_param_exchanger(self):
         
