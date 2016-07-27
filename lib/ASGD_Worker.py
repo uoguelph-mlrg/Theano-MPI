@@ -2,10 +2,10 @@ from base.PT import PTWorker, test_intercomm
 from base.client import Client
 import numpy as np
 
-class EASGD_PTWorker(Client,PTWorker):
+class ASGD_PTWorker(Client,PTWorker):
     
     '''
-    Worker class based on a specific synchronization rule (EASGD)
+    Worker class based on a specific synchronization rule (ASGD)
     Executing training routine and periodically reporting results to server
     
     '''
@@ -39,7 +39,7 @@ class EASGD_PTWorker(Client,PTWorker):
             self.uepoch = self.config['load_epoch']
             self.load_model(self.uepoch)
 
-        self.train_len = self.config['avg_freq']
+        self.train_len = 1 #self.config['avg_freq']  # need to be 1 for asgd
         self.val_len = len(self.data[2])
         self.mode = None
         self.lastmode = None
@@ -105,12 +105,14 @@ class EASGD_PTWorker(Client,PTWorker):
         
     def prepare_param_exchanger(self):
         
-        from base.exchanger import EASGD_Exchanger
+        from base.exchanger import ASGD_Exchanger
 
-        self.exchanger = EASGD_Exchanger(self.config, \
+        self.exchanger = ASGD_Exchanger(self.config, \
                                     self.drv, \
-                                    self.model.params, \
-                                    etype='worker')
+                                    etype='worker', \
+                                    param_list=self.model.params, \
+                                    delta_list=self.model.vels
+                                    )
                                     
     def prepare_recorder(self):
         
@@ -124,9 +126,9 @@ class EASGD_PTWorker(Client,PTWorker):
         
         # iterator won't make another copy of the model 
         # instead it will just call its compiled train function
-        
+        train_fn = self.model.get_vel
         self.train_iterator = P_iter(self.config, self.model, \
-                                    self.data[0], self.data[1],  'train')
+                                    self.data[0], self.data[1],  'train', train_fn)
         self.val_iterator = P_iter(self.config, self.model, \
                                     self.data[2], self.data[3], 'val')
                                     
@@ -350,7 +352,7 @@ if __name__ == '__main__':
     device = sys.argv[1]
     if device == None:
         device = 'gpu0'
-    worker = EASGD_PTWorker(port=5555, config=config, device=device)
+    worker = ASGD_PTWorker(port=5555, config=config, device=device)
     
     worker.run()
 

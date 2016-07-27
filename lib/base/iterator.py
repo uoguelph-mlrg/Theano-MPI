@@ -15,7 +15,7 @@ class P_iter(object):
 
     '''
 
-    def __init__(self, config, model, filenames,labels,mode='train'):
+    def __init__(self, config, model, filenames,labels,mode='train', iter_fn=None):
 
         self.config = config
         
@@ -54,24 +54,28 @@ class P_iter(object):
         self.verbose = self.config['verbose']
         self.monitor = self.config['monitor_grad']
 
-        if self.mode == 'train':
+        
+        if iter_fn == None:
+            if self.mode == 'train':
             
-            if self.config['train_mode'] == 'cdd':
+                if self.config['train_mode'] == 'cdd':
                 
-                def train_function(subb_ind):
-                    model.descent_vel()
-                    cost, error = model.get_vel(subb_ind)
-                    return cost, error
+                    def train_function(subb_ind):
+                        model.descent_vel()
+                        cost, error = model.get_vel(subb_ind)
+                        return cost, error
 
-                self.function = train_function #model.get_vel
-            elif self.config['train_mode'] == 'avg':
-                self.function = model.train
+                    self.function = train_function #model.get_vel
+                elif self.config['train_mode'] == 'avg':
+                    self.function = model.train
                 
-            if self.config['monitor_grad']:
-                self.get_norm = model.get_norm
+                if self.config['monitor_grad']:
+                    self.get_norm = model.get_norm
                 
-        elif self.mode == 'val':
-        	self.function = model.val
+            elif self.mode == 'val':
+            	self.function = model.val
+        else:
+            self.function = iter_fn
 
     def __iter__(self):
         
