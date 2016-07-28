@@ -12,7 +12,7 @@ class ASGD_PTWorker(Async_PTWorker):
         Async_PTWorker.__init__(self, port=port, 
                                       config=config, 
                                       device=device)
-            
+                                      
         
     def prepare_param_exchanger(self):
         
@@ -22,8 +22,13 @@ class ASGD_PTWorker(Async_PTWorker):
                                     self.drv, \
                                     etype='worker', \
                                     param_list=self.model.params, \
-                                    delta_list=self.model.vels
+                                    delta_list=self.model.vels2
                                     )
+        
+                                    
+        #prepare delta accumulator
+        
+        
                                     
     def prepare_iterator(self):
         #override Async_PTWorker member function
@@ -32,11 +37,12 @@ class ASGD_PTWorker(Async_PTWorker):
         
         # iterator won't make another copy of the model 
         # instead it will just call its compiled train function
-        train_fn = self.model.get_vel
+        train_fn = self.model.train
         self.train_iterator = P_iter(self.config, self.model, \
                                     self.data[0], self.data[1],  'train', train_fn)
         self.val_iterator = P_iter(self.config, self.model, \
                                     self.data[2], self.data[3], 'val')
+                                    
                                     
 if __name__ == '__main__':
     
@@ -49,6 +55,8 @@ if __name__ == '__main__':
     device = sys.argv[1]
     if device == None:
         device = 'gpu0'
+            
+            
     worker = ASGD_PTWorker(port=5555, config=config, device=device)
     
     worker.run()

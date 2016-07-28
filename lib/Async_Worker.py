@@ -38,7 +38,7 @@ class Async_PTWorker(Client,PTWorker):
             self.uepoch = self.config['load_epoch']
             self.load_model(self.uepoch)
 
-        self.train_len = 1 #self.config['avg_freq']  # need to be 1 for asgd
+        self.train_len = self.config['sync_freq']  # need to be 1 for asgd
         self.val_len = len(self.data[2])
         self.mode = None
         self.lastmode = None

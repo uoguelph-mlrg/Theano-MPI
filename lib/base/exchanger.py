@@ -425,6 +425,7 @@ class ASGD_Exchanger(object):
         if self.etype == 'server':
             
             g_updates = [] #update on the server side: p_server + delta
+            
             for w_delta, g_param in zip(self.w_delta_list, self.g_param_list):
                  g_updates.append(g_param + w_delta) # w_param is the received delta
             
@@ -437,7 +438,8 @@ class ASGD_Exchanger(object):
             for g_param, w_delta in zip(self.g_param_list, self.w_delta_list):
                  w_updates.append(g_param + w_delta) # g_param is the received server param
                              
-            updates = zip(self.w_param_list, w_updates) # similar to the descent()
+            updates = zip(self.w_param_list, w_updates) \
+                        +[(delta,delta*0) for delta in self.w_delta_list] # clear accumulated delta after each push to server
             
         else:
             raise NotImplementedError('wrong etype')
@@ -521,6 +523,7 @@ class ASGD_Exchanger(object):
                                       g_param_ga.ptr,
                                       g_param_ga.dtype.itemsize *
                                       g_param_ga.size)
+                                      
                                       
         self.update_func()
             

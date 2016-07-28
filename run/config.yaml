@@ -23,7 +23,7 @@ use_nesterov_momentum: False # def: False
 # Weight Average
 sync_rule: BSP  # BSP or EASGD # three hyper parameter in EASGD: number of processes, avg_freq, alpha
 sync_start: True # start worker process together with server process in one mpirun call
-avg_freq: 1 # def: 1, if average weights every iteration in EASGD
+sync_freq: 1 # def: 1, if average weights every iteration in EASGD
 
 train_mode: cdd # mode selection: avg or cdd
 exch_strategy: ar # asa32, asa16, copper, copper16 or ar
