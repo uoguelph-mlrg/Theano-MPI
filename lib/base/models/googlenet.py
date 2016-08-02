@@ -519,9 +519,11 @@ class GoogLeNet(ModelBase):
 
         x = T.ftensor4('x')
         y = T.lvector('y')
+        lr = T.scalar('lr')
         
         self.x = x # c01b
         self.y = y
+        self.lr = lr
         
         layers = []
         params = []
@@ -746,20 +748,16 @@ class GoogLeNet(ModelBase):
                                               
         self.shared_y = theano.shared(np.zeros((config['file_batch_size'],), 
                                           dtype=int),   borrow=True)
+                                          
+        self.grads = T.grad(self.cost,self.params)
         
-        # shared variable for storing momentum before exchanging momentum(delta w)
-        self.vels = [theano.shared(param_i.get_value() * 0.)
-            for param_i in self.params]
+        subb_ind = T.iscalar('subb')  # sub batch index
+        #print self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].shape.eval()
+        self.subb_ind = subb_ind
+        self.shared_x_slice = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        self.shared_y_slice = self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
         
-        # shared variable for accepting momentum during exchanging momentum(delta w)
-        self.vels2 = [theano.shared(param_i.get_value() * 0.)
-            for param_i in self.params]
-            
-        self.train = None
-        self.get_vel = None
-        self.descent_vel = None
-        self.val = None
-        self.inference = None
+
         
     def set_dropout_off(self):
         
@@ -769,77 +767,38 @@ class GoogLeNet(ModelBase):
         
         Dropout.SetDropoutOn()
         
-    def compile_train(self, updates_dict=None):                               
+    def compile_train(self):                               
     
-        print 'compiling training function...'
+        if self.verbose: print 'compiling training function...'
         
-        x = self.x
-        y = self.y
+        for arg_list in self.compile_train_fn_list:
+            self.compiled_train_fn_list.append(theano.function(**arg_list))
         
-        subb_ind = T.iscalar('subb')  # sub batch index
-        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        
-        cost = self.cost    
-        error = self.error
-        #errors_top_5 = self.output_layer.errors_top_x(y)
-                                          
-        self.grads = T.grad(cost,self.params)
-        
-        if updates_dict == None:
-            from modelbase import updates_dict
+        if self.config['monitor_grad']:
             
-        updates_w,updates_v,updates_dv = updates_dict(self.config, self)
-        
+            norms = [grad.norm(L=2) for grad in self.grads]
+            
+            self.get_norm = theano.function([self.subb_ind], norms,
+                                              givens=[(self.x, self.shared_x_slice), 
+                                                      (self.y, self.shared_y_slice)]
+                                                                          ) 
 
-        
-        self.train= theano.function([subb_ind], [cost,error], updates=updates_w,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y)]
-                                                                          )
-    
-   
-        self.get_vel= theano.function([subb_ind], [cost,error], updates=updates_v,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y)]
-                                                                          )
-                                
-                                                                                        
-        self.descent_vel = theano.function([],[],updates=updates_dv)    
-
-        
     def compile_inference(self):
 
         print 'compiling inference function...'
     
-        x = self.x
-        
-        output = self.output
-    
-        self.inference = theano.function([x],output)
+        self.inference = theano.function([self.x],self.output)
         
     def compile_val(self):
 
         print 'compiling validation function...'
     
-        x = self.x
-        y = self.y
-        
-        subb_ind = T.iscalar('subb')  # sub batch index
-        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-            
-        cost = self.cost  
-        error = self.error
-        error_top_5 = self.error_top_5
-        
-        self.val =  theano.function([subb_ind], [cost,error,error_top_5], updates=[], 
-                                          givens=[(x, shared_x),
-                                                  (y, shared_y)]
+        self.val =  theano.function([self.subb_ind], [self.cost,self.error,self.error_top_5], updates=[], 
+                                          givens=[(self.x, self.shared_x_slice),
+                                                  (self.y, self.shared_y_slice)]
                                                                 )
                                                                 
-                                                                
-                                                                
+                                     
     def adjust_lr(self, epoch, size):
             
         # Poly lr policy according to
@@ -863,12 +822,5 @@ class GoogLeNet(ModelBase):
         for i in range(5, epoch+1):
             tuned_base_lr = tuned_base_lr * \
                 pow( (1. -  1.* (i) /240.0), 0.5 )
-        
-        if self.config['train_mode'] == 'avg':
-            self.shared_lr.set_value(np.float32(tuned_base_lr*size))
-        else:
-            self.shared_lr.set_value(np.float32(tuned_base_lr))
-    
-        if self.verbose: 
-            print 'Learning rate now: %.10f' % \
-                    np.float32(self.shared_lr.get_value())
+                
+        self.shared_lr.set_value(np.float32(tuned_base_lr))

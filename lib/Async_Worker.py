@@ -14,6 +14,9 @@ class Async_PTWorker(Client,PTWorker):
         PTWorker.__init__(self, config = config, \
                                 device = device)
                                 
+        if self.config['sync_start']:
+            self.config['size'] = 1
+                                
         self.config['worker_id'] = self.worker_id
         
         if self.config['sync_start']:
@@ -26,18 +29,7 @@ class Async_PTWorker(Client,PTWorker):
             # build a separate intercomm to communicate with server
             self.MPI_register()
             self.model.verbose = self.verbose
-            
-        #if self.verbose: print 'worker registered'
-                             
-        self.prepare_worker()                        
-        self.prepare_recorder()
-        self.prepare_iterator()
         
-        self.uepoch = None
-        if self.config['resume_train'] == True:
-            self.uepoch = self.config['load_epoch']
-            self.load_model(self.uepoch)
-
         self.train_len = self.config['sync_freq']  # need to be 1 for asgd
         self.val_len = len(self.data[2])
         self.mode = None
@@ -48,6 +40,8 @@ class Async_PTWorker(Client,PTWorker):
             self.rec_name = 'inforec.pkl'
         else:
             self.rec_name = 'inforec_'+ str(self.worker_id) + '.pkl'
+
+
             
     def MPI_register(self):
         
@@ -104,6 +98,8 @@ class Async_PTWorker(Client,PTWorker):
         
     def prepare_param_exchanger(self):
         
+        # different in EASGD and ASGD
+        
         pass
                                     
     def prepare_recorder(self):
@@ -114,15 +110,8 @@ class Async_PTWorker(Client,PTWorker):
                                     
     def prepare_iterator(self):
         
-        from base.iterator import P_iter
-        
-        # iterator won't make another copy of the model 
-        # instead it will just call its compiled train function
-
-        self.train_iterator = P_iter(self.config, self.model, \
-                                    self.data[0], self.data[1],  'train')
-        self.val_iterator = P_iter(self.config, self.model, \
-                                    self.data[2], self.data[3], 'val')
+        # different in EASGD and ASGD
+        pass
                                     
                                     
     def load_model(self, load_epoch):
@@ -250,6 +239,10 @@ class Async_PTWorker(Client,PTWorker):
         #if self.verbose: print 'global epoch %d, %d workers online' % (self.uepoch, self.n_workers )
         
         self.model.adjust_lr(self.uepoch, size = self.n_workers)
+    
+        if self.verbose: 
+            print 'Learning rate now: %.10f' % \
+                    np.float32(self.model.shared_lr.get_value())
         
         
     def run(self):

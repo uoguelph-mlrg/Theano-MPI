@@ -160,11 +160,11 @@ class AlexNet(ModelBase):
         
         
         self.cost = softmax_layer8.negative_log_likelihood(y)
-        self.errors = softmax_layer8.errors(y)
+        self.error = softmax_layer8.errors(y)
         if n_softmax_out < 5:        
-            self.errors_top_5 = softmax_layer8.errors_top_x(y, n_softmax_out)
+            self.error_top_5 = softmax_layer8.errors_top_x(y, n_softmax_out)
         else:        
-            self.errors_top_5 = softmax_layer8.errors_top_x(y, 5)       
+            self.error_top_5 = softmax_layer8.errors_top_x(y, 5)       
         self.params = params
         
         # inputs
@@ -193,19 +193,11 @@ class AlexNet(ModelBase):
                                           
         self.grads = T.grad(self.cost,self.params)
         
-        # shared variable for storing momentum before exchanging momentum(delta w)
-        self.vels = [theano.shared(param_i.get_value() * 0.)
-            for param_i in self.params]
-        
-        # shared variable for accepting momentum during exchanging momentum(delta w)
-        self.vels2 = [theano.shared(param_i.get_value() * 0.)
-            for param_i in self.params]
-            
-        self.train = None
-        self.get_vel = None
-        self.descent_vel = None
-        self.val = None
-        self.inference = None
+        subb_ind = T.iscalar('subb')  # sub batch index
+        #print self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].shape.eval()
+        self.subb_ind = subb_ind
+        self.shared_x_slice = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        self.shared_y_slice = self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
         
     def set_dropout_off(self):
         
@@ -215,86 +207,37 @@ class AlexNet(ModelBase):
         
         DropoutLayer.SetDropoutOn()
         
-    def compile_train(self, updates_dict=None):
+    def compile_train(self):
 
         if self.verbose: print 'compiling training function...'
         
-        x,y,lr = self.x, self.y, self.lr
-        subb_ind = T.iscalar('subb')  # sub batch index
-        #print self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].shape.eval()
-
-        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        shared_lr = self.shared_lr
-          
-        cost = self.cost 
-        error = self.errors
-               
-        params = self.params  
-        grads = self.grads
-        
-        if updates_dict == None:
-            from modelbase import updates_dict
-    
-        updates_w,updates_v,updates_dv = updates_dict(self.config, model=self) 
+        for arg_list in self.compile_train_fn_list:
+            self.compiled_train_fn_list.append(theano.function(**arg_list))
         
         if self.config['monitor_grad']:
             
             norms = [grad.norm(L=2) for grad in self.grads]
             
-            self.get_norm = theano.function([subb_ind], norms,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y)]
+            self.get_norm = theano.function([self.subb_ind], norms,
+                                              givens=[(self.x, self.shared_x_slice), 
+                                                      (self.y, self.shared_y_slice)]
                                                                           )
-    
-        self.train= theano.function([subb_ind], [cost,error], updates=updates_w,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y),
-                                                      (lr, shared_lr)]
-                                                                          )
-    
-   
-        self.get_vel= theano.function([subb_ind], [cost,error], updates=updates_v,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y),
-                                                      (lr, shared_lr)]
-                                                                          )
-                                
-                                                                                        
-        self.descent_vel = theano.function([],[],updates=updates_dv)     
-
         
     def compile_inference(self):
 
         if self.verbose: print 'compiling inference function...'
     
-        x = self.x
-        
-        output = self.output
-    
-        self.inference = theano.function([x],output)
+        self.inference = theano.function([self.x],self.output)
         
     def compile_val(self):
 
         if self.verbose: print 'compiling validation function...'
-    
-        x = self.x
-        y = self.y
         
-        subb_ind = T.iscalar('subb')  # sub batch index
-            
-        cost = self.cost 
-        error = self.errors
-        errors_top_5 = self.errors_top_5
-        
-        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        
-        self.val =  theano.function([subb_ind], [cost,error,errors_top_5], updates=[], 
-                                          givens=[(x, shared_x),
-                                                  (y, shared_y)]
+        self.val =  theano.function([self.subb_ind], [self.cost,self.error,self.error_top_5], updates=[], 
+                                          givens=[(self.x, self.shared_x_slice),
+                                                  (self.y, self.shared_y_slice)]
                                                                 )                                                       
-    def adjust_lr(self, epoch, size, val_error_list = None):
+    def adjust_lr(self, epoch, val_error_list = None):
         
         # lr is calculated every time as a function of epoch and size
         
@@ -321,14 +264,8 @@ class AlexNet(ModelBase):
             if epoch>5 and (val_error_list[-3] - val_error_list[-1] <
                                 self.config['lr_adapt_threshold']):
                 tuned_base_lr = self.base_lr / 10.0
-                    
-        if self.config['train_mode'] == 'cdd':
-            self.shared_lr.set_value(np.float32(tuned_base_lr))
-        elif self.config['train_mode'] == 'avg':
-            self.shared_lr.set_value(np.float32(tuned_base_lr*size))
-        
-        if self.verbose: 
-            print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())
+                
+        self.shared_lr.set_value(np.float32(tuned_base_lr))
             
     def test(self):
         

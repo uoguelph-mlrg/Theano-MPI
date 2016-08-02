@@ -40,10 +40,11 @@ class PTBase(object):
         self.size = self.comm.size
         self.config = config
         self.device = device
-        if self.config['sync_rule'] == 'EASGD':
-            self.verbose = (self.rank == 0)
-        elif self.config['sync_rule'] == 'BSP':
-            self.verbose = (self.rank == 0)
+        
+        # if self.config['worker_type'] in ['EASGD', 'ASGD']:
+
+        # elif self.config['worker_type'] in ['avg', 'cdd']:
+        self.verbose = (self.rank == 0)
 
         self.process_config()
         self.get_data()
@@ -101,8 +102,8 @@ class PTBase(object):
                                  self.config['record_dir']
                                  
                                  
-        if self.config['sync_start'] and self.config['sync_rule'] == 'EASGD':
-            self.config['size'] = 1
+        # if self.config['sync_start'] and self.config['worker_type'] == 'EASGD':
+#             self.config['size'] = 1
                              
         if self.verbose: pprint(self.config)
         
@@ -291,20 +292,19 @@ class PTWorker(PTBase):
     '''
     General Worker class in Parallel Training framework
     Start parallel loading process if needed
-    Compile training and validation functions
     
     '''
     
     def __init__(self, config, device):
         PTBase.__init__(self, config = config, device = device)
-        
-    def prepare_worker(self):
-        
-        self.compile_model()  # needs compile model before para_load_init
 
+
+    def prepare_para_load(self):
+        
         if self.config['para_load']:
             self.spawn_load()
             self.para_load_init()
+        
            
     def spawn_load(self):
         
@@ -380,29 +380,23 @@ class PTWorker(PTBase):
         self.ctx.detach()
         
         
-    def compile_model(self):
-
-        compile_time = time.time()
-        self.model.compile_train()
-        self.model.compile_val()
-        if self.verbose: print 'compile_time %.2f s' % \
-                                (time.time() - compile_time)
-        #self.model.test()
-                                
-                 
+    def prepare_train_fn(self):
+        
+        # to be defined in different type of PTWorkers child class
+        
+        # to make sure model compiles correct updating function and allocate necessary extra param memory that correspond to the selected parallel worker type and parallel update type
+        
+        raise NotImplementedError('Need to redefine this function in a child class of PTWorker')
+        
+      
     def run(self):
         
-        # override Client class method
+        # to be defined in child class
         
-        self.prepare_worker()
-        
-        self.para_load_close()
+        pass
         
 
-        
 
-        
-        
         
 
 if __name__ == '__main__':

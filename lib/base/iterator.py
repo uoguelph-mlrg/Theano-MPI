@@ -15,7 +15,7 @@ class P_iter(object):
 
     '''
 
-    def __init__(self, config, model, filenames,labels,mode='train', iter_fn=None):
+    def __init__(self, config, model, filenames,labels, mode, iter_fn):
 
         self.config = config
         
@@ -53,29 +53,11 @@ class P_iter(object):
         self.mode = mode
         self.verbose = self.config['verbose']
         self.monitor = self.config['monitor_grad']
-
         
-        if iter_fn == None:
-            if self.mode == 'train':
+        self.function = iter_fn
             
-                if self.config['train_mode'] == 'cdd':
-                
-                    def train_function(subb_ind):
-                        model.descent_vel()
-                        cost, error = model.get_vel(subb_ind)
-                        return cost, error
-
-                    self.function = train_function #model.get_vel
-                elif self.config['train_mode'] == 'avg':
-                    self.function = model.train
-                
-                if self.config['monitor_grad']:
-                    self.get_norm = model.get_norm
-                
-            elif self.mode == 'val':
-            	self.function = model.val
-        else:
-            self.function = iter_fn
+        if self.config['monitor_grad']:
+            self.get_norm = model.get_norm
 
     def __iter__(self):
         
@@ -128,7 +110,7 @@ class P_iter(object):
 			
                 labels.append(batch_label)
                 
-        if self.config['sync_rule'] == 'BSP':
+        if self.config['worker_type'] in ['avg', 'cdd']: # Synchronous Training needs data localization
             # localize data
 
             filenames = filenames[self.config['rank']::self.config['size']]
@@ -228,7 +210,8 @@ class P_iter(object):
             recorder.train_error(count, cost, error)
             recorder.end('calc')
 
-        else:
+        elif self.mode == 'val':
+            
             cost,error,error_top5 = self.function(self.subb)
             recorder.val_error(count, cost, error, error_top5)
             

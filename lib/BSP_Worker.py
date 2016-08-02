@@ -32,7 +32,17 @@ class BSP_PTWorker(PTWorker):
                                 
         self.verbose = self.config['verbose']
         
-        self.prepare_worker()                         
+        import time
+        compile_time = time.time()
+        
+        self.prepare_train_fn() # 1 (local to worker type) allocate supporting params and compiling theano functions
+        self.prepare_val_fn()
+        
+        if self.verbose: print 'compile_time %.2f s' % \
+                                (time.time() - compile_time)
+        
+        self.prepare_para_load() #needs to be after compile_train and compile_val()  
+                              
         self.prepare_recorder()
         self.prepare_iterator()
         
@@ -47,11 +57,195 @@ class BSP_PTWorker(PTWorker):
     def prepare_param_exchanger(self):
         
         from base.exchanger import BSP_Exchanger
+        
+        # 3 (local to worker type)
 
         self.exchanger = BSP_Exchanger(self.config,\
                                     self.drv, \
                                     self.ctx,
                                     self.model)
+                                    
+    def prepare_train_fn(self):
+        
+        # to make sure model compiles necessary functions (get_vels() and descent() for cdd, or train() for avg) and allocate necessary extra param memory (vels,vels2 for cdd, or nothing for avg)
+        
+        # allocate supporting params for this worker type
+        
+        worker_type=self.config['worker_type']
+        
+        model = self.model
+        
+        if worker_type == 'cdd':
+            
+            import theano
+            
+            model.vels = [theano.shared(param_i.get_value() * 0.)
+                for param_i in model.params]
+            
+            model.vels2 = [theano.shared(param_i.get_value() * 0.)
+                        for param_i in model.params]
+                        
+            self.prepare_update_dict(worker_type='cdd')
+            
+            updates_v, updates_dv = model.update_dict
+            
+            get_vel_args = {"inputs":[model.subb_ind], "outputs":[model.cost,model.error], "updates":updates_v, \
+                                                           "givens":[(model.x,  model.shared_x_slice), 
+                                                                     (model.y,  model.shared_y_slice),
+                                                                     (model.lr, model.shared_lr)]}
+                                                                     
+            descent_vel_args = {"inputs":[], "outputs":[], "updates":updates_dv}
+                                                                     
+            model.compile_train_fn_list = [get_vel_args, descent_vel_args]
+            
+            model.compile_train() # needs compile model before para_load_init() # 2 (local to worker type)
+            
+            model.get_vel, model.descent_vel = model.compiled_train_fn_list
+        
+
+        
+        elif worker_type == 'avg':
+            
+            import theano
+            
+            model.vels = [theano.shared(param_i.get_value() * 0.)
+                for param_i in model.params]
+            
+            self.prepare_update_dict(worker_type='avg')
+            
+            updates_w, = model.update_dict
+            
+            train_args = {"inputs":[model.subb_ind], "outputs": [model.cost,model.error], "updates": updates_w, \
+                                                                      "givens": [(model.x,  model.shared_x_slice), 
+                                                                                 (model.y,  model.shared_y_slice),
+                                                                                 (model.lr, model.shared_lr)]}
+            model.compile_train_fn_list = [train_args]
+            
+            model.compile_train()
+            
+            model.train , = model.compiled_train_fn_list
+                    
+        
+                    
+    def prepare_update_dict(self, worker_type):
+    
+        model = self.model
+        config = self.config
+        
+        use_momentum=config['use_momentum'], 
+        use_nesterov_momentum=config['use_nesterov_momentum']
+    
+        try:
+            size = config['size']
+            verbose = config['rank'] == 0
+        except KeyError:
+            size = 1
+            verbose = True
+        
+        params, grads, weight_types = model.params, model.grads, model.weight_types
+        
+        vels, vels2 = model.vels, model.vels2
+    
+        lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
+        mu = model.mu # def: 0.9 # momentum
+        eta = model.eta  #0.0002 # weight decay
+
+        updates_w = [] # for avg
+        
+        updates_v = [] # for cdd
+        updates_dv = [] # for cdd
+
+        if use_momentum:
+
+            assert len(weight_types) == len(params)
+            
+            k=0
+
+            for param_i, grad_i, weight_type in \
+                    zip(params, grads, weight_types):
+
+                if weight_type == 'W':
+                    real_grad = grad_i + eta * param_i
+                    real_lr = lr
+                elif weight_type == 'b':
+                    real_grad = grad_i
+                    real_lr = 2. * lr
+                else:
+                    raise TypeError("Weight Type Error")
+
+                if use_nesterov_momentum:
+                    vel_i_next = mu ** 2 * vels[k] - (1 + mu) * real_lr * real_grad
+                else:
+                    vel_i_next = mu * vels[k] - real_lr * real_grad
+                    
+                if worker_type == 'cdd':
+
+                    updates_v.append((vels[k], vel_i_next))
+                    updates_dv.append((param_i, param_i + vels2[k]))
+                    
+                elif worker_type == 'avg':
+                    
+                    updates_w.append((vels[k], vel_i_next))
+                    updates_w.append((param_i, param_i + vel_i_next))
+                    
+                k=k+1
+                
+
+        else:
+            
+            k=0
+            
+            for param_i, grad_i, weight_type in \
+                    zip(params, grads, weight_types):
+                    
+            
+                if weight_type == 'W':
+                    
+                    if worker_type == 'cdd':
+                        
+                        update =          - lr * grad_i - eta * lr * param_i
+                        
+                    elif worker_type == 'avg':
+                        
+                        update =  param_i - lr * grad_i - eta * lr * param_i
+
+                elif weight_type == 'b':
+                    
+                    if worker_type == 'cdd':
+                    
+                        update =         - 2 * lr * grad_i
+                        
+                    elif worker_type == 'avg':
+                        
+                        update = param_i - 2 * lr * grad_i
+                        
+                if worker_type == 'cdd':
+                    
+                    updates_v.append((vels[k], update))
+                    updates_dv.append((param_i, param_i + vels2[k]))
+                    
+                elif worker_type == 'avg':
+                    
+                    # updates_w.append((vel_i, - 2 * lr * grad_i))
+                    updates_w.append((param_i, update))
+                    
+                    
+                k=k+1
+                
+        if worker_type == 'cdd':
+        
+            self.model.update_dict = [updates_v, updates_dv]
+        
+        elif worker_type == 'avg':
+            
+            self.model.update_dict = [updates_w]
+            
+            
+            
+    def prepare_val_fn(self):
+        
+        self.model.compile_val()
+        
                                     
     def prepare_recorder(self):
         
@@ -61,15 +255,27 @@ class BSP_PTWorker(PTWorker):
                                     
     def prepare_iterator(self):
         
+        worker_type=self.config['worker_type']
+        
         from base.iterator import P_iter
         
-        # iterator won't make another copy of the model 
-        # instead it will just call its compiled train function
-        
-        self.train_iterator = P_iter(self.config, self.model, \
-                                    self.data[0], self.data[1],  'train')
+        if worker_type == 'cdd':
+            
+            def cdd_iter_fn(subb_ind):
+                self.model.descent_vel()
+                cost, error = self.model.get_vel(subb_ind)
+                return cost, error
+            
+            self.train_iterator = P_iter(self.config, self.model, \
+                                    self.data[0], self.data[1],  'train', cdd_iter_fn)
+                                    
+        elif worker_type == 'avg':
+            
+            self.train_iterator = P_iter(self.config, self.model, \
+                                    self.data[0], self.data[1],  'train', self.model.train)
+                                    
         self.val_iterator = P_iter(self.config, self.model, \
-                                    self.data[2], self.data[3], 'val')
+                                    self.data[2], self.data[3], 'val', self.model.val)
                                     
     def load_model(self, load_epoch):
         
@@ -116,13 +322,7 @@ class BSP_PTWorker(PTWorker):
                 import shutil
                 shutil.copy(record_file_path, history_folder+'inforec.pkl')
                 self.recorder.load(filepath = record_file_path)
-                self.recorder.cut(load_epoch)
-                # print type(self.recorder.info_dict['train_info'])
-                # print len(self.recorder.info_dict['train_info'])
-                #
-                # print type(self.recorder.info_dict['val_info'])
-                # print len(self.recorder.info_dict['val_info'])
-            
+
             else:
                 raise OSError('record fle not found at %s ' % record_file_path)
 
@@ -148,8 +348,7 @@ class BSP_PTWorker(PTWorker):
         
             
     def train(self):
-        
-        # avoiding dots evaluation
+
         i_next = self.train_iterator.next
         r_start = self.recorder.start
         if self.size>1: exch = self.exchanger.exchange
@@ -163,7 +362,6 @@ class BSP_PTWorker(PTWorker):
                 i_next(self.recorder,self.count)
                 self.comm.Barrier()
                 r_start()
-                #print self.model.params[0].get_value()[1][1][1][1]
                 if self.size>1: exch()
                 
                 r_end('comm')
@@ -198,7 +396,18 @@ class BSP_PTWorker(PTWorker):
     
     def adjust_lr(self):
         
-        self.model.adjust_lr(self.epoch, size = self.size)
+        self.model.adjust_lr(self.epoch)
+        
+        new_lr = self.model.shared_lr.get_value()
+        
+        if self.config['worker_type'] == 'avg':
+            self.model.shared_lr.set_value(np.float32(new_lr*self.size))
+        else:
+            pass
+    
+        if self.verbose: 
+            print 'Learning rate now: %.10f' % \
+                    np.float32(self.model.shared_lr.get_value())
         
     def run(self):
         

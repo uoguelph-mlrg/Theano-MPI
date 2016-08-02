@@ -21,7 +21,7 @@ class BSP_Exchanger(object):
         
         self.exch_strategy = config['exch_strategy']
 
-        self.train_mode = config['train_mode']
+        self.worker_type = config['worker_type']
         # self.cuda_aware = config['cuda_aware']
         
         # TODO make sure exchanger class doesn't keep a self copy of model, only the reference to its param list
@@ -31,31 +31,31 @@ class BSP_Exchanger(object):
 
         self.avg_func_list = []
         
-        if self.train_mode == 'cdd' and self.exch_strategy == 'ar':
+        if self.worker_type == 'cdd' and self.exch_strategy == 'ar':
             
             from exchanger_strategy import Exch_allreduce
             self.exch = Exch_allreduce(self.comm, avg=False)
             self.exch.prepare(self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'copper':
+        elif self.worker_type == 'cdd' and self.exch_strategy == 'copper':
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'copper16':
+        elif self.worker_type == 'cdd' and self.exch_strategy == 'copper16':
             
             from exchanger_strategy import Exch_copper16
             self.exch = Exch_copper16(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa32':
+        elif self.worker_type == 'cdd' and self.exch_strategy == 'asa32':
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
             
-        elif self.train_mode == 'cdd' and self.exch_strategy == 'asa16':
+        elif self.worker_type == 'cdd' and self.exch_strategy == 'asa16':
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm, avg=False)
@@ -63,31 +63,31 @@ class BSP_Exchanger(object):
         
         
          
-        elif self.train_mode == 'avg' and self.exch_strategy == 'ar':
+        elif self.worker_type == 'avg' and self.exch_strategy == 'ar':
             
             from exchanger_strategy import Exch_allreduce
             self.exch = Exch_allreduce(self.comm)
             self.exch.prepare(self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'copper':
+        elif self.worker_type == 'avg' and self.exch_strategy == 'copper':
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm)
             self.exch.prepare(self.ctx, self.drv, self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'copper16':
+        elif self.worker_type == 'avg' and self.exch_strategy == 'copper16':
             
             from exchanger_strategy import Exch_copper16
             self.exch = Exch_copper16(self.comm)
             self.exch.prepare(self.ctx, self.drv, self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'asa32':
+        elif self.worker_type == 'avg' and self.exch_strategy == 'asa32':
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm)
             self.exch.prepare(self.ctx, self.drv, self.param_list)
             
-        elif self.train_mode == 'avg' and self.exch_strategy == 'asa16':
+        elif self.worker_type == 'avg' and self.exch_strategy == 'asa16':
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm)
@@ -97,7 +97,7 @@ class BSP_Exchanger(object):
     def exchange(self):
         
         # average w
-        if self.train_mode == 'avg' and self.size > 1:
+        if self.worker_type == 'avg' and self.size > 1:
             
             if self.exch_strategy == 'ar':
                 
@@ -120,7 +120,7 @@ class BSP_Exchanger(object):
                 self.exch.exchange()
 
         # sum delta w
-        elif self.train_mode == 'cdd' and self.size > 1:
+        elif self.worker_type == 'cdd' and self.size > 1:
             
             if self.exch_strategy == 'ar':
                 

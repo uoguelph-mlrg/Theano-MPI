@@ -96,8 +96,9 @@ def build_model_vgg_cnn_s(input_shape, verbose):
     net['drop7'] = DropoutLayer(net['fc7'], p=0.5)
     net['fc8'] = DenseLayer(net['drop7'], num_units=1000, nonlinearity=lasagne.nonlinearities.softmax)
                                     
-    # for layer in net.values():
-    #     print str(lasagne.layers.get_output_shape(layer))
+    if verbose:
+        for layer in net.values():
+            print str(lasagne.layers.get_output_shape(layer))
         
     return net
     
@@ -147,7 +148,8 @@ class VGG(ModelBase): # c01b input
         self.eta = config['weight_decay'] #0.0002 # weight decay
         
         self.x = T.ftensor4('x')
-        self.y = T.lvector('y')      
+        self.y = T.lvector('y')
+        self.lr = T.scalar('lr')      
         
         self.shared_x = theano.shared(np.zeros((
                                                 3,
@@ -174,21 +176,19 @@ class VGG(ModelBase): # c01b input
         # count params
         if self.verbose: self.count_params()
         
-                                          
-        # shared variable for storing momentum before exchanging momentum(delta w)
-        self.vels = [theano.shared(param_i.get_value() * 0.)
-            for param_i in self.params]
+        from lasagne.layers import get_output
+        self.output = lasagne.layers.get_output(self.output_layer, self.x, deterministic=False)
+        self.cost = lasagne.objectives.categorical_crossentropy(self.output, self.y).mean()
+        self.error = self.errors(self.output, self.y)
         
-        # shared variable for accepting momentum during exchanging momentum(delta w)
-        self.vels2 = [theano.shared(param_i.get_value() * 0.)
-            for param_i in self.params]
-            
+        
+        self.grads = T.grad(self.cost,self.params)
                                           
-        self.train = None
-        self.val = None
-        self.inference = None
-        self.get_vel = None
-        self.descent_vel = None
+        subb_ind = T.iscalar('subb')  # sub batch index
+        #print self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].shape.eval()
+        self.subb_ind = subb_ind
+        self.shared_x_slice = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].dimshuffle(3, 0, 1, 2) # c01b to bc01
+        self.shared_y_slice = self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
         
     def build_model(self, input_shape):
         
@@ -293,100 +293,47 @@ class VGG(ModelBase): # c01b input
         
     def compile_train(self, updates_dict=None):
 
-        print 'compiling training function...'
+        if self.verbose: print 'compiling training function...'
         
-        x = self.x
-        y = self.y
+        for arg_list in self.compile_train_fn_list:
+            self.compiled_train_fn_list.append(theano.function(**arg_list))
         
-        subb_ind = T.iscalar('subb')  # sub batch index
-        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].dimshuffle(3, 0, 1, 2) # c01b to bc01
-        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        
-        # training
-        from lasagne.layers import get_output
-        prediction = lasagne.layers.get_output(self.output_layer, x, deterministic=False)
-        loss = lasagne.objectives.categorical_crossentropy(prediction, y).mean()
-        error = self.errors(prediction, y)
-
-        # self.output = softmax_layer.p_y_given_x
-        # self.cost = softmax_layer.negative_log_likelihood(y)+\
-                # 0.3*aux1.negative_log_likelihood(y)+0.3*aux2.negative_log_likelihood(y)
-                                          
-        self.grads = T.grad(loss,self.params)
-        
-        
-        
-        if self.config['train_mode'] == 'cdd':
-            
-            if updates_dict == None:
-                from modelbase import updates_dict
-    
-            updates_w,updates_v,updates_dv = updates_dict(self.config, self)
-            
-        else:
-        
-            updates_w = lasagne.updates.nesterov_momentum(
-                    loss, self.params, learning_rate=self.shared_lr.get_value(), momentum=self.mu)
-                
         if self.config['monitor_grad']:
             
-            shared_grads = [theano.shared(param_i.get_value() * 0.) for param_i in self.params]
-            updates_g = zip(shared_grads, self.grads)
-            updates_w+=updates_g
+            norms = [grad.norm(L=2) for grad in self.grads]
             
-            norms = [grad.norm(L=2) for grad in shared_grads]
-            
-            self.get_norm = theano.function([subb_ind], norms,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y)]
+            self.get_norm = theano.function([self.subb_ind], norms,
+                                              givens=[(self.x, self.shared_x_slice), 
+                                                      (self.y, self.shared_y_slice)]
                                                                           )
-                                      
-
-        self.train= theano.function([subb_ind], [loss,error], updates=updates_w,
-                                              givens=[(x, shared_x), 
-                                                      (y, shared_y)]
-                                                                          )
-                                                                          
-        self.get_vel= theano.function([subb_ind], [loss,error], updates=updates_v,
-                                              givens=[(x, shared_x),
-                                                      (y, shared_y)]
-                                                                          )
-
-
-        self.descent_vel = theano.function([],[],updates=updates_dv)
         
     def compile_inference(self):
 
         print 'compiling inference function...'
-    
-        x = self.x
         
         from lasagne.layers import get_output
-        prediction = lasagne.layers.get_output(self.output_layer, x, deterministic=True)
+        
+        self.output_inference = lasagne.layers.get_output(self.output_layer, self.x, deterministic=True)
     
-        self.inference = theano.function([x],prediction)
+        self.inference = theano.function([self.x],self.output_inference)
         
     def compile_val(self):
 
         print 'compiling validation function...'
-    
-        x = self.x
-        y = self.y
         
-        subb_ind = T.iscalar('subb')  # sub batch index
-        shared_x = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].dimshuffle(3, 0, 1, 2) # c01b to bc01
-        shared_y=self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-            
-        # validation
         from lasagne.layers import get_output
-        prediction = lasagne.layers.get_output(self.output_layer, x, deterministic=True)
-        loss = lasagne.objectives.categorical_crossentropy(prediction, y).mean()
-        error = self.errors(prediction, y)
-        error_top_5 = self.errors_top_x(prediction, y, num_top=5)
         
-        self.val =  theano.function([subb_ind], [loss,error,error_top_5], updates=[], 
-                                          givens=[(x, shared_x),
-                                                  (y, shared_y)]
+        self.output_val = lasagne.layers.get_output(self.output_layer, self.x, deterministic=True)
+        
+        self.cost_val = lasagne.objectives.categorical_crossentropy(self.output_val, self.y).mean()
+        
+        self.error_val = self.errors(self.output_val, self.y)
+            
+        self.error_top_5_val = self.errors_top_x(self.output_val, self.y, num_top=5)
+        
+        self.val =  theano.function([self.subb_ind], [self.cost_val,self.error_val,self.error_top_5_val], updates=[], 
+                                          givens=[(self.x, self.shared_x_slice),
+                                                  (self.y, self.shared_y_slice)]
                                                                 )
                                                                 
     def set_dropout_off(self):
@@ -436,14 +383,8 @@ class VGG(ModelBase): # c01b input
             if epoch>5 and (val_error_list[-3] - val_error_list[-1] <
                                 self.config['lr_adapt_threshold']):
                 tuned_base_lr = self.base_lr / 10.0
-                    
-        if self.config['train_mode'] == 'cdd':
-            self.shared_lr.set_value(np.float32(tuned_base_lr))
-        elif self.config['train_mode'] == 'avg':
-            self.shared_lr.set_value(np.float32(tuned_base_lr*np.sqrt(size)))
-        
-        if self.verbose: 
-            print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())  
+         
+        self.shared_lr.set_value(np.float32(tuned_base_lr))
             
         
     def load_params(self):

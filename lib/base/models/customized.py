@@ -268,14 +268,9 @@ class Customized(ModelBase): # c01b input
             if epoch>5 and (val_error_list[-3] - val_error_list[-1] <
                                 self.config['lr_adapt_threshold']):
                 tuned_base_lr = self.base_lr / 10.0
-                    
-        if self.config['train_mode'] == 'cdd':
-            self.shared_lr.set_value(np.float32(tuned_base_lr))
-        elif self.config['train_mode'] == 'avg':
-            self.shared_lr.set_value(np.float32(tuned_base_lr*np.sqrt(size)))
         
-        if self.verbose: 
-            print 'Learning rate now: %.10f' % np.float32(self.shared_lr.get_value())  
+        self.shared_lr.set_value(np.float32(tuned_base_lr))
+
             
     def test(self):
         
