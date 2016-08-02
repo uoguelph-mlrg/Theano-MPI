@@ -24,8 +24,8 @@ use_nesterov_momentum: False # def: False
 sync_start: True # start worker process together with server process in one mpirun call
 sync_freq: 1 # def: 1, if average weights every iteration in EASGD
 
-worker_type: avg # mode selection: avg or cdd, EASGD or ASGD
-exch_strategy: asa16 # asa32, asa16, copper, copper16 or ar
+worker_type: cdd # mode selection: avg or cdd, EASGD or ASGD
+exch_strategy: ar # asa32, asa16, copper, copper16 or ar
 # cuda_aware: True # deprecated in avg mode
 # fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32
 

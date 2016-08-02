@@ -1,4 +1,5 @@
 from Async_Worker import Async_PTWorker
+import numpy as np
 
 class EASGD_PTWorker(Async_PTWorker):
     
@@ -65,7 +66,7 @@ class EASGD_PTWorker(Async_PTWorker):
         model.vels = [theano.shared(param_i.get_value() * 0.)
             for param_i in model.params]
         
-        self.prepare_update_dict(worker_type='avg')
+        self.prepare_update_dict()
         
         updates_w, = model.update_dict
         
@@ -127,7 +128,8 @@ class EASGD_PTWorker(Async_PTWorker):
                     vel_i_next = mu ** 2 * vels[k] - (1 + mu) * real_lr * real_grad
                 else:
                     vel_i_next = mu * vels[k] - real_lr * real_grad
-                    
+                
+                updates_w.append((vels[k], vel_i_next))    
                 updates_w.append((param_i, param_i + vel_i_next))
                     
                 k=k+1
@@ -155,6 +157,10 @@ class EASGD_PTWorker(Async_PTWorker):
             
         self.model.update_dict = [updates_w]
         
+    def prepare_val_fn(self):
+        
+        self.model.compile_val()
+        
         
     def adjust_lr(self):
         
@@ -164,7 +170,7 @@ class EASGD_PTWorker(Async_PTWorker):
         
         #if self.verbose: print 'global epoch %d, %d workers online' % (self.uepoch, self.n_workers )
         
-        self.model.adjust_lr(self.uepoch, size = self.n_workers)
+        self.model.adjust_lr(self.uepoch)
         
         new_lr = self.model.shared_lr.get_value()
         
