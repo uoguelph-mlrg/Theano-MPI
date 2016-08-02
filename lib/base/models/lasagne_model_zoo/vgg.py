@@ -351,7 +351,7 @@ class VGG(ModelBase): # c01b input
         
         pass
                                                                                      
-    def adjust_lr(self, epoch, size):
+    def adjust_lr(self, epoch):
             
         '''
         borrowed from AlexNet

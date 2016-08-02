@@ -9,7 +9,7 @@ theano.config.on_unused_input = 'warn'
 import warnings
 warnings.filterwarnings("ignore")
 
-from pylearn2.expr.normalize import CrossChannelNormalization
+from layers2 import CrossChannelNormalization
 
 from modelbase import ModelBase
 

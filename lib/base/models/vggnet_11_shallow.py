@@ -294,7 +294,7 @@ class VGGNet_11(ModelBase): # c01b input
         
         Dropout.SetDropoutOn()
                                                                                                       
-    def adjust_lr(self, epoch, size):
+    def adjust_lr(self, epoch):
             
         '''
         borrowed from AlexNet
