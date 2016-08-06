@@ -60,9 +60,10 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
 - to start an EASGD training session: 
   - 1) If you want to start server and workers in one communicator, configure config.yaml file as follows:
    ```
-   sync_rule: EASGD
    sync_start: True 
    avg_freq: 2 or desired value
+   
+   worker_type: EASGD
    
    # randomness
    shuffle: True
