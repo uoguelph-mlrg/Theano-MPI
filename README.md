@@ -50,9 +50,9 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
 - 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model, e.g., alexnet.yaml, googlenet.yaml, vggnet.yaml or customized.yaml.
 - to start a BSP training session: 
-  - 1) In the "weight exchange" section in config.yaml, choose as follows:
+  - 1) In config.yaml, choose as follows:
   ```
-  sync_rule: BSP
+  worker_type: BSP
   ```
   - 2) choose a parameter exchanging strategy from "ar", "asa32", "asa16" and "copper", where "ar" means using Allreduce() from mpi4py, "asa32" and "asa16" mean using the Alltoall-sum-Allgather strategy with float32 and float16 respectively, "copper" means using the binary reduction strategy designed for copper GPU topology.
   - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. N can only be a power of 2 if chosing strategies like "asa" and "copper".
