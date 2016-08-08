@@ -285,14 +285,14 @@ if __name__ == '__main__':
     with open('../../../run/config.yaml', 'r') as f:
         config = yaml.load(f)
         
-    with open('../../../run/vggnet.yaml', 'r') as f:
+    with open('../../../run/customized.yaml', 'r') as f:
         model_config = yaml.load(f)
     config = dict(config.items()+model_config.items())
     
     import pycuda.driver as drv
     drv.init()
     
-    model = VGGNet_16(config)
+    model = Customized(config)
     
     # simple test
     

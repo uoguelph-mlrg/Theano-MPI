@@ -158,6 +158,8 @@ class AlexNet(ModelBase):
         self.p_y_given_x = softmax_layer8.p_y_given_x
         self.y_pred = softmax_layer8.y_pred
         
+        self.output = self.p_y_given_x
+        
         
         self.cost = softmax_layer8.negative_log_likelihood(y)
         self.error = softmax_layer8.errors(y)
@@ -273,3 +275,57 @@ class AlexNet(ModelBase):
         self.val(0)
         
         print 'test passed'
+        
+if __name__ == '__main__':
+    
+    
+    import yaml
+    with open('../../../run/config.yaml', 'r') as f:
+        config = yaml.load(f)
+        
+    with open('../../../run/alexnet.yaml', 'r') as f:
+        model_config = yaml.load(f)
+    config = dict(config.items()+model_config.items())
+    config['verbose'] = True
+    config['batch_size']=1
+    
+    
+    import pycuda.driver as drv
+    drv.init()
+    
+    model = AlexNet(config)
+    
+    # inference demo
+    model.compile_inference()
+    
+    test_image = np.zeros((3,227,227,1),dtype=theano.config.floatX) # inference on an image 
+    
+    soft_prob = model.inference(test_image)
+    
+    num_top = 5
+    
+    y_pred_top_x = np.argsort(soft_prob, axis=1)[:, -num_top:] # prob sorted from small to large
+    
+    print ''
+    print 'top-5 prob:'
+    print y_pred_top_x[0]
+    
+    
+    print ''
+    print 'top-5 prob catagories:'
+    print [soft_prob[0][index] for index in y_pred_top_x[0]]
+    
+    print ''
+    # git clone https://github.com/hma02/show_batch.git
+    # run mk_label_dict.py to generate label_dict.npy
+    label_dict = np.load('label_dict.npy').tolist()
+    
+    print 'discription:'
+    for cat in y_pred_top_x[0]:
+        print "%s: %s" % (cat,label_dict[cat])
+        print ''
+    
+    
+    
+     
+     
