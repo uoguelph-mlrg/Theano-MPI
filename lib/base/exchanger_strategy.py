@@ -70,8 +70,51 @@ class Exch_allreduce(Exch_strategy):
             self.comm.Allreduce(source_param.get_value(), param_update)
             dest_param.set_value(param_update)
         
+
+class Exch_nccl32(Exch_strategy):
+    def __init__(self, comm, avg=True):
+        Exch_strategy.__init__(self)
         
-        
+        self.comm = comm
+        self.size = self.comm.count
+        self.rank = self.comm.rank
+        self.avg = avg
+
+    def verify_shape(self, param_update):
+        return param_update.shape
+
+    def verify_numElements(self, *args):
+        pass
+
+    def prepare(self, ctx, source_param_list, dest_param_list=None):
+        self.source_param_list = source_param_list
+        if dest_param_list!=None:
+            self.dest_param_list = dest_param_list
+        else:
+            self.dest_param_list = self.source_param_list
+
+        self.ctx = ctx
+
+        if self.avg:
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function(
+                [],
+                updates=[(param, param * division_factor)
+                         for param in self.source_param_list])
+
+    def exchange(self):
+        # divding source param first before exchanging
+        if self.avg:
+            self.avg_func()
+
+        for source_s, dest_s in zip(self.source_param_list,
+                                    self.dest_param_list):
+            source = source_s.container.value
+            source.sync()
+            dest = dest_s.container.value
+            dest.sync()
+            self.comm.all_reduce(source, '+', dest)
+
 
 class Exch_asa32(Exch_strategy):
     '''
@@ -142,7 +185,6 @@ class Exch_asa32(Exch_strategy):
         }
         """, "sumfloats", [pygpu.gpuarray.GpuArray, pygpu.gpuarray.GpuArray, 'uint32', 'uint32' 'uint32'], context=self.ctx)
 
-        self.param_update_ga_list=[]
         self.d_param_32_tmp_list=[]
         self.d_param_32_sum_list=[]
         
@@ -194,12 +236,14 @@ class Exch_asa32(Exch_strategy):
         # allreduce weight from param_update_ga to itself
                                   
         wcount=0
-        for param_update_s in self.source_param_list:
-            param_update = param_update_s.container.value
-            param_update.sync()
+        for source_s, dest_s in zip(self.source_param_list,
+                                    self.dest_param_list):
+            source = source_s.container.value
+            source.sync()
+            dest = dest_s.container.value
 	        
             self.comm.Alltoall(
-                [bufint(param_update), mpidtype],
+                [bufint(source), mpidtype],
                 [bufint(self.d_param_32_tmp_list[wcount]),
                  mpidtype])
 	    
@@ -213,11 +257,13 @@ class Exch_asa32(Exch_strategy):
                                  gs=self.grid_sum_size_list[wcount])
 
             self.d_param_32_sum_list[wcount].sync()
+            dest.sync()
             self.comm.Allgather(\
                 [bufint(self.d_param_32_sum_list[wcount]),mpidtype],
-                [bufint(param_update_ga),mpidtype])
+                [bufint(dest),mpidtype])
 
             wcount = wcount + 1
+
 
 class Exch_asa16(Exch_strategy):
     '''
