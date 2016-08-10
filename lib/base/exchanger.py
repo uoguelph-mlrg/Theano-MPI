@@ -1,19 +1,43 @@
 from mpi4py import MPI
 import numpy as np
-import pycuda.gpuarray as gpuarray
 import theano
-import theano.misc.pycuda_init
-import theano.misc.pycuda_utils
+import pygpu
 
 from helper_funcs import bufint, dtype_to_mpi
+
+
+def do_sendrecv(comm, glist, wlist, dest):
+    for gs, ws in zip(glist, wlist):
+        g = gs.container.value
+        w = ws.container.value
+        g.sync()
+        w.sync()
+        comm.Sendrecv(sendbuf=[bufint(g), MPI.FLOAT], dest=dest,
+                      recvbuf=[bufint(w), MPI.FLOAT], source=dest)
+
+
+def do_send(comm, params, dest):
+    for ps in params:
+        p = ps.container.value
+        mpitp = dtype_to_mpi(p.dtype)
+        p.sync()
+        comm.Send(buf=[bufint(p), mpitp], dest=dest)
+
+
+def do_recv(comm, params, dest):
+    for ps in params:
+        p = ps.container.value
+        mpitp = dtype_to_mpi(p.dtype)
+        p.sync()
+        comm.Recv(buf = [bufint(p), mpitp], source=dest)
+
 
 class BSP_Exchanger(object):
     '''
     model parameter exchanger during BSP weight exchanging
     '''
-    def __init__(self, config, drv, ctx, model):
+    def __init__(self, config, ctx, model):
 
-        self.drv = drv
         self.ctx = ctx
         self.comm = config['comm']
 
@@ -41,25 +65,25 @@ class BSP_Exchanger(object):
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm, avg=False)
-            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.worker_type == 'cdd' and self.exch_strategy == 'copper16':
             
             from exchanger_strategy import Exch_copper16
             self.exch = Exch_copper16(self.comm, avg=False)
-            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.worker_type == 'cdd' and self.exch_strategy == 'asa32':
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm, avg=False)
-            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.worker_type == 'cdd' and self.exch_strategy == 'asa16':
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm, avg=False)
-            self.exch.prepare(self.ctx, self.drv, self.vels, self.vels2)
+            self.exch.prepare(self.ctx, self.vels, self.vels2)
         
         
          
@@ -73,25 +97,25 @@ class BSP_Exchanger(object):
             
             from exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm)
-            self.exch.prepare(self.ctx, self.drv, self.param_list)
+            self.exch.prepare(self.ctx, self.param_list)
             
         elif self.worker_type == 'avg' and self.exch_strategy == 'copper16':
             
             from exchanger_strategy import Exch_copper16
             self.exch = Exch_copper16(self.comm)
-            self.exch.prepare(self.ctx, self.drv, self.param_list)
+            self.exch.prepare(self.ctx, self.param_list)
             
         elif self.worker_type == 'avg' and self.exch_strategy == 'asa32':
             
             from exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm)
-            self.exch.prepare(self.ctx, self.drv, self.param_list)
+            self.exch.prepare(self.ctx, self.param_list)
             
         elif self.worker_type == 'avg' and self.exch_strategy == 'asa16':
             
             from exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm)
-            self.exch.prepare(self.ctx, self.drv, self.param_list)
+            self.exch.prepare(self.ctx, self.param_list)
                 
 
     def exchange(self):
@@ -149,10 +173,9 @@ class EASGD_Exchanger(object):
     model parameter exchanger during EASGD weight exchanging (with sync rule intergrated)
     
     '''
-    def __init__(self, config, drv, param_list, etype):
+    def __init__(self, config, param_list, etype):
         
         self.etype = etype
-        self.drv = drv
         self.param_list = param_list
 
         self.dest = 0 # size is 1 on both side of this intercomm, so server_rank=0, worker_rank=0
@@ -173,35 +196,22 @@ class EASGD_Exchanger(object):
     def prepare_server(self):
         
         self.g_param_list = self.param_list
-        self.g_param_ga_list = []
-        self.w_param_ga_list = []
         self.w_param_list = []
 
         for param in self.param_list:
             np_param = param.get_value()
             w_param = theano.shared(np_param)
             self.w_param_list.append(w_param)
-            w_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.w_param_ga_list.append(w_param_ga)
-            g_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.g_param_ga_list.append(g_param_ga)
             
     def prepare_worker(self):
         
         self.w_param_list = self.param_list
-        self.w_param_ga_list = []
-        self.g_param_ga_list = []
         self.g_param_list = []
 
         for param in self.param_list:
-            
             np_param = param.get_value()
             g_param = theano.shared(np_param)
             self.g_param_list.append(g_param)
-            g_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.g_param_ga_list.append(g_param_ga)
-            w_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.w_param_ga_list.append(w_param_ga)
             
     def mk_update_func(self):
         
@@ -230,81 +240,19 @@ class EASGD_Exchanger(object):
         
         
     def exchange(self):
-        
         # server and worker send param to each other
-        
+
         # this function needs the worker to send an 'exchange' message after a call to its train()
         # to the server through REQ-REP socket first.
-        
+
         assert self.comm != None
         
         if self.etype == 'server':
             
-            # copy weight from g_param to g_param_ga
-            for g_param, g_param_ga in \
-                            zip(self.g_param_list, self.g_param_ga_list):
-
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(g_param.container.value)
-
-                self.drv.memcpy_dtod(g_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
-                                      
-            # Sendrecv(self, sendbuf, int dest=0, int sendtag=0, recvbuf=None, int source=0, int recvtag=0, Status status=None)
-            
-            for g_param_ga, w_param_ga in zip(self.g_param_ga_list, self.w_param_ga_list):
-                self.comm.Sendrecv(sendbuf = [bufint(g_param_ga), MPI.FLOAT], dest = self.dest,
-                                   recvbuf = [bufint(w_param_ga), MPI.FLOAT], source = self.dest,
-                                   )
-                                   
-            # copy weight from w_param_ga to w_param
-            for w_param, w_param_ga in \
-                            zip(self.w_param_list, self.w_param_ga_list):
-
-            	param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(w_param.container.value)
-
-            	self.drv.memcpy_dtod(param_ga.ptr,
-                                      w_param_ga.ptr,
-                                      w_param_ga.dtype.itemsize *
-                                      w_param_ga.size)
-                               
-                               
+            do_sendrecv(self.comm, self.g_param_list, self.w_param_list, self.dest)
         elif self.etype == 'worker':
             
-            # copy weight from w_param to w_param_ga
-            for w_param, w_param_ga in \
-                            zip(self.w_param_list, self.w_param_ga_list):
-
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(w_param.container.value)
-
-                self.drv.memcpy_dtod(w_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
-                                      
-            # Sendrecv(self, sendbuf, int dest=0, int sendtag=0, recvbuf=None, int source=0, int recvtag=0, Status status=None)
-            
-            for w_param_ga, g_param_ga in zip(self.w_param_ga_list, self.g_param_ga_list):
-                self.comm.Sendrecv(sendbuf = [bufint(w_param_ga), MPI.FLOAT], dest = self.dest,
-                                   recvbuf = [bufint(g_param_ga), MPI.FLOAT], source = self.dest,
-                                   )
-                                   
-            # copy weight from w_param_ga to w_param
-            for g_param, g_param_ga in \
-                            zip(self.g_param_list, self.g_param_ga_list):
-
-            	param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(g_param.container.value)
-
-            	self.drv.memcpy_dtod(param_ga.ptr,
-                                      g_param_ga.ptr,
-                                      g_param_ga.dtype.itemsize *
-                                      g_param_ga.size)
-                                      
+            do_sendrecv(self.comm, self.w_param_list, self.g_param_list, self.dest)
         self.update_func()
             
         self.comm = None
@@ -314,46 +262,11 @@ class EASGD_Exchanger(object):
         assert self.comm != None
         
         if self.etype == 'server':
-            # copy weight from g_param to g_param_ga
-            for g_param, g_param_ga in \
-                            zip(self.g_param_list, self.g_param_ga_list):
+            do_send(self.comm, self.g_param_list, self.dest)
 
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(g_param.container.value)
-
-                self.drv.memcpy_dtod(g_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
-                                      
-            # Send(self, buf, int dest=0, int tag=0)
-            
-            
-            mpitp = dtype_to_mpi(self.g_param_ga_list[0].dtype)
-            
-            for g_param_ga in self.g_param_ga_list:
-                
-                self.comm.Send(buf = [bufint(g_param_ga), mpitp], dest = self.dest)
-            
         elif self.etype == 'worker':
-            
-            mpitp = dtype_to_mpi(self.w_param_ga_list[0].dtype)
-            
-            for w_param_ga in self.w_param_ga_list:
-                
-                self.comm.Recv(buf = [bufint(w_param_ga), mpitp], source = self.dest)
-                
-            # copy weight from w_param_ga to w_param
-            for w_param_ga, w_param in \
-                            zip(self.w_param_ga_list, self.w_param_list):
+            do_recv(self.comm, self.w_param_list, self.dest)
 
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(w_param.container.value)
-
-                self.drv.memcpy_dtod(w_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
         self.comm = None
         
         
@@ -362,10 +275,9 @@ class ASGD_Exchanger(object):
     model parameter exchanger during ASGD weight exchanging (with sync rule intergrated)
 
     '''
-    def __init__(self, config, drv, etype, param_list, delta_list=None):
+    def __init__(self, config, etype, param_list, delta_list=None):
         
         self.etype = etype
-        self.drv = drv
         self.param_list = param_list
 
         self.dest = 0 # size is 1 on both side of this intercomm, so server_rank=0, worker_rank=0
@@ -386,39 +298,23 @@ class ASGD_Exchanger(object):
     def prepare_server(self):
         
         self.g_param_list = self.param_list
-        self.g_param_ga_list = []
-        self.w_delta_ga_list = []
         self.w_delta_list = []
 
         for param in self.param_list:
             np_param = param.get_value()
             w_delta = theano.shared(np_param)
             self.w_delta_list.append(w_delta)
-            w_delta_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.w_delta_ga_list.append(w_delta_ga)
-            g_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.g_param_ga_list.append(g_param_ga)
             
     def prepare_worker(self):
         
         self.w_param_list = self.param_list # vels in this case and sync_freq = 1
-        self.w_param_ga_list = []
         self.w_delta_list = self.delta_list
-        self.w_delta_ga_list = []
-        self.g_param_ga_list = []
         self.g_param_list = []
 
         for param in self.param_list:
-            
             np_param = param.get_value()
             g_param = theano.shared(np_param)
             self.g_param_list.append(g_param)
-            g_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.g_param_ga_list.append(g_param_ga)
-            w_delta_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.w_delta_ga_list.append(w_delta_ga)
-            w_param_ga = gpuarray.GPUArray(np_param.shape,np_param.dtype)
-            self.w_param_ga_list.append(w_param_ga)
             
     def mk_update_func(self):
         
@@ -459,72 +355,10 @@ class ASGD_Exchanger(object):
         
         if self.etype == 'server':
             
-            # copy weight from g_param to g_param_ga
-            for g_param, g_param_ga in \
-                            zip(self.g_param_list, self.g_param_ga_list):
-
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(g_param.container.value)
-
-                self.drv.memcpy_dtod(g_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
-                                      
-            # Sendrecv(self, sendbuf, int dest=0, int sendtag=0, recvbuf=None, int source=0, int recvtag=0, Status status=None)
-            
-            for g_param_ga, w_delta_ga in zip(self.g_param_ga_list, self.w_delta_ga_list):
-                self.comm.Sendrecv(sendbuf = [bufint(g_param_ga), MPI.FLOAT], dest = self.dest,
-                                   recvbuf = [bufint(w_delta_ga), MPI.FLOAT], source = self.dest,
-                                   )
-                                   
-            # copy weight from w_param_ga to w_param
-            for w_param, w_param_ga in \
-                            zip(self.w_delta_list, self.w_delta_ga_list):
-
-            	param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(w_param.container.value)
-
-            	self.drv.memcpy_dtod(param_ga.ptr,
-                                      w_param_ga.ptr,
-                                      w_param_ga.dtype.itemsize *
-                                      w_param_ga.size)
-                               
-                               
+            do_sendrecv(self.comm, self.g_param_list, self.w_delta_list, self.dest)
         elif self.etype == 'worker':
             
-            # copy weight from w_param to w_param_ga
-            for w_param, w_param_ga in \
-                            zip(self.w_delta_list, self.w_delta_ga_list):
-
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(w_param.container.value)
-
-                self.drv.memcpy_dtod(w_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
-                                      
-            # Sendrecv(self, sendbuf, int dest=0, int sendtag=0, recvbuf=None, int source=0, int recvtag=0, Status status=None)
-            
-            for w_delta_ga, g_param_ga in zip(self.w_delta_ga_list, self.g_param_ga_list):
-                self.comm.Sendrecv(sendbuf = [bufint(w_delta_ga), MPI.FLOAT], dest = self.dest,
-                                   recvbuf = [bufint(g_param_ga), MPI.FLOAT], source = self.dest,
-                                   )
-                                   
-            # copy weight from w_param_ga to w_param
-            for g_param, g_param_ga in \
-                            zip(self.g_param_list, self.g_param_ga_list):
-
-            	param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(g_param.container.value)
-
-            	self.drv.memcpy_dtod(param_ga.ptr,
-                                      g_param_ga.ptr,
-                                      g_param_ga.dtype.itemsize *
-                                      g_param_ga.size)
-                                      
-                                      
+            do_sendrecv(self.comm, self.w_delta_list, self.g_param_list, self.dest)
         self.update_func()
             
         self.comm = None # clear comm for server in order to select a different one when another worker requests
@@ -534,46 +368,11 @@ class ASGD_Exchanger(object):
         assert self.comm != None
         
         if self.etype == 'server':
-            # copy weight from g_param to g_param_ga
-            for g_param, g_param_ga in \
-                            zip(self.g_param_list, self.g_param_ga_list):
-
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(g_param.container.value)
-
-                self.drv.memcpy_dtod(g_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
-                                      
-            # Send(self, buf, int dest=0, int tag=0)
-            
-            
-            mpitp = dtype_to_mpi(self.g_param_ga_list[0].dtype)
-            
-            for g_param_ga in self.g_param_ga_list:
-                
-                self.comm.Send(buf = [bufint(g_param_ga), mpitp], dest = self.dest)
+            do_recv(self.comm, self.g_param_list, self.dest)
             
         elif self.etype == 'worker':
-            
-            mpitp = dtype_to_mpi(self.w_param_ga_list[0].dtype)
-            
-            for w_param_ga in self.w_param_ga_list:
-                
-                self.comm.Recv(buf = [bufint(w_param_ga), mpitp], source = self.dest)
-                
-            # copy weight from w_param_ga to w_param
-            for w_param_ga, w_param in \
-                            zip(self.w_param_ga_list, self.w_param_list):
+            do_recv(self.comm, self.w_param_list, self.dest)
 
-                param_ga = \
-                 theano.misc.pycuda_utils.to_gpuarray(w_param.container.value)
-
-                self.drv.memcpy_dtod(w_param_ga.ptr,
-                                      param_ga.ptr,
-                                      param_ga.dtype.itemsize *
-                                      param_ga.size)
         self.comm = None
                 
         
