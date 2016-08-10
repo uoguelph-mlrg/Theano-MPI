@@ -1,10 +1,7 @@
-import pycuda.gpuarray as gpuarray
 import theano
-import theano.misc.pycuda_init
-import theano.misc.pycuda_utils
 from helper_funcs import bufint, dtype_to_mpi
-from pycuda.compiler import SourceModule
 import numpy as np
+import pygpu
 
 class Exch_strategy(object):
     
@@ -122,7 +119,7 @@ class Exch_asa32(Exch_strategy):
             print numElements,'x',param_update_shape
             raise
             
-    def prepare(self, ctx, drv, source_param_list, dest_param_list=None):
+    def prepare(self, ctx, source_param_list, dest_param_list=None):
         
     	self.source_param_list = source_param_list
         if dest_param_list!=None:
@@ -131,37 +128,20 @@ class Exch_asa32(Exch_strategy):
             self.dest_param_list = self.source_param_list
             
         self.ctx = ctx
-        self.drv = drv
-    
-        mod = SourceModule("""
-        __global__ void sumfloats(float* f1, float* f2, int numElements,int ranksize,int reducesize)
-        {
-                int i =  blockDim.x * blockIdx.x + threadIdx.x;
-                //unsigned short t1,t2;
-                float t1,t2;
-                if (i < numElements)
-                {
-                        t2 = f1[i];
-                        //tf2 = __half2float(t2);
 
-                        for (int j=1;j<ranksize;j++)
-                        {
-                                t1 = f1[i + reducesize*j];
-                                //tf1 = __half2float(t1);
-                                //tf2 += tf1;
-                                t2 += t1;
-                        }
-
-                        //t2 = __float2half_rn(tf2);
-                        f2[i] = t2;
-                }
-
+        self.d_f32_sumfloats = pygpu.gpuarray.GpuKernel("""
+        KERNEL void sumfloats(ga_float *f1, ga_float *f2, ga_uint numElements, ga_uint ranksize, ga_uint reducesize) {
+        ga_uint i = LDIM_0 * GID_0 + LID_0;
+        if (i < numElements) {
+          ga_float t = f1[i];
+          for (ga_uint j = 1; i < ranksize; j++) {
+            t += f1[i + reducesize *j];
+          }
+          f2[i] = t;
         }
-        """)
+        }
+        """, "sumfloats", [pygpu.gpuarray.GpuArray, pygpu.gpuarray.GpuArray, 'uint32', 'uint32' 'uint32'], context=self.ctx)
 
-
-        self.d_f32_sumfloats = mod.get_function("sumfloats")
-        
         self.param_update_ga_list=[]
         self.d_param_32_tmp_list=[]
         self.d_param_32_sum_list=[]
@@ -181,27 +161,19 @@ class Exch_asa32(Exch_strategy):
             
             param_update_shape = self.verify_shape(param_update)
             
-            numElements = np.int32(np.prod(param_update_shape))
+            numElements = np.uint32(np.prod(param_update_shape))
             self.verify_numElements(numElements,param_update_shape,param_update)
             self.numElements_list.append(numElements)
-            reducesize = np.int32(numElements/self.size)
+            reducesize = np.uint32(numElements/self.size)
             self.reduce_size_list.append(reducesize)
             grid_sum_size = (reducesize / block_size + 1, 1)
             self.grid_sum_size_list.append(grid_sum_size)
             
-            param_32_tmp = np.zeros(numElements, dtype=np.float32)
-            param_32_sum = np.zeros(reducesize, dtype=np.float32)
+            param_32_tmp = pygpu.zeros(numElements, dtype=np.float32)
+            param_32_sum = pygpu.zeros(reducesize, dtype=np.float32)
 
-            
-            #Prepare data in decive (GPU) memory
-            param_update_ga = gpuarray.GPUArray(param_update_shape,param_update.dtype)
-            self.param_update_ga_list.append(param_update_ga)
-
-            d_param_32_tmp = gpuarray.to_gpu(param_32_tmp)
-            self.d_param_32_tmp_list.append(d_param_32_tmp)
-
-            d_param_32_sum = gpuarray.to_gpu(param_32_sum)
-            self.d_param_32_sum_list.append(d_param_32_sum)
+            self.d_param_32_tmp_list.append(param_32_tmp)
+            self.d_param_32_sum_list.append(param_32_sum)
 
         self.mpidtype = dtype_to_mpi(self.d_param_32_tmp_list[0].dtype)
 
@@ -210,7 +182,7 @@ class Exch_asa32(Exch_strategy):
             self.avg_func = theano.function([], \
                             updates=[(param, param * division_factor) \
                             for param in self.source_param_list])
-    
+
     def exchange(self):
         
         mpidtype = self.mpidtype
@@ -219,59 +191,33 @@ class Exch_asa32(Exch_strategy):
         if self.avg:
             self.avg_func()
         
-        # copy weight from param_ga to param_update_ga
-        for param, param_update_ga in \
-                        zip(self.source_param_list, self.param_update_ga_list):
-
-            param_ga = \
-             theano.misc.pycuda_utils.to_gpuarray(param.container.value)
-
-            self.drv.memcpy_dtod(param_update_ga.ptr,
-                                  param_ga.ptr,
-                                  param_ga.dtype.itemsize *
-                                  param_ga.size)
-                                  
-            self.ctx.synchronize() 
-                                  
         # allreduce weight from param_update_ga to itself
                                   
         wcount=0
-        for param_update_ga in self.param_update_ga_list:
+        for param_update_s in self.source_param_list:
+            param_update = param_update_s.container.value
+            param_update.sync()
 	        
             self.comm.Alltoall(
-	                  [bufint(param_update_ga), mpidtype],
-	                  [bufint(self.d_param_32_tmp_list[wcount]),\
-                                                   mpidtype])
+                [bufint(param_update), mpidtype],
+                [bufint(self.d_param_32_tmp_list[wcount]),
+                 mpidtype])
 	    
 	        # sumfloats(float* f1, float* f2, int numElements,int ranksize,int reducesize)
-            self.d_f32_sumfloats(self.d_param_32_tmp_list[wcount], \
-                            self.d_param_32_sum_list[wcount],\
-	                        self.reduce_size_list[wcount],self.ranksize,\
-                            self.reduce_size_list[wcount],\
-                            block=(256,1,1),\
-                            grid=self.grid_sum_size_list[wcount])
-                            
-            self.ctx.synchronize()
+            self.d_f32_sumfloats(self.d_param_32_tmp_list[wcount],
+                                 self.d_param_32_sum_list[wcount],
+                                 self.reduce_size_list[wcount],
+                                 self.ranksize,
+                                 self.reduce_size_list[wcount],
+                                 ls=256
+                                 gs=self.grid_sum_size_list[wcount])
+
+            self.d_param_32_sum_list[wcount].sync()
             self.comm.Allgather(\
-                            [bufint(self.d_param_32_sum_list[wcount]),mpidtype], \
-                            [bufint(param_update_ga),mpidtype])
-            #param.container.value.release_buffer(param_buf)
-            
-            wcount = wcount +1
-            
-        # copy weight from param_reduce_ga back to param_ga
-        for param, param_update_ga in \
-                        zip(self.dest_param_list, self.param_update_ga_list):
+                [bufint(self.d_param_32_sum_list[wcount]),mpidtype],
+                [bufint(param_update_ga),mpidtype])
 
-            param_ga = \
-             theano.misc.pycuda_utils.to_gpuarray(param.container.value)
-
-            self.drv.memcpy_dtod(param_ga.ptr,
-                                  param_update_ga.ptr,
-                                  param_update_ga.dtype.itemsize *
-                                  param_ga.size)
-
-            self.ctx.synchronize() 
+            wcount = wcount + 1
 
 class Exch_asa16(Exch_strategy):
     '''
@@ -321,7 +267,7 @@ class Exch_asa16(Exch_strategy):
             print numElements,'x',param_update_shape
             raise
             
-    def prepare(self, ctx, drv, source_param_list, dest_param_list=None):
+    def prepare(self, ctx, source_param_list, dest_param_list=None):
         
     	self.source_param_list = source_param_list
         if dest_param_list!=None:
@@ -330,71 +276,8 @@ class Exch_asa16(Exch_strategy):
             self.dest_param_list = self.source_param_list
             
         self.ctx = ctx
-        self.drv = drv
     
-        mod = SourceModule("""
-        __global__ void float2half(float* f, unsigned short* h, int numElements,int offset)
-        {
-        	    int i = blockDim.x * blockIdx.x + threadIdx.x;
-        	    if (i+ offset*7 < numElements)
-        	    {
-        	            float t0 = f[i];
-        	            float t1 = f[i+ offset];
-        	            float t2 = f[i+ offset*2];
-        	            float t3 = f[i+ offset*3];
-        	            float t4 = f[i+ offset*4];
-        	            float t5 = f[i+ offset*5];
-        	            float t6 = f[i+ offset*6];
-        	            float t7 = f[i+ offset*7];
-        	            unsigned short t01 = __float2half_rn(t0);
-        	            unsigned short t11 = __float2half_rn(t1);
-        	            unsigned short t21 = __float2half_rn(t2);
-        	            unsigned short t31 = __float2half_rn(t3);
-        	            unsigned short t41 = __float2half_rn(t4);
-        	            unsigned short t51 = __float2half_rn(t5);
-        	            unsigned short t61 = __float2half_rn(t6);
-        	            unsigned short t71 = __float2half_rn(t7);
-        	            h[i] = t01;
-        	            h[i+ offset] = t11;
-        	            h[i+ offset*2] = t21;
-        	            h[i+ offset*3] = t31;
-        	            h[i+ offset*4] = t41;
-        	            h[i+ offset*5] = t51;
-        	            h[i+ offset*6] = t61;
-        	            h[i+ offset*7] = t71;
-        	    }
-        }
-        __global__ void half2float(unsigned short* h, float* f, int numElements,int offset)
-        {
-        	    int i = blockDim.x * blockIdx.x + threadIdx.x;
-        	    if (i+ offset*7 < numElements)
-        	    {
-        	            unsigned short t0 = h[i];
-        	            unsigned short t1 = h[i+ offset];
-        	            unsigned short t2 = h[i+ offset*2];
-        	            unsigned short t3 = h[i+ offset*3];
-        	            unsigned short t4 = h[i+ offset*4];
-        	            unsigned short t5 = h[i+ offset*5];
-        	            unsigned short t6 = h[i+ offset*6];
-        	            unsigned short t7 = h[i+ offset*7];
-        	            float t10 = __half2float(t0);
-        	            float t11 = __half2float(t1);
-        	            float t12 = __half2float(t2);
-        	            float t13 = __half2float(t3);
-        	            float t14 = __half2float(t4);
-        	            float t15 = __half2float(t5);
-        	            float t16 = __half2float(t6);
-        	            float t17 = __half2float(t7);
-        	            f[i] = t10;
-        	            f[i+ offset] = t11;
-        	            f[i+ offset*2] = t12;
-        	            f[i+ offset*3] = t13;
-        	            f[i+ offset*4] = t14;
-        	            f[i+ offset*5] = t15;
-        	            f[i+ offset*6] = t16;
-        	            f[i+ offset*7] = t17;
-        	    }
-        }
+        """
         __global__ void sumhalfs(unsigned short* h1, unsigned short* h2, int numElements,int ranksize,int reducesize)
         {
         	    int i =  blockDim.x * blockIdx.x + threadIdx.x;
@@ -417,11 +300,28 @@ class Exch_asa16(Exch_strategy):
         	    }
 
         }
-        """)
-        self.float2half = mod.get_function("float2half")
-        self.half2float = mod.get_function("half2float")
-        self.sumhalfs = mod.get_function("sumhalfs")
-        
+        """
+        self.float2half = pygpu.elemwise.GpuElemwise("a = b",
+                                                     [arg("b", 'float32'),
+                                                      arg("a", 'float16', write=True)],
+                                                     convert_f16=True)
+        self.half2float = pygpu.elemwise.GpuElemwise("a = b",
+                                                     [arg("b", 'float16'),
+                                                      arg("a", 'float32', write=True)],
+                                                     convert_f16=True)
+        self.sumhalfs = pygpu.gpuarray.GpuKernel("""
+        KERNEL void sumhalfs(ga_half *f1, ga_half *f2, ga_uint numElements, ga_uint ranksize, ga_uint reducesize) {
+        ga_uint i = LDIM_0 * GID_0 + LID_0;
+        if (i < numElements) {
+          ga_float t = load_half(&f1[i]);
+          for (ga_uint j = 1; i < ranksize; j++) {
+            t += f1[i + reducesize *j];
+          }
+          store_half(&f2[i], t);
+        }
+        }
+        """, "sumhalfs", [pygpu.gpuarray.GpuArray, pygpu.gpuarray.GpuArray, 'uint32', 'uint32' 'uint32'], context=self.ctx)
+
         self.param_update_ga_list=[]
         self.d_param_16_list = []
         self.d_param_16_update_list = []
@@ -451,13 +351,13 @@ class Exch_asa16(Exch_strategy):
             self.numElements_list.append(numElements)
             reducesize = np.int32(numElements/self.size)
             self.reduce_size_list.append(reducesize)
-            grid_size = (numElements/(block_size*8) + 1,1)
+            grid_size = (numElements/(block_size*8) + 1)
             self.grid_size_list.append(grid_size)
-            grid_sum_size = (reducesize / block_size + 1, 1)
+            grid_sum_size = (reducesize / block_size + 1)
             self.grid_sum_size_list.append(grid_sum_size)
             offset = np.int32(numElements/8)
             self.offset_list.append(offset)
-            
+
             param_16 = np.zeros(numElements, dtype=np.ushort)
             param_16_tmp = np.zeros(numElements, dtype=np.ushort)
             param_16_sum = np.zeros(reducesize, dtype=np.ushort)
