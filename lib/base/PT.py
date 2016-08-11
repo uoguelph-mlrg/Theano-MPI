@@ -5,7 +5,7 @@ from pprint import pprint
 import time
 import os
 
-def test_intercomm(intercomm,rank):
+def test_intercomm(intercomm, rank):
     
     if intercomm != MPI.COMM_NULL:
         assert intercomm.remote_size == 1
@@ -146,22 +146,14 @@ class PTBase(object):
         if self.verbose: print 'val on %d files' % n_val_files
     
     def init_device(self):
-    
-        gpuid = int(self.device[-1])
-
-        # pycuda and zmq set up
-        import pycuda.driver as drv
-
-        drv.init()
-        dev = drv.Device(gpuid)
-        ctx = dev.make_context()
-        
-        self.drv = drv
-        self.dev = dev
-        self.ctx = ctx
-    
-        import theano.sandbox.cuda
-        theano.sandbox.cuda.use(self.config['device'])
+        import os
+        if 'THEANO_FLAGS' in os.environ:
+            raise ValueError('Use theanorc to set the theano config')
+        os.environ['THEANO_FLAGS'] = 'device={0}'.format(self.device)
+        import theano.gpuarray
+        # This is a bit of black magic that may stop working in future
+        # theano releases
+        self.ctx = theano.gpuarray.type.get_context(None)
         
     def build_model(self):
 
