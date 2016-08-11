@@ -211,8 +211,10 @@ class Exch_asa32(Exch_strategy):
             grid_sum_size = (reducesize / block_size + 1, 1)
             self.grid_sum_size_list.append(grid_sum_size)
             
-            param_32_tmp = pygpu.zeros(numElements, dtype=np.float32)
-            param_32_sum = pygpu.zeros(reducesize, dtype=np.float32)
+            param_32_tmp = pygpu.zeros(numElements, dtype=np.float32,
+                                       context=self.ctx)
+            param_32_sum = pygpu.zeros(reducesize, dtype=np.float32,
+                                       context=self.ctx)
 
             self.d_param_32_tmp_list.append(param_32_tmp)
             self.d_param_32_sum_list.append(param_32_sum)
@@ -323,38 +325,16 @@ class Exch_asa16(Exch_strategy):
             
         self.ctx = ctx
     
-        """
-        __global__ void sumhalfs(unsigned short* h1, unsigned short* h2, int numElements,int ranksize,int reducesize)
-        {
-        	    int i =  blockDim.x * blockIdx.x + threadIdx.x;
-        	    unsigned short t1,t2;
-        	    float tf1,tf2;
-        	    if (i < numElements)
-        	    {
-        	            t2 = h1[i];
-        	            tf2 = __half2float(t2);
-
-        	            for (int j=1;j<ranksize;j++)
-        	            {
-        	                    t1 = h1[i + reducesize*j];
-        	                    tf1 = __half2float(t1);
-        	                    tf2 += tf1;
-        	            }
-
-        	            t2 = __float2half_rn(tf2);
-        	            h2[i] = t2;
-        	    }
-
-        }
-        """
         self.float2half = pygpu.elemwise.GpuElemwise("a = b",
                                                      [arg("b", 'float32'),
                                                       arg("a", 'float16', write=True)],
-                                                     convert_f16=True)
+                                                     convert_f16=True,
+                                                     context=self.ctx)
         self.half2float = pygpu.elemwise.GpuElemwise("a = b",
                                                      [arg("b", 'float16'),
                                                       arg("a", 'float32', write=True)],
-                                                     convert_f16=True)
+                                                     convert_f16=True,
+                                                     context=self.ctx)
         self.sumhalfs = pygpu.gpuarray.GpuKernel("""
         KERNEL void sumhalfs(ga_half *f1, ga_half *f2, ga_uint numElements, ga_uint ranksize, ga_uint reducesize) {
         ga_uint i = LDIM_0 * GID_0 + LID_0;
