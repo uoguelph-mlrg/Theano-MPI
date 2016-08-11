@@ -128,8 +128,8 @@ if __name__ == '__main__':
     shape, dtype, h = sock.recv_pyobj()
     if verbose: print '[load] 1. shared_x information received'
 
-    gpu_data_remote_b = pygpu.gpuarray.open_ipc_handle(ctx, h, np.prod(shape))
-    gpu_data_remote = pygpu.gpuarray.from_gpudata(gpu_data_remote, 0, dtype, shape, ctx)
+    gpu_data_remote_b = pygpu.gpuarray.open_ipc_handle(ctx, h, np.prod(shape)*dtype.itemsize)
+    gpu_data_remote = pygpu.gpuarray.from_gpudata(gpu_data_remote_b, 0, dtype, shape, ctx)
     gpu_data = pygpu.empty(shape, dtype, context=ctx)
 
     img_mean = icomm.recv(source=MPI.ANY_SOURCE, tag=66)

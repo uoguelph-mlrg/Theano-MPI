@@ -496,7 +496,7 @@ if __name__ == '__main__':
         # raise ValueError('Need to specify a GPU device')
         import os
         gpuid = str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-        device = 'gpu'+gpuid
+        device = 'cuda'+gpuid
         
     worker = BSP_PTWorker(config=config, device=device)
     
