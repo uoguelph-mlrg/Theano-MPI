@@ -102,8 +102,7 @@ def extend_data(config,filenames, labels, env):
 
 
 # for CUDA-aware MPI
-#bufint_cn= lambda arr: arr.container.value.as_buffer(arr.container.value.size*4,0)
-bufint = lambda arr: arr.gpudata.as_buffer(arr.nbytes)
+bufint = lambda arr: memoryview(arr)
 
 def dtype_to_mpi(t):
     from mpi4py import MPI

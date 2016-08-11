@@ -63,10 +63,9 @@ class BSP_PTWorker(PTWorker):
         
         # 3 (local to worker type)
 
-        self.exchanger = BSP_Exchanger(self.config,\
-                                    self.drv, \
-                                    self.ctx,
-                                    self.model)
+        self.exchanger = BSP_Exchanger(self.config,
+                                       self.ctx,
+                                       self.model)
                                     
     def prepare_train_fn(self):
         
