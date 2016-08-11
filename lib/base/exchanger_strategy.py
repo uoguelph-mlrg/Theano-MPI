@@ -253,7 +253,7 @@ class Exch_asa32(Exch_strategy):
                                  self.reduce_size_list[wcount],
                                  self.ranksize,
                                  self.reduce_size_list[wcount],
-                                 ls=256
+                                 ls=256,
                                  gs=self.grid_sum_size_list[wcount])
 
             self.d_param_32_sum_list[wcount].sync()
