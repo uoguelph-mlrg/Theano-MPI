@@ -27,6 +27,9 @@ class BSP_PTWorker(PTWorker):
     '''
     
     def __init__(self, config, device):
+        self.config = config
+        self.device = device
+        self.spawn_load()
         PTWorker.__init__(self, config = config, \
                                 device = device)
                                 
@@ -41,7 +44,7 @@ class BSP_PTWorker(PTWorker):
         if self.verbose: print 'compile_time %.2f s' % \
                                 (time.time() - compile_time)
         
-        self.prepare_para_load() #needs to be after compile_train and compile_val()  
+        self.para_load_init() #needs to be after compile_train and compile_val()  
                               
         self.prepare_recorder()
         self.prepare_iterator()

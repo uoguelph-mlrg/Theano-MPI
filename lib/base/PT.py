@@ -299,35 +299,30 @@ class PTWorker(PTBase):
         PTBase.__init__(self, config = config, device = device)
 
 
-    def prepare_para_load(self):
-        
-        if self.config['para_load']:
-            self.spawn_load()
-            self.para_load_init()
-        
-           
     def spawn_load(self):
-        
         'parallel loading process'
-    
+
+        if not self.config['para_load']:
+            return
+
         num_spawn = 1
         hostname = MPI.Get_processor_name()
         mpiinfo = MPI.Info.Create()
         mpiinfo.Set(key = 'host',value = hostname)
         ninfo = mpiinfo.Get_nkeys()
-        if self.verbose: print ninfo
+        #if self.verbose: print ninfo
         import sys
         mpicommand = sys.executable
 
-        gpuid = self.device[-1] #str(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-        if self.verbose: print gpuid
-        socketnum = 0
-        
+        gpuid = self.device
+        #if self.verbose: print gpuid
+        #socketnum = 0
+
         # adjust numactl according to the layout of copper nodes [1-8]
-        if int(gpuid) > 3:
-            socketnum=1 
-        printstr = "rank" + str(self.rank) +":numa"+ str(socketnum)
-        if self.verbose: print printstr
+        # if int(gpuid[-1]) > 3:
+        #    socketnum=1
+        # printstr = "rank" + str(self.rank) +":numa"+ str(socketnum)
+        # if self.verbose: print printstr
 
         # spawn loading process
         # self.icomm= MPI.COMM_SELF.Spawn('numactl', \
@@ -344,27 +339,23 @@ class PTWorker(PTBase):
     def para_load_init(self):
         
         # 0. send config dict (can't carry any special objects) to loading process
+        if not self.config['para_load']:
+            return
         
         self.icomm.isend(self.config,dest=0,tag=99)
     	
-        drv = self.drv
         shared_x = self.model.shared_x
         img_mean = self.data[4]
 
         sock_data = self.config['sock_data']
-        
+
         import zmq
         sock = zmq.Context().socket(zmq.PAIR)
         sock.connect('tcp://localhost:{0}'.format(sock_data))
         
-        #import theano.sandbox.cuda
-        #theano.sandbox.cuda.use(config.device)
-        import theano.misc.pycuda_init
-        import theano.misc.pycuda_utils
+        gpuarray_batch = shared_x.container.value
         # pass ipc handle and related information
-        gpuarray_batch = theano.misc.pycuda_utils.to_gpuarray(
-            shared_x.container.value)
-        h = drv.mem_get_ipc_handle(gpuarray_batch.ptr)
+        h = gpuarray_batch.get_ipc_handle()
         # 1. send ipc handle of shared_x
         sock.send_pyobj((gpuarray_batch.shape, gpuarray_batch.dtype, h))
 
@@ -377,7 +368,6 @@ class PTWorker(PTBase):
         self.icomm.send('stop',dest=0,tag=40) # TODO use this only when loading process is ready to receive mode
         self.icomm.send('stop',dest=0,tag=40)
         self.icomm.Disconnect()
-        self.ctx.detach()
         
         
     def prepare_train_fn(self):

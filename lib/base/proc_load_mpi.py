@@ -12,9 +12,8 @@ import math
 
 import numpy as np
 import zmq
-import pycuda.driver as drv
-import pycuda.gpuarray as gpuarray
 import hickle as hkl
+import pygpu
 from helper_funcs import get_rand3d
 
 def get_params_crop_and_mirror(param_rand, data_shape, cropsize):
@@ -93,25 +92,23 @@ if __name__ == '__main__':
     
     import sys
     
-    gpuid = sys.argv
+    gpuid = sys.argv[1]
 
-    if verbose: print gpuid[1]
+    if verbose: print gpuid
 
     icomm = MPI.Comm.Get_parent()
-    
+
     # 0. Receive config
     config = icomm.recv(source=MPI.ANY_SOURCE,tag=99)
     config['icomm']=icomm
     size = config['size']
     rank = config['rank']
-    
+
     file_batch_size = config['file_batch_size']
     batch_size = config['batch_size']
     subb = file_batch_size//batch_size
-    
-    drv.init()
-    dev = drv.Device(int(gpuid[1]))
-    ctx = dev.make_context()
+
+    ctx = pygpu.init(gpuid)
 
     import socket
     addr = socket.gethostbyname(socket.gethostname())
@@ -131,9 +128,9 @@ if __name__ == '__main__':
     shape, dtype, h = sock.recv_pyobj()
     if verbose: print '[load] 1. shared_x information received'
 
-    gpu_data_remote = gpuarray.GPUArray(shape, dtype,
-                                        gpudata=drv.IPCMemoryHandle(h))
-    gpu_data = gpuarray.GPUArray(shape, dtype)
+    gpu_data_remote_b = pygpu.gpuarray.open_ipc_handle(ctx, h, np.prod(shape))
+    gpu_data_remote = pygpu.gpuarray.from_gpudata(gpu_data_remote, 0, dtype, shape, ctx)
+    gpu_data = pygpu.empty(shape, dtype, context=ctx)
 
     img_mean = icomm.recv(source=MPI.ANY_SOURCE, tag=66)
     if verbose: print '[load] 2. img_mean received'
@@ -171,8 +168,8 @@ if __name__ == '__main__':
                                     cropsize = config['input_width'])
                                     
 
-            gpu_data.set(data)
-        
+            gpu_data.write(data)
+
             # 4. wait for computation on last minibatch to
             # finish and get the next filename
             message = icomm.recv(source=0,tag=40)
@@ -191,20 +188,12 @@ if __name__ == '__main__':
             else:
                 filename = message
 
-            drv.memcpy_dtod(gpu_data_remote.ptr,
-                            gpu_data.ptr,
-                            gpu_data.dtype.itemsize *
-                            gpu_data.size,
-                            )
-
-            ctx.synchronize()
+            gpu_data_remote[:] = gpu_data
 
             # 5. tell train proc to start train on this batch
             icomm.isend("copy_finished",dest=0,tag=55)
             
     icomm.Disconnect()
     if verbose: print '[load] paraloading process closed'
-    ctx.detach()
-    #ctx.pop()
 
 
