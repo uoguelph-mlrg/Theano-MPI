@@ -183,7 +183,7 @@ class Exch_asa32(Exch_strategy):
           f2[i] = t;
         }
         }
-        """, "sumfloats", [pygpu.gpuarray.GpuArray, pygpu.gpuarray.GpuArray, 'uint32', 'uint32' 'uint32'], context=self.ctx)
+        """, "sumfloats", [pygpu.gpuarray.GpuArray, pygpu.gpuarray.GpuArray, 'uint32', 'uint32', 'uint32'], context=self.ctx)
 
         self.d_param_32_tmp_list=[]
         self.d_param_32_sum_list=[]
