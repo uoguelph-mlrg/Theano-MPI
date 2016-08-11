@@ -47,6 +47,8 @@ class PTBase(object):
         self.verbose = (self.rank == 0)
 
         self.process_config()
+
+    def init_base(self):
         self.get_data()
         self.init_device()
         self.build_model()
@@ -302,12 +304,12 @@ class PTWorker(PTBase):
         mpiinfo = MPI.Info.Create()
         mpiinfo.Set(key = 'host',value = hostname)
         ninfo = mpiinfo.Get_nkeys()
-        #if self.verbose: print ninfo
+        if self.verbose: print ninfo
         import sys
         mpicommand = sys.executable
 
         gpuid = self.device
-        #if self.verbose: print gpuid
+        if self.verbose: print gpuid
         #socketnum = 0
 
         # adjust numactl according to the layout of copper nodes [1-8]
