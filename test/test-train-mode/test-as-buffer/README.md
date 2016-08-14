@@ -2,5 +2,7 @@ The provided `as_buffer` function is located in `test-as-buffer/theano/sandbox/c
 To use this function, you can copy the modified `cuda_ndarray.cu` to the installation directory of your theano under `theano/sandbox/cuda/`
 make sure to backup the original file before copying.
 
+Or you can simply use a [this fork](https://github.com/hma02/Theano) of Theano.
+
 
 To test this function, run the script `./run_test.sh`
