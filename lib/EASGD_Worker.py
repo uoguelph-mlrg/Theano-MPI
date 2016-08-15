@@ -13,6 +13,10 @@ class EASGD_PTWorker(Async_PTWorker):
         Async_PTWorker.__init__(self, port=port, 
                                       config=config, 
                                       device=device)
+        self.verbose = self.config['verbose']
+        self.spawn_load()
+        
+        self.init_base()
                                       
         import time
         compile_time = time.time()
@@ -23,9 +27,8 @@ class EASGD_PTWorker(Async_PTWorker):
         if self.verbose: print 'compile_time %.2f s' % \
                                 (time.time() - compile_time)
         
-        self.prepare_para_load() #needs to be after compile_train() and compile_val()
-        
-                                
+        self.para_load_init() #needs to be after compile_train() and compile_val()
+                
         self.prepare_recorder()
         self.prepare_iterator() # different in EASGD and ASGD # needs to be called after prepare_pare_load()
         

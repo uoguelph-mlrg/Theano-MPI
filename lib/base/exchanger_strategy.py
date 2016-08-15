@@ -241,9 +241,11 @@ class Exch_asa32(Exch_strategy):
         for source_s, dest_s in zip(self.source_param_list,
                                     self.dest_param_list):
             source = source_s.container.value
+            source = pygpu.ascontiguousarray(source)
+            
             source.sync()
             dest = dest_s.container.value
-	        
+
             self.comm.Alltoall(
                 [bufint(source), mpidtype],
                 [bufint(self.d_param_32_tmp_list[wcount]),
