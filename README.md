@@ -22,9 +22,9 @@ Theano-MPI is compatible for training models built in different framework librar
 * [Theano](http://deeplearning.net/software/theano/) 0.8 or higher
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
-* [CUDA 7.0](https://developer.nvidia.com/cuda-toolkit-70)
+* [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.0 or higher
 * [cuDNN](https://developer.nvidia.com/cudnn)
-* [PyCUDA](http://mathema.tician.de/software/pycuda/) built on CUDA 7.0
+* [pygpu](http://deeplearning.net/software/libgpuarray/installation.html)
 
 ## How to run
 
