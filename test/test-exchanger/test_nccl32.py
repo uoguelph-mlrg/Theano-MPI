@@ -3,52 +3,79 @@ sys.path.append('../../lib/base/')
 
 # inter-node comm
 
-from mpi4py import MPI
-comm=MPI.COMM_WORLD
-rank=comm.rank
-device='cuda'+str(rank)
-size=comm.size
-
-from test_exchanger import init_device, clean_device
-_,ctx,arr,shared_x,shared_xx = init_device(device=device)
+def get_internode_comm():
+    
+    from mpi4py import MPI
+    comm=MPI.COMM_WORLD
+    
+    return comm
 
 # intra-node comm
-import pygpu
-from pygpu import collectives
-_local_id = pygpu.collectives.GpuCommCliqueId(context=ctx)
-# string =  _local_id.comm_id.decode('utf-8')
-#
-# _local_id.comm_id = bytearray(string.encode('utf-8'))
-_local_size = size%9 # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
-_local_rank = rank # assuming running within a node here 
 
-print '-1'
-gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)                              
+def  get_intranode_comm(rank,size):
+    
+    from pygpu import collectives
+    
+    _local_id = collectives.GpuCommCliqueId(context=ctx)
 
-if rank==0: print 'original array %s' % arr
+    string =  _local_id.comm_id.decode('utf-8')
 
-# prepare copper exchanger
+    import os
+    pid = str(os.getpid())
+    len_pid =len(pid)
 
-from nccl_exch import Exch_nccl32
+    # replace the process-unique id to be the universal id "0......" so that a intranode gpucomm can be created
+    replacement = ''.join('0' for i in range(len_pid))
+    _string = string.replace(pid, replacement)
 
-exch = Exch_nccl32(intercomm=comm, intracomm=gpucomm, avg=False)
+    _local_id.comm_id = bytearray(_string.encode('utf-8'))
+    _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
+    _local_rank = rank # assuming running within a node here 
+ 
+    gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)  
+    
+    return gpucomm
 
-exch.prepare(ctx, [shared_x])
-
-exch.exchange()
-
-if rank==0: print 'nccl32 summation: %s' % shared_x.get_value()
 
 
-# prepare ar exchanger
+if __name__ == '__main__':
+    
+    comm = get_internode_comm()
+    
+    rank=comm.rank
+    device='cuda'+str(rank)
+    size=comm.size
 
-from exchanger_strategy import Exch_allreduce
-exch = Exch_allreduce(comm, avg=False) 
+    from test_exchanger import init_device, clean_device
+    _,ctx,arr,shared_x,shared_xx = init_device(device=device)
+    
+    gpucomm = get_intranode_comm(rank,size)
+                           
 
-exch.prepare([shared_xx])
+    if rank==0: print 'original array %s' % arr
 
-exch.exchange()
+    # prepare nccl32 exchanger
 
-if rank==0: print 'ar summation: %s' % shared_xx.get_value()
+    from exchanger_strategy import Exch_nccl32
 
-clean_device(ctx=ctx)
+    exch = Exch_nccl32(intercomm=comm, intracomm=gpucomm, avg=False)
+
+    exch.prepare(ctx, [shared_x])
+
+    exch.exchange()
+
+    if rank==0: print 'nccl32 summation: %s' % shared_x.get_value()
+
+
+    # prepare ar exchanger
+
+    from exchanger_strategy import Exch_allreduce
+    exch = Exch_allreduce(comm, avg=False) 
+
+    exch.prepare([shared_xx])
+
+    exch.exchange()
+
+    if rank==0: print 'ar summation: %s' % shared_xx.get_value()
+
+    # clean_device(ctx=ctx)

@@ -72,12 +72,17 @@ class Exch_allreduce(Exch_strategy):
         
 
 class Exch_nccl32(Exch_strategy):
-    def __init__(self, comm, avg=True):
+    def __init__(self, intercomm, intracomm, avg=True):
         Exch_strategy.__init__(self)
         
-        self.comm = comm
-        self.size = self.comm.count
-        self.rank = self.comm.rank
+        self.intercomm = intercomm
+        self.intersize = intercomm.size
+        self.interrank = intercomm.rank
+        
+        self.intracomm = intracomm
+        self.intrasize = intracomm.count
+        self.intrarank = intracomm.rank
+        
         self.avg = avg
 
     def verify_shape(self, param_update):
@@ -113,7 +118,7 @@ class Exch_nccl32(Exch_strategy):
             source.sync()
             dest = dest_s.container.value
             dest.sync()
-            self.comm.all_reduce(source, '+', dest)
+            self.intracomm.all_reduce(source, '+', dest)
 
 
 class Exch_asa32(Exch_strategy):
