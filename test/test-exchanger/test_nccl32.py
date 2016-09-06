@@ -12,7 +12,7 @@ def get_internode_comm():
 
 # intra-node comm
 
-def  get_intranode_comm(rank,size):
+def  get_intranode_comm(rank,size, ctx):
     
     from pygpu import collectives
     
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     from test_exchanger import init_device, clean_device
     _,ctx,arr,shared_x,shared_xx = init_device(device=device)
     
-    gpucomm = get_intranode_comm(rank,size)
+    gpucomm = get_intranode_comm(rank,size, ctx)
                            
 
     if rank==0: print 'original array %s' % arr

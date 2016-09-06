@@ -59,6 +59,11 @@ class BSP_PTWorker(PTWorker):
         
     def prepare_param_exchanger(self):
         
+        from base.PT import get_intranode_comm
+        
+        self.gpucomm = get_intranode_comm(self.ctx, self.rank, self.size)
+        self.config['gpucomm'] = self.gpucomm
+        
         from base.exchanger import BSP_Exchanger
         
         # 3 (local to worker type)

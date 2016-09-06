@@ -25,7 +25,7 @@ sync_start: True # start worker process together with server process in one mpir
 sync_freq: 1 # def: 1, if average weights every iteration in EASGD
 
 worker_type: cdd # mode selection: avg or cdd, EASGD or ASGD
-exch_strategy: ar # asa32, asa16, copper, copper16 or ar
+exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl32 or ar
 # cuda_aware: True # deprecated in avg mode
 # fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32
 
@@ -37,7 +37,7 @@ data_source: hkl # hkl or lmdb or both
 image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 # Directories
 
-dir_head : ./prepdata_1000cat_128b/   # base dir where hkl training data is kept
+dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
 weights_dir : ./models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results

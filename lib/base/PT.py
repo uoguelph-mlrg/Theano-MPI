@@ -1,9 +1,43 @@
-# Server and worker process for asynchronous parallel training
 from mpi4py import MPI
 from server import Server
 from pprint import pprint
 import time
 import os
+
+# inter-node comm
+
+def get_internode_comm():
+    
+    comm=MPI.COMM_WORLD
+    
+    return comm
+
+# intra-node comm
+
+def  get_intranode_comm(ctx, rank,size):
+    
+    from pygpu import collectives
+    
+    _local_id = collectives.GpuCommCliqueId(context=ctx)
+
+    string =  _local_id.comm_id.decode('utf-8')
+
+    import os
+    pid = str(os.getpid())
+    len_pid =len(pid)
+
+    # replace the process-unique id to be the universal id "0......" so that a intranode gpucomm can be created
+    replacement = ''.join('0' for i in range(len_pid))
+    _string = string.replace(pid, replacement)
+
+    _local_id.comm_id = bytearray(_string.encode('utf-8'))
+    _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
+    _local_rank = rank # assuming running within a node here 
+ 
+    gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)  
+    
+    return gpucomm
+
 
 def test_intercomm(intercomm, rank):
     
@@ -35,7 +69,7 @@ class PTBase(object):
     
     def __init__(self, config, device):
         
-    	self.comm = MPI.COMM_WORLD
+    	self.comm = get_internode_comm()
     	self.rank = self.comm.rank
         self.size = self.comm.size
         self.config = config
