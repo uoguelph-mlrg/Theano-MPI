@@ -120,6 +120,108 @@ class Exch_nccl32(Exch_strategy):
             dest.sync()
             self.intracomm.all_reduce(source, '+', dest)
 
+class Exch_nccl16(Exch_strategy):
+    def __init__(self, intercomm, intracomm, avg=True):
+        Exch_strategy.__init__(self)
+        
+        self.intercomm = intercomm
+        self.intersize = intercomm.size
+        self.interrank = intercomm.rank
+        
+        self.intracomm = intracomm
+        self.intrasize = intracomm.count
+        self.intrarank = intracomm.rank
+        
+        self.avg = avg
+
+    def verify_shape(self, param_update):
+        return param_update.shape
+
+    def verify_numElements(self, *args):
+        pass
+
+    def prepare(self, ctx, source_param_list, dest_param_list=None):
+        self.source_param_list = source_param_list
+        if dest_param_list!=None:
+            self.dest_param_list = dest_param_list
+        else:
+            self.dest_param_list = self.source_param_list
+
+        self.ctx = ctx
+        
+        
+        self.float2half = pygpu.elemwise.GpuElemwise(expr="a = b",
+                                                     args=[pygpu.elemwise.arg("a", 'float16', write=True),\
+                                                     pygpu.elemwise.arg("b", 'float32')],
+                                                     convert_f16=True,
+                                                     ctx=self.ctx)
+        self.half2float = pygpu.elemwise.GpuElemwise(expr="a = b",
+                                                     args=[pygpu.elemwise.arg("a", 'float32', write=True),\
+                                                     pygpu.elemwise.arg("b", 'float16')],
+                                                     convert_f16=True,
+                                                     ctx=self.ctx)
+        
+        
+        
+        # #Prepare data in decive (GPU) memory
+        #
+        # param_16_source_list = []
+        #
+        # for param in self.source_param_list:
+        #
+        #
+        #     param_16_tmp = pygpu.zeros(param.shape.get_value(), dtype=np.float16,
+        #                            context=self.ctx)
+        #
+        #     param_16_tmp_list.append(param_16_tmp)
+                                                     
+
+        if self.avg:
+            division_factor = 1.0 / self.size
+            self.avg_func = theano.function(
+                [],
+                updates=[(param, param * division_factor)
+                         for param in self.source_param_list])
+
+    def exchange(self):
+        # divding source param first before exchanging
+        
+        if self.avg:
+            self.avg_func()
+
+        for source_s, dest_s in zip(self.source_param_list,
+                                    self.dest_param_list):
+            source = source_s.container.value
+            
+            source_tmp16 = pygpu.zeros(source.shape, dtype=np.float16,
+                                   context=self.ctx)
+                                   
+            self.float2half(source_tmp16, source)
+            
+            print 'tmp',source_tmp16
+            print 'ori',source_tmp16
+            
+            
+            
+            exit(0)
+            
+            source_tmp16.sync()
+            
+            dest = dest_s.container.value
+            
+            dest_tmp16 = pygpu.zeros(dest.shape, dtype=np.float16,
+                                   context=self.ctx)
+            
+            dest_tmp16.sync()
+
+            
+            self.intracomm.all_reduce(source_tmp16, '+', dest_tmp16)
+            
+            
+            self.half2float(dest_tmp16, dest)
+            
+            dest.sync()
+            
 
 class Exch_asa32(Exch_strategy):
     '''
