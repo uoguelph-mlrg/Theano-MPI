@@ -10,7 +10,7 @@ _,ctx,arr,shared_x,shared_xx = init_device(device=device)
 
 float2half = pygpu.elemwise.GpuElemwise(expr="a = b",
                                              args=[pygpu.elemwise.arg("a", 'float16', write=True),\
-                                             pygpu.elemwise.arg("b", 'float32')],
+                                             pygpu.elemwise.arg("b", 'float32', read=True)],
                                              convert_f16=True,
                                              ctx=ctx)
 
@@ -27,7 +27,7 @@ ga_half = pygpu.asarray(numpy_half, dtype=np.float16,
 
 print 'before convert', ga_float
 
-float2half( ga_half, ga_float)
+float2half(ga_half, ga_float)
 
 print 'after convert', ga_half
                            

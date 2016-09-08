@@ -91,6 +91,12 @@ class BSP_Exchanger(object):
             from exchanger_strategy import Exch_nccl32
             self.exch = Exch_nccl32(intercomm=self.comm, intracomm=self.gpucomm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
+            
+        elif self.worker_type == 'cdd' and self.exch_strategy == 'nccl16':
+            
+            from exchanger_strategy import Exch_nccl16
+            self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm, avg=False)
+            self.exch.prepare(self.ctx, self.vels, self.vels2)
          
         elif self.worker_type == 'avg' and self.exch_strategy == 'ar':
             
@@ -127,6 +133,12 @@ class BSP_Exchanger(object):
             from exchanger_strategy import Exch_nccl32
             self.exch = Exch_nccl32(intercomm=comm, intracomm=gpucomm)
             self.exch.prepare(self.ctx, self.param_list)
+            
+        elif self.worker_type == 'avg' and self.exch_strategy == 'nccl16':
+            
+            from exchanger_strategy import Exch_nccl16
+            self.exch = Exch_nccl16(intercomm=comm, intracomm=gpucomm)
+            self.exch.prepare(self.ctx, self.param_list)
                 
 
     def exchange(self):
@@ -153,7 +165,12 @@ class BSP_Exchanger(object):
             elif self.exch_strategy == 'copper16':
             
                 self.exch.exchange()
+                
             elif self.exch_strategy == 'nccl32':
+                
+                self.exch.exchange()
+                
+            elif self.exch_strategy == 'nccl16':
                 
                 self.exch.exchange()
 
@@ -183,7 +200,10 @@ class BSP_Exchanger(object):
             elif self.exch_strategy == 'nccl32':
                 
                 self.exch.exchange()
+            
+            elif self.exch_strategy == 'nccl16':
                 
+                self.exch.exchange()
                 
         
 class EASGD_Exchanger(object):

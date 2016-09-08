@@ -27,12 +27,21 @@ def  get_intranode_comm(rank,size, ctx):
     # replace the process-unique id to be the universal id "0......" so that a intranode gpucomm can be created
     replacement = ''.join('0' for i in range(len_pid))
     _string = string.replace(pid, replacement)
+    
+    # if rank==0:
+    #     comm.send(_string, dest=1)
+    # else:
+    #     res = comm.recv(source=0)
+    #
+    #     print res == _string
+    #
+    # comm.Barrier()
 
     _local_id.comm_id = bytearray(_string.encode('utf-8'))
     _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
     _local_rank = rank # assuming running within a node here 
- 
-    gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)  
+     
+    gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)
     
     return gpucomm
 
@@ -64,7 +73,7 @@ if __name__ == '__main__':
 
     exch.exchange()
 
-    if rank==0: print 'nccl32 summation: %s' % shared_x.get_value()
+    if rank==0: print 'nccl16 summation: %s' % shared_x.get_value()
 
 
     # prepare ar exchanger
