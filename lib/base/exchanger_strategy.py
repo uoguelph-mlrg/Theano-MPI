@@ -166,21 +166,21 @@ class Exch_nccl16(Exch_strategy):
         
         # #Prepare data in decive (GPU) memory
 
-        # self.source_param16_list = []
-        # self.dest_param16_list = []
-        #
-        # for param in self.source_param_list:
-        #
-        #
-        #     source_param16 = pygpu.zeros(param.container.value.shape, dtype=np.float16,
-        #                            context=self.ctx)
-        #
-        #     dest_param16 = pygpu.zeros(param.container.value.shape, dtype=np.float16,
-        #                            context=self.ctx)
-        #
-        #     self.source_param16_list.append(source_param16)
-        #
-        #     self.dest_param16_list.append(dest_param16)
+        self.source_param16_list = []
+        self.dest_param16_list = []
+
+        for param in self.source_param_list:
+
+
+            source_param16 = pygpu.zeros(param.container.value.shape, dtype=np.float16,
+                                   context=self.ctx)
+
+            dest_param16 = pygpu.zeros(param.container.value.shape, dtype=np.float16,
+                                   context=self.ctx)
+
+            self.source_param16_list.append(source_param16)
+
+            self.dest_param16_list.append(dest_param16)
                                                      
 
         if self.avg:
@@ -196,12 +196,15 @@ class Exch_nccl16(Exch_strategy):
         if self.avg:
             self.avg_func()
 
-        for source_s, dest_s in zip(self.source_param_list,
-                                    self.dest_param_list):
+        for source_s, dest_s, source16, dest16 in zip(self.source_param_list,
+                                    self.dest_param_list
+                                    self.source_param16_list,
+                                    self.dest_param16_list,
+                                    ):
             source = source_s.container.value
             
-            source16 = pygpu.zeros(source.shape, dtype=np.float16,
-                                   context=self.ctx)
+            # source16 = pygpu.zeros(source.shape, dtype=np.float16,
+            #                        context=self.ctx)
                                    
             self.float2half(source16, source)
             
@@ -209,10 +212,10 @@ class Exch_nccl16(Exch_strategy):
             
             dest = dest_s.container.value
             
-            dest16 = pygpu.zeros(dest.shape, dtype=np.float16,
-                                   context=self.ctx)
+            # dest16 = pygpu.zeros(dest.shape, dtype=np.float16,
+            #                        context=self.ctx)
             
-            dest16.sync()
+            # dest16.sync()
 
             
             self.intracomm.all_reduce(source16, '+', dest16)
