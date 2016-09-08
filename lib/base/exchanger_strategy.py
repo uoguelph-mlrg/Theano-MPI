@@ -197,9 +197,9 @@ class Exch_nccl16(Exch_strategy):
             self.avg_func()
 
         for source_s, dest_s, source16, dest16 in zip(self.source_param_list,
-                                    self.dest_param_list
-                                    self.source_param16_list,
-                                    self.dest_param16_list,
+                                    self.dest_param_list,\
+                                    self.source_param16_list,\
+                                    self.dest_param16_list,\
                                     ):
             source = source_s.container.value
             
