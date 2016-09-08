@@ -7,7 +7,7 @@ module load python/intel/2.7.10
 
 export MKL_CBWR=AUTO
 export PATH=/opt/sharcnet/testing/python_packages_intel15_ompi187/bin:$PATH
-export LD_LIBRARY_PATH=/opt/sharcnet/cuda/7.5.18/toolkit/lib64:/opt/sharcnet/testing/libgpuarray/lib:/opt/sharcnet/testing/nccl/lib:/opt/sharcnet/testing/cudnn/cudnn4:/opt/sharcnet/testing/caffe/caffe-libs/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/opt/sharcnet/cuda/7.5.18/lib64:/opt/sharcnet/testing/libgpuarray/lib:/opt/sharcnet/testing/nccl/lib:/opt/sharcnet/testing/cudnn/cudnn4:/opt/sharcnet/testing/caffe/caffe-libs/lib:$LD_LIBRARY_PATH
 export CPATH=/opt/sharcnet/testing/cudnn/cudnn4:/opt/sharcnet/testing/libgpuarray/include:$CPATH
 export LIBRARY_PATH=/opt/sharcnet/testing/cudnn/cudnn4:/opt/sharcnet/testing/libgpuarray/lib:$LIBRARY_PATH
 export PYTHONPATH=/opt/sharcnet/testing/python_packages_intel15_ompi187/lib/python2.7/site-packages:/opt/sharcnet/testing/caffe/caffe-libs/lib/python2.7/site-packages:$PYTHONPATH
