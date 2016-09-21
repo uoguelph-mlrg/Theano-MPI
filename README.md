@@ -25,6 +25,7 @@ Theano-MPI is compatible for training models built in different framework librar
 * [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 or higher
 * [cuDNN](https://developer.nvidia.com/cudnn)
 * [pygpu](http://deeplearning.net/software/libgpuarray/installation.html)
+* [NCCL](https://github.com/NVIDIA/nccl)
 
 ## How to run
 
