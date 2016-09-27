@@ -25,6 +25,7 @@ Theano-MPI is compatible for training models built in different framework librar
 * [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 or higher
 * [cuDNN](https://developer.nvidia.com/cudnn)
 * [pygpu](http://deeplearning.net/software/libgpuarray/installation.html)
+* [NCCL](https://github.com/NVIDIA/nccl)
 
 ## How to run
 
@@ -54,33 +55,21 @@ root=/opt/sharcnet/cuda/7.0.28/toolkit
   ```
   worker_type: BSP
   ```
-  - 2) choose a parameter exchanging strategy from "ar", "asa32", "asa16" and "copper", where "ar" means using Allreduce() from mpi4py, "asa32" and "asa16" mean using the Alltoall-sum-Allgather strategy with float32 and float16 respectively, "copper" means using the binary reduction strategy designed for copper GPU topology.
-  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. N can only be a power of 2 if chosing strategies like "asa" and "copper".
+  - 2) choose a parameter exchanging strategy from "ar", "nccl32" and "nccl16", where "ar" means using Allreduce() from mpi4py, "nccl32" and "nccl16" mean using the NCCL collective communication in float32 and float16 respectively.
+  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. 
 
-- to start an EASGD training session: 
-  - 1) If you want to start server and workers in one communicator, configure config.yaml file as follows:
-   ```
-   sync_start: True 
-   avg_freq: 2 or desired value
-   
-   worker_type: EASGD
-   
-   # randomness
-   shuffle: True
-   ```
-  - 2) check the example ./run_easgd_4w_sync_start.sh (or ./run_easgd_4w.sh if sync_start==False),  decide how many workers you want to run and which hosts and GPUs you want to use for each worker and the server, make your customized run.sh script. 
-  - 3) execute your ./run.sh.
+- to start an EASGD training session [TODO]: 
 
 ## Performance Testing
 
-###BSP
+###BSP [TODO]
 Time per 5120 images in seconds: [allow_gc = True]
 
 | Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  | 16GPU |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| AlexNet-128b | 31.20 | 15.65 | 7.78 | 3.90 | |
-| GoogLeNet-32b | 134.90 | 67.38 | 33.60 | 16.81 | |
-| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 | 38.5 |
+| AlexNet-128b |  |  |  |  |  |
+| GoogLeNet-32b |  |  |  |  |  |
+| VGGNet-32b |  |  |  |  |  |
 
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_a.png width=500/>
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_g.png width=500/>

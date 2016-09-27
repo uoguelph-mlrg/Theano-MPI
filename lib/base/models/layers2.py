@@ -1,5 +1,6 @@
 import sys
-from theano.sandbox.cuda import dnn
+#from theano.sandbox.cuda import dnn
+from theano.gpuarray import dnn
 import numpy as np
 import theano
 import theano.tensor as T
