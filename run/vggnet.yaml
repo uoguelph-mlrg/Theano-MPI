@@ -1,6 +1,6 @@
 # VGGNet model and training hyperparameters
 
-source: lasagne # def: Theano-MPI,  Theano-MPI or lasagne
+source: Theano-MPI # def: Theano-MPI,  Theano-MPI or lasagne
 
 # Learning Parameters
 n_epochs: 44 # def: 74 for  VGGNet
