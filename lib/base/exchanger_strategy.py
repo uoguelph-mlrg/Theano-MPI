@@ -101,7 +101,7 @@ class Exch_nccl32(Exch_strategy):
         self.ctx = ctx
 
         if self.avg:
-            division_factor = 1.0 / self.size
+            division_factor = 1.0 / self.intrasize # within node
             self.avg_func = theano.function(
                 [],
                 updates=[(param, param * division_factor)

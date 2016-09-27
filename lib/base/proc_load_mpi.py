@@ -19,12 +19,12 @@ from helper_funcs import get_rand3d
 def get_params_crop_and_mirror(param_rand, data_shape, cropsize):
 
     center_margin = (data_shape[2] - cropsize) / 2
-    crop_xs = round(param_rand[0] * center_margin * 2)
-    crop_ys = round(param_rand[1] * center_margin * 2)
+    crop_xs = int(round(param_rand[0] * center_margin * 2))
+    crop_ys = int(round(param_rand[1] * center_margin * 2))
     if False:
         # this is true then exactly replicate Ryan's code, in the batch case
-        crop_xs = math.floor(param_rand[0] * center_margin * 2)
-        crop_ys = math.floor(param_rand[1] * center_margin * 2)
+        crop_xs = int(math.floor(param_rand[0] * center_margin * 2))
+        crop_ys = int(math.floor(param_rand[1] * center_margin * 2))
 
     flag_mirror = bool(round(param_rand[2]))
 
