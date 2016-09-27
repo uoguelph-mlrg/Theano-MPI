@@ -41,6 +41,8 @@ class VGGNet_16(ModelBase): # c01b input
         
         self.y = T.lvector('y')
         
+        self.lr = T.scalar('lr')
+        
         x_shuffled = self.x.dimshuffle(3, 0, 1, 2)  # c01b to bc01
         
         layers = []
@@ -299,6 +301,11 @@ class VGGNet_16(ModelBase): # c01b input
         
         
         
+        
+        self.cost = softmax.negative_log_likelihood(self.y)     
+        self.error = softmax.errors(self.y)
+        self.error_top_5 = softmax.errors_top_x(self.y)
+        
         self.grads = T.grad(self.cost,self.params)
         
         subb_ind = T.iscalar('subb')  # sub batch index
@@ -322,8 +329,6 @@ class VGGNet_16(ModelBase): # c01b input
         print 'model size %d' % int(self.model_size)
     
     def compile_train(self):
-        
-        print 'compiling training function...'
         
         if self.verbose: print 'compiling training function...'
         
