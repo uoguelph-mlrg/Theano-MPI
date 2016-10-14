@@ -1,6 +1,6 @@
 import sys
 
-from theano.sandbox.cuda import dnn
+from theano.gpuarray import dnn
 
 import numpy as np
 import theano
@@ -799,7 +799,7 @@ class GoogLeNet(ModelBase):
                                                                 )
                                                                 
                                      
-    def adjust_lr(self, epoch, size):
+    def adjust_lr(self, epoch):
             
         # Poly lr policy according to
         # https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
