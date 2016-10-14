@@ -1,6 +1,6 @@
 # VGGNet model and training hyperparameters
 
-source: lasagne # def: Theano-MPI,  Theano-MPI or lasagne
+source: Theano-MPI # def: Theano-MPI,  Theano-MPI or lasagne
 
 # Learning Parameters
 n_epochs: 44 # def: 74 for  VGGNet
@@ -21,6 +21,6 @@ input_height: 224 # def: 227 for AlexNet, 224 for GoogLeNet
 
 n_softmax_out: 1000
 
-batch_size: 32 # def: 256 for VGGNet, 32 used by caffe
+batch_size: 16 # def: 256 for VGGNet, 32 used by caffe
 
 image_mean: RGB_mean
