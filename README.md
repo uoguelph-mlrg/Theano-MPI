@@ -44,10 +44,6 @@ mode = FAST_RUN
 floatX = float32
 
 base_compiledir = /home/USERNAME/.theano
-
-[cuda]
-
-root=/opt/sharcnet/cuda/7.0.28/toolkit
 ```
 - 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model, e.g., alexnet.yaml, googlenet.yaml, vggnet.yaml or customized.yaml.
 - to start a BSP training session: 
