@@ -22,13 +22,15 @@ def  get_intranode_comm(ctx, rank,size):
 
     string =  _local_id.comm_id.decode('utf-8')
 
-    import os
-    pid = str(os.getpid())
-    len_pid =len(pid)
+    comm=get_internode_comm()
+    rank=comm.rank
 
-    # replace the process-unique id to be the universal id "0......" so that a intranode gpucomm can be created
-    replacement = ''.join('0' for i in range(len_pid))
-    _string = string.replace(pid, replacement)
+    if rank==0:
+        _string=string
+    else:
+        _string=None
+        
+    _string=comm.bcast(_string, root=0)
 
     _local_id.comm_id = bytearray(_string.encode('utf-8'))
     _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 

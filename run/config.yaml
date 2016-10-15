@@ -25,7 +25,7 @@ sync_start: True # start worker process together with server process in one mpir
 sync_freq: 1 # def: 1, if average weights every iteration in EASGD
 
 worker_type: cdd # mode selection: avg or cdd, EASGD or ASGD
-exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl32 or ar
+exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
 # cuda_aware: True # deprecated in avg mode
 # fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32
 
