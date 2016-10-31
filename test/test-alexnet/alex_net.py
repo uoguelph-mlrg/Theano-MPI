@@ -13,10 +13,10 @@ import numpy as np
 
 from layers import DataLayer, ConvPoolLayer, DropoutLayer, FCLayer, SoftmaxLayer
 
-from modelbase import ModelBase
+# from modelbase import ModelBase
 
 
-class AlexNet(ModelBase):
+class AlexNet(object):
 
     def __init__(self, config):
         ModelBase.__init__(self)
