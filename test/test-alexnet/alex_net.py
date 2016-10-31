@@ -13,13 +13,10 @@ import numpy as np
 
 from layers import DataLayer, ConvPoolLayer, DropoutLayer, FCLayer, SoftmaxLayer
 
-# from modelbase import ModelBase
-
 
 class AlexNet(object):
 
     def __init__(self, config):
-        ModelBase.__init__(self)
 
         self.config = config
         self.verbose = self.config['verbose']
@@ -280,10 +277,10 @@ if __name__ == '__main__':
     
     
     import yaml
-    with open('../../../run/config.yaml', 'r') as f:
+    with open('config.yaml', 'r') as f:
         config = yaml.load(f)
         
-    with open('../../../run/alexnet.yaml', 'r') as f:
+    with open('alexnet.yaml', 'r') as f:
         model_config = yaml.load(f)
     config = dict(config.items()+model_config.items())
     config['verbose'] = True
