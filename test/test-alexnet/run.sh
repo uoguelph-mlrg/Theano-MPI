@@ -1,0 +1,1 @@
+THEANO_FLAGS=device=cuda0 python alex_net.py
