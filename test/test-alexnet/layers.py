@@ -8,8 +8,8 @@ import sys
 import numpy as np
 import theano
 import theano.tensor as T
-from theano.sandbox.cuda import dnn
-from theano.sandbox.cuda.basic_ops import gpu_contiguous
+from theano.gpuarray import dnn
+from theano.gpuarray.basic_ops import gpu_contiguous
 # from pylearn2.expr.normalize import CrossChannelNormalization
 
 import warnings
