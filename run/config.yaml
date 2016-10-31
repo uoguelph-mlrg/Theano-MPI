@@ -59,7 +59,7 @@ print_freq: 2  # iteration frequency of printing training error rate def: 200
 
 shuffle: True # def: True, if shuffle the batches
 rand_crop: True # def: True, if False will likely be overfitting
-batch_crop_mirror: False  # if False, do randomly on each image separately
+batch_crop_mirror: True  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 dropout_init_seed: 0 # to change, see layer.py file
 
