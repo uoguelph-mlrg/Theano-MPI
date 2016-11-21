@@ -372,7 +372,7 @@ class PTWorker(PTBase):
         if not self.config['para_load']:
             return
         
-        self.icomm.isend(self.config,dest=0,tag=99)
+        self.icomm.send(self.config,dest=0,tag=99)
     	
         shared_x = self.model.shared_x
         img_mean = self.data[4]
