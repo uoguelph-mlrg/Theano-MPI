@@ -87,7 +87,6 @@ class PTBase(object):
     def init_base(self):
         self.get_data()
         self.init_device()
-        self.build_model()
         
     def process_config(self):
     
@@ -192,42 +191,6 @@ class PTBase(object):
         # This is a bit of black magic that may stop working in future
         # theano releases
         self.ctx = theano.gpuarray.type.get_context(None)
-        
-    def build_model(self):
-
-        import theano
-        theano.config.on_unused_input = 'warn'
-
-        if self.model_name=='googlenet':
-        	from models.googlenet import GoogLeNet
-        	self.model = GoogLeNet(self.config)
-
-        elif self.model_name=='alexnet':
-        	from models.alex_net import AlexNet
-        	self.model = AlexNet(self.config)
-            
-        elif self.model_name=='vggnet':
-            
-            if self.config['pretrain']:
-                from models.vggnet_11_shallow import VGGNet_11 as VGGNet
-            else:
-                if self.config['source'] == 'lasagne':
-                    from models.lasagne_model_zoo.vgg import VGG as VGGNet
-                elif self.config['source'] == 'Theano-MPI':
-                    from models.vggnet_16 import VGGNet_16 as VGGNet
-                else:
-                    raise NotImplementedError
-                
-            self.model = VGGNet(self.config)
-            
-        elif self.model_name=='customized':
-            from models.customized import Customized
-            self.model = Customized(self.config)
-            
-        else:
-            raise NotImplementedError("wrong model name")
-            
-        self.model.img_mean = self.data[4]
         
         
 class PTServer(Server, PTBase):

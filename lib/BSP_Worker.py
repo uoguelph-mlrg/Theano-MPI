@@ -34,6 +34,7 @@ class BSP_PTWorker(PTWorker):
         self.spawn_load()
 
         self.init_base()
+        self.build_model()
         
         import time
         compile_time = time.time()
@@ -55,6 +56,42 @@ class BSP_PTWorker(PTWorker):
         
         self.train_len = len(self.data[0]) #self.config['avg_freq']
         self.val_len = len(self.data[2])
+        
+    def build_model(self):
+
+        import theano
+        theano.config.on_unused_input = 'warn'
+
+        if self.model_name=='googlenet':
+        	from models.googlenet import GoogLeNet
+        	self.model = GoogLeNet(self.config)
+
+        elif self.model_name=='alexnet':
+        	from models.alex_net import AlexNet
+        	self.model = AlexNet(self.config)
+        
+        elif self.model_name=='vggnet':
+        
+            if self.config['pretrain']:
+                from models.vggnet_11_shallow import VGGNet_11 as VGGNet
+            else:
+                if self.config['source'] == 'lasagne':
+                    from models.lasagne_model_zoo.vgg import VGG as VGGNet
+                elif self.config['source'] == 'Theano-MPI':
+                    from models.vggnet_16 import VGGNet_16 as VGGNet
+                else:
+                    raise NotImplementedError
+            
+            self.model = VGGNet(self.config)
+        
+        elif self.model_name=='customized':
+            from models.customized import Customized
+            self.model = Customized(self.config)
+        
+        else:
+            raise NotImplementedError("wrong model name")
+        
+        self.model.img_mean = self.data[4]
         
         
     def prepare_param_exchanger(self):
@@ -108,7 +145,6 @@ class BSP_PTWorker(PTWorker):
             model.compile_train() # needs compile model before para_load_init() # 2 (local to worker type)
             
             model.get_vel, model.descent_vel = model.compiled_train_fn_list
-        
 
         
         elif worker_type == 'avg':
@@ -139,105 +175,28 @@ class BSP_PTWorker(PTWorker):
         model = self.model
         config = self.config
         
-        use_momentum=config['use_momentum'], 
+        use_momentum=config['use_momentum']
         use_nesterov_momentum=config['use_nesterov_momentum']
     
-        try:
-            size = config['size']
-            verbose = config['rank'] == 0
-        except KeyError:
-            size = 1
-            verbose = True
+        # try:
+        #     size = config['size']
+        #     verbose = config['rank'] == 0
+        # except KeyError:
+        #     size = 1
+        #     verbose = True
         
-        params, grads, weight_types = model.params, model.grads, model.weight_types
-        
-        vels, vels2 = model.vels, model.vels2
-    
-        lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
-        mu = model.mu # def: 0.9 # momentum
-        eta = model.eta  #0.0002 # weight decay
-
-        updates_w = [] # for avg
-        
-        updates_v = [] # for cdd
-        updates_dv = [] # for cdd
 
         if use_momentum:
-
-            assert len(weight_types) == len(params)
             
-            k=0
-
-            for param_i, grad_i, weight_type in \
-                    zip(params, grads, weight_types):
-
-                if weight_type == 'W':
-                    real_grad = grad_i + eta * param_i
-                    real_lr = lr
-                elif weight_type == 'b':
-                    real_grad = grad_i
-                    real_lr = 2. * lr
-                else:
-                    raise TypeError("Weight Type Error")
-
-                if use_nesterov_momentum:
-                    vel_i_next = mu ** 2 * vels[k] - (1 + mu) * real_lr * real_grad
-                else:
-                    vel_i_next = mu * vels[k] - real_lr * real_grad
-                    
-                if worker_type == 'cdd':
-
-                    updates_v.append((vels[k], vel_i_next))
-                    updates_dv.append((param_i, param_i + vels2[k]))
-                    
-                elif worker_type == 'avg':
-                    
-                    updates_w.append((vels[k], vel_i_next))
-                    updates_w.append((param_i, param_i + vel_i_next))
-                    
-                k=k+1
+            from base.opt import BSP_MSGD
+            
+            updates_w, updates_v, updates_dv = BSP_MSGD(model, use_nesterov_momentum,worker_type)
                 
-
         else:
             
-            k=0
+            from base.opt import BSP_SGD
             
-            for param_i, grad_i, weight_type in \
-                    zip(params, grads, weight_types):
-                    
-            
-                if weight_type == 'W':
-                    
-                    if worker_type == 'cdd':
-                        
-                        update =          - lr * grad_i - eta * lr * param_i
-                        
-                    elif worker_type == 'avg':
-                        
-                        update =  param_i - lr * grad_i - eta * lr * param_i
-
-                elif weight_type == 'b':
-                    
-                    if worker_type == 'cdd':
-                    
-                        update =         - 2 * lr * grad_i
-                        
-                    elif worker_type == 'avg':
-                        
-                        update = param_i - 2 * lr * grad_i
-                        
-                if worker_type == 'cdd':
-                    
-                    updates_v.append((vels[k], update))
-                    updates_dv.append((param_i, param_i + vels2[k]))
-                    
-                elif worker_type == 'avg':
-                    
-                    # updates_w.append((vel_i, - 2 * lr * grad_i))
-                    updates_w.append((param_i, update))
-                    
-                    
-                k=k+1
+            updates_w, updates_v, updates_dv = BSP_SGD(model,worker_type)
                 
         if worker_type == 'cdd':
         
