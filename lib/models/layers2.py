@@ -200,7 +200,7 @@ class Layer(object):
     
         output_shape = (
         W_out = (W_in - F + 2P)/S + 1, # integer division
-        W_in = (W_out - F _ 2P)/S + 1, # integer division
+        H_out = (H_in - F + 2P)/S + 1, # integer division
         D_out = K
         )
     

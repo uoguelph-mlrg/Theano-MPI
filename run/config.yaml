@@ -37,7 +37,7 @@ data_source: hkl # hkl or lmdb or both
 image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 # Directories
 
-dir_head : /scratch/g/gwtaylor/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
+dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
 weights_dir : ./models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results

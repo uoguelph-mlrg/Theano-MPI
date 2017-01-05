@@ -1,2 +1,3 @@
 **/*.pyc
+lib/models/*.pyc
 test/test-train-mode/mlp_base/mnist.pkl.gz

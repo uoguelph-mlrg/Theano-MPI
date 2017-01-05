@@ -34,6 +34,7 @@ class BSP_PTWorker(PTWorker):
         self.spawn_load()
 
         self.init_base()
+        self.get_data()
         self.build_model()
         
         import time
@@ -56,6 +57,26 @@ class BSP_PTWorker(PTWorker):
         
         self.train_len = len(self.data[0]) #self.config['avg_freq']
         self.val_len = len(self.data[2])
+        
+    def get_data(self):
+
+        '''
+        prepare filename and label list 
+
+        '''
+        if self.config['data'] == 'imagenet':
+            
+            from data.imagenet import ImageNet
+            Data = ImageNet(self.config)
+            Data.get_data()
+            self.data = Data.data
+            
+        elif self.config['data'] == 'cifar10':
+            
+            from data.cifar10 import Cifar10_data
+            Data = Cifar10_data(self.config)
+            Cifar10_data.get_data()
+            self.data = Data.data
         
     def build_model(self):
 
@@ -87,6 +108,10 @@ class BSP_PTWorker(PTWorker):
         elif self.model_name=='customized':
             from models.customized import Customized
             self.model = Customized(self.config)
+            
+        elif self.model_name=='cnncifar10':
+            from models.cifar10 import CNNCifar10
+            self.model = CNNCifar10(self.config)
         
         else:
             raise NotImplementedError("wrong model name")
