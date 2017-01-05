@@ -1,4 +1,4 @@
-source ./set4theano-new.sh
+# source ./set4theano-new.sh
 
 if [[ -z $1 ]]; then
 	echo 'need to specify the size of BSP'
