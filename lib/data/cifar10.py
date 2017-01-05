@@ -1,9 +1,10 @@
+import numpy as np
 
 class Cifar10_data():
     
     def __init__(self, config):
         
-        self.data_path=''
+        self.data_path='/home/mahe6562/data/cifar10/cifar-10-batches-py/'
         
         self.channels = 3
         self.input_width =28
@@ -50,8 +51,10 @@ class Cifar10_data():
         
     def get_data(self):
 
-        path = os.path.join(data_dir, '')
+        path = self.data_path
         '''processes the raw downloaded cifar10 dataset, and returns test/val/train set'''
+        
+        from helper_funcs import unpickle
 
         d1 = unpickle(path+'data_batch_1')
         d2 = unpickle(path+'data_batch_2')
@@ -65,10 +68,11 @@ class Cifar10_data():
         d = np.concatenate((d,  d3['data']), axis=0)
         d = np.concatenate((d,  d4['data']), axis=0)
         img = np.concatenate((d,  d5['data']), axis=0)
+                    
+        img=img.reshape([img.shape[0], 3, 32, 32]) # needs to be in c01b
         
-        print img.shape
-        exit(0)
-        img_mean = img.mean(axis=-1) 
+        img_mean = img.mean(axis=0) 
+        
         
         l = np.concatenate((d1['labels'], d2['labels']), axis=0)
         l = np.concatenate((l, d3['labels']), axis=0)
@@ -78,7 +82,7 @@ class Cifar10_data():
         test_set = [dt['data'], np.asarray(dt['labels'], dtype='float32')]
 
         
-        N = raw_data.shape[0]
+        N = img.shape[0]
         perms = np.random.permutation(N)
         img   = img[perms,:]
         labels = labels[perms]

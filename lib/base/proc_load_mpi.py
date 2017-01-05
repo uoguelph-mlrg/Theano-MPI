@@ -43,6 +43,7 @@ def crop_and_mirror(data, param_rand, flag_batch=True, cropsize=227):
 
     if flag_batch:
         # mirror and crop the whole batch
+        
         crop_xs, crop_ys, flag_mirror = \
             get_params_crop_and_mirror(param_rand, data.shape, cropsize)
 

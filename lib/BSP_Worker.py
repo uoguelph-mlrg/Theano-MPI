@@ -75,7 +75,7 @@ class BSP_PTWorker(PTWorker):
             
             from data.cifar10 import Cifar10_data
             Data = Cifar10_data(self.config)
-            Cifar10_data.get_data()
+            Data.get_data()
             self.data = Data.data
         
     def build_model(self):

@@ -6,7 +6,8 @@
 # If want to input None, use !!null
 
 # Model choose
-name: alexnet # alexnet, googlenet, vggnet or customized
+name: cnncifar10 # alexnet, googlenet, vggnet or cnncifar10
+data: cifar10 # cifar10 or imagenet
 
 pretrain: False
 monitor_grad: False

@@ -255,7 +255,7 @@ class P_iter(object):
         self.get_rand3d = get_rand3d
         self.crop_and_mirror = crop_and_mirror
         
-        self.len = len(self.raw_filenames)
+        self.len = len(self.raw_img)
 
         self.current = 0 # current filename pointer in the filename list
         self.last_one = False # if pointer is pointing to the last filename in the list
@@ -300,12 +300,12 @@ class P_iter(object):
             for index in range(n_batch):
                 batch_img =  raw_img[(index) \
                                 * self.config['file_batch_size']: \
-    							(index + 1) * self.config['file_batch_size']]
+                				(index + 1) * self.config['file_batch_size']]
                 batch_label = raw_labels[(index) \
                                 * self.config['file_batch_size']: \
-    							(index + 1) * self.config['file_batch_size']]
-                
-		        x.append(batch_img)
+                				(index + 1) * self.config['file_batch_size']]
+
+                x.append(batch_img)
                 y.append(batch_label)
             
             img = []
@@ -335,10 +335,12 @@ class P_iter(object):
         if self.config['worker_type'] in ['avg', 'cdd']: # Synchronous Training needs data localization
             # localize data
 
-            filenames = filenames[self.config['rank']::self.config['size']]
+            img = img[self.config['rank']::self.config['size']]
             labels = labels[self.config['rank']::self.config['size']]
             
-            self.len = len(filenames)
+            self.len = len(img)
+            
+            print 'len', self.len
             
         self.img = img
         self.labels = labels
@@ -370,15 +372,25 @@ class P_iter(object):
         
             if self.mode == 'train': recorder.start()
         
-            data = self.img[self.current])) - self.img_mean
+            data = self.img[self.current] - self.img_mean
+            
+            data = np.rollaxis(data,0,4)
 
             rand_arr = self.get_rand3d(self.config, self.mode)
 
             data = self.crop_and_mirror(data, rand_arr, \
                                     flag_batch=self.config['batch_crop_mirror'], \
                                     cropsize = self.config['input_width'])
+                                    
             self.shared_x.set_value(data)
             self.shared_y.set_value(self.labels[self.current])
+            
+            
+            if self.current == self.len - 1:
+                self.last_one = True
+            else:
+                self.last_one = False
+                
         
             if self.mode == 'train': recorder.end('wait')
                 

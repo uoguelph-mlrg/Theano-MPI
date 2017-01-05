@@ -22,7 +22,7 @@ class CNNCifar10(ModelBase): # c01b input
         # input shape in c01b 
         from data.cifar10 import Cifar10_data
         
-        data = Cifar10_data()
+        data = Cifar10_data(config)
         
         self.channels = data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = data.input_width # '0' single scale training 224
@@ -33,11 +33,13 @@ class CNNCifar10(ModelBase): # c01b input
         self.n_softmax_out = data.n_class
         
         # training related
-        self.base_lr = np.float32(self.config['learning_rate'])
-        self.shared_lr = theano.shared(self.base_lr)
+        
         self.step_idx = 0
         self.mu = self.config['momentum'] # def: 0.9 # momentum
         self.eta = self.config['weight_decay'] #0.0002 # weight decay
+        
+        self.base_lr = np.float32(self.config['learning_rate'])
+        self.shared_lr = theano.shared(self.base_lr)
         
         self.shared_x = theano.shared(np.zeros((
                                                 3,
@@ -54,9 +56,6 @@ class CNNCifar10(ModelBase): # c01b input
         # build model
         self.build_model()
         
-        
-        self.output_layer = softmax
-        
         self.output = self.output_layer.output
         
         self.layers = get_layers(lastlayer = self.output_layer)
@@ -71,12 +70,6 @@ class CNNCifar10(ModelBase): # c01b input
         
         # count params
         self.count_params()
-            
-        self.grads = T.grad(self.cost,self.params)
-        
-        self.cost = softmax.negative_log_likelihood(self.y)     
-        self.error = softmax.errors(self.y)
-        self.error_top_5 = softmax.errors_top_x(self.y)
         
         self.grads = T.grad(self.cost,self.params)
         
@@ -89,7 +82,7 @@ class CNNCifar10(ModelBase): # c01b input
     def build_model(self):
         
         
-        if self.verbose: print 'Customized MLP'
+        if self.verbose: print 'CNNCifar10'
 
         # start graph construction from scratch
         
@@ -97,9 +90,9 @@ class CNNCifar10(ModelBase): # c01b input
         
         self.y = T.lvector('y')
         
-        x_shuffled = self.x.dimshuffle(3, 0, 1, 2)  # c01b to bc01   
+        self.lr = T.scalar('lr')
         
-        
+        x_shuffled = self.x.dimshuffle(3, 0, 1, 2)  # c01b to bc01
         
         conv_5x5 = Conv(input=x_shuffled,
                         input_shape=(self.batch_size,
@@ -128,7 +121,7 @@ class CNNCifar10(ModelBase): # c01b input
                         #input_shape=conv_2x2.output_shape, # (b, 64, 12, 12) 
                         convstride=1,
                         padsize=0,
-                        W = Normal((128, self.channels, 5, 5), std=0.05), # bc01
+                        W = Normal((128, pool_2x2.output_shape[1], 5, 5), std=0.05), # bc01
                         b = Constant((128,), val=0),
                         printinfo=self.verbose
                         #output_shape = (b, 128, 8, 8)
@@ -148,7 +141,7 @@ class CNNCifar10(ModelBase): # c01b input
                         #input_shape=pool_2x2.output_shape, # (b, 128, 4, 4)
                         convstride=1,
                         padsize=0,
-                        W = Normal((64, self.channels, 3, 3), std=0.05), # bc01
+                        W = Normal((64, pool_2x2.output_shape[1], 3, 3), std=0.05), # bc01
                         b = Constant((64,), val=0),
                         printinfo=self.verbose
                         #output_shape = (b, 64, 2, 2)
@@ -164,7 +157,7 @@ class CNNCifar10(ModelBase): # c01b input
                         )
                         
                         
-        fc256  = FC(input= flatten, 
+        fc_256  = FC(input= flatten, 
                         n_out=256,
                         W = Normal((flatten.output_shape[1], 256), std=0.001),
                         b = Constant((256,),val=0),
@@ -179,20 +172,6 @@ class CNNCifar10(ModelBase): # c01b input
                         )
                         
                         
-                        
-        fc_10  = FC(input= dropout,  
-                        n_out=10,
-                        W = Normal((dropout.output_shape[1], 10), std=0.005),
-                        b = Constant((10,),val=0),
-                        printinfo=self.verbose
-                        #input_shape = dropout.output_shape # (b, 4096)
-                        )
-        dropout= Dropout(input=fc_10, 
-                        n_out=fc_10.output_shape[1], 
-                        prob_drop=0.5,
-                        printinfo=self.verbose
-                        #input_shape = fc_4096.output_shape # (b, 4096)
-                        )
         softmax = Softmax(input=dropout,  
                         n_out=self.n_softmax_out,
                         W = Normal((dropout.output_shape[1], self.n_softmax_out), std=0.005),
@@ -202,6 +181,10 @@ class CNNCifar10(ModelBase): # c01b input
                         )
         
         self.output_layer = softmax
+        
+        self.cost = softmax.negative_log_likelihood(self.y)     
+        self.error = softmax.errors(self.y)
+        self.error_top_5 = softmax.errors_top_x(self.y)
         
     def count_params(self):
         
