@@ -4,15 +4,19 @@ class ImageNet():
         
         self.data_path=''
         
+        self.verbose=config['verbose']
+        self.input_width = config['input_width']
+        self.input_height = config['input_height']
+        self.batch_size = config['batch_size']
+        
         self.channels = 3
-        self.input_width =224
-        self.input_height =224
-        self.batch_size = 128
+        
         self.n_class = 1000
         
         self.data=None
+        
         self.config=config
-        self.verbose=self.config['verbose']
+        
     
     def get_data(self):
         

@@ -24,3 +24,15 @@ n_softmax_out: 1000
 batch_size: 16 # def: 256 for VGGNet, 32 used by caffe
 
 image_mean: RGB_mean
+
+
+data: imagenet
+# Directories
+dir_head : /scratch/ilsvrc12/#/work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
+label_folder : /labels/  # 
+mean_file : /misc/img_mean.npy
+train_folder: /train_hkl_b256_b_128/   #/hkl_data/  
+val_folder: /val_hkl_b256_b_128/ 
+  
+# Data
+file_batch_size: 128 # def: choose according to the preprocessed hkl file size

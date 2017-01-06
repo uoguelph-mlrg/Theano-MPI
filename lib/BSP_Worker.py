@@ -1,4 +1,4 @@
-from base.PT import PTWorker
+from PT import PTWorker
 import numpy as np
 
 '''
@@ -54,69 +54,6 @@ class BSP_PTWorker(PTWorker):
         self.mode = None
         self.epoch = 0
         self.count = 0
-        
-        self.train_len = len(self.data[0]) #self.config['avg_freq']
-        self.val_len = len(self.data[2])
-        
-    def get_data(self):
-
-        '''
-        prepare filename and label list 
-
-        '''
-        if self.config['data'] == 'imagenet':
-            
-            from data.imagenet import ImageNet
-            Data = ImageNet(self.config)
-            Data.get_data()
-            self.data = Data.data
-            
-        elif self.config['data'] == 'cifar10':
-            
-            from data.cifar10 import Cifar10_data
-            Data = Cifar10_data(self.config)
-            Data.get_data()
-            self.data = Data.data
-        
-    def build_model(self):
-
-        import theano
-        theano.config.on_unused_input = 'warn'
-
-        if self.model_name=='googlenet':
-        	from models.googlenet import GoogLeNet
-        	self.model = GoogLeNet(self.config)
-
-        elif self.model_name=='alexnet':
-        	from models.alex_net import AlexNet
-        	self.model = AlexNet(self.config)
-        
-        elif self.model_name=='vggnet':
-        
-            if self.config['pretrain']:
-                from models.vggnet_11_shallow import VGGNet_11 as VGGNet
-            else:
-                if self.config['source'] == 'lasagne':
-                    from models.lasagne_model_zoo.vgg import VGG as VGGNet
-                elif self.config['source'] == 'Theano-MPI':
-                    from models.vggnet_16 import VGGNet_16 as VGGNet
-                else:
-                    raise NotImplementedError
-            
-            self.model = VGGNet(self.config)
-        
-        elif self.model_name=='customized':
-            from models.customized import Customized
-            self.model = Customized(self.config)
-            
-        elif self.model_name=='cnncifar10':
-            from models.cifar10 import CNNCifar10
-            self.model = CNNCifar10(self.config)
-        
-        else:
-            raise NotImplementedError("wrong model name")
-        
-        self.model.img_mean = self.data[4]
         
         
     def prepare_param_exchanger(self):
@@ -202,13 +139,6 @@ class BSP_PTWorker(PTWorker):
         
         use_momentum=config['use_momentum']
         use_nesterov_momentum=config['use_nesterov_momentum']
-    
-        # try:
-        #     size = config['size']
-        #     verbose = config['rank'] == 0
-        # except KeyError:
-        #     size = 1
-        #     verbose = True
         
 
         if use_momentum:

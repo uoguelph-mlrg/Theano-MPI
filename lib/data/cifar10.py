@@ -4,18 +4,23 @@ class Cifar10_data():
     
     def __init__(self, config):
         
-        self.data_path='/scratch/hma02/data/cifar10/cifar-10-batches-py/'
+        # customizable
+
+        self.verbose    =  config['verbose']
+        self.batch_size =  config['batch_size']
+        
+        
+        # fixed
+        
+        self.data_path  =  config['data_path']
         
         self.channels = 3
         self.input_width =28
         self.input_height =28
-        self.batch_size = 128
         self.n_class = 10
         
         self.data=None
-        self.config=config
-        self.verbose=self.config['verbose']
-    
+
     def gen_train_valid_test(raw_data, raw_target, r_train, r_valid):
         
        

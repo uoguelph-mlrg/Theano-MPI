@@ -1,5 +1,5 @@
 from mpi4py import MPI
-from server import Server
+from base.server import Server
 from pprint import pprint
 import time
 import os
@@ -149,6 +149,72 @@ class PTBase(object):
         # This is a bit of black magic that may stop working in future
         # theano releases
         self.ctx = theano.gpuarray.type.get_context(None)
+        
+    def get_data(self):
+
+        '''
+        prepare filename and label list 
+
+        '''
+        if self.config['data'] == 'imagenet':
+            
+            from data.imagenet import ImageNet
+            Data = ImageNet(self.config)
+            Data.get_data()
+            self.data = Data.data
+            
+            self.train_len = len(self.data[0]) #self.config['avg_freq']
+            self.val_len = len(self.data[2])
+            
+        elif self.config['data'] == 'cifar10':
+            
+            from data.cifar10 import Cifar10_data
+            Data = Cifar10_data(self.config)
+            Data.get_data()
+            self.data = Data.data
+            
+            self.train_len = len(self.data[0]) / self.config['file_batch_size'] #self.config['avg_freq']
+            self.val_len = len(self.data[2]) / self.config['file_batch_size']
+        
+    def build_model(self):
+
+        import theano
+        theano.config.on_unused_input = 'warn'
+
+        if self.model_name=='googlenet':
+        	from models.googlenet import GoogLeNet
+        	self.model = GoogLeNet(self.config)
+
+        elif self.model_name=='alexnet':
+        	from models.alex_net import AlexNet
+        	self.model = AlexNet(self.config)
+        
+        elif self.model_name=='vggnet':
+        
+            if self.config['pretrain']:
+                from models.vggnet_11_shallow import VGGNet_11 as VGGNet
+            else:
+                if self.config['source'] == 'lasagne':
+                    from models.lasagne_model_zoo.vgg import VGG as VGGNet
+                elif self.config['source'] == 'Theano-MPI':
+                    from models.vggnet_16 import VGGNet_16 as VGGNet
+                else:
+                    raise NotImplementedError
+            
+            self.model = VGGNet(self.config)
+        
+        elif self.model_name=='customized':
+            from models.customized import Customized
+            self.model = Customized(self.config)
+            
+        elif self.model_name=='cnncifar10':
+            from models.cifar10 import CNNCifar10
+            self.model = CNNCifar10(self.config)
+        
+        else:
+            raise NotImplementedError("wrong model name")
+        
+        self.model.img_mean = self.data[4]
         
         
 class PTServer(Server, PTBase):
@@ -315,30 +381,11 @@ class PTWorker(PTBase):
     
     def para_load_close(self):
         
-        # send an stop mode
-        self.icomm.send('stop',dest=0,tag=40) # TODO use this only when loading process is ready to receive mode
-        self.icomm.send('stop',dest=0,tag=40)
-        self.icomm.Disconnect()
-        
-        
-    def prepare_train_fn(self):
-        
-        # to be defined in different type of PTWorkers child class
-        
-        # to make sure model compiles correct updating function and allocate necessary extra param memory that correspond to the selected parallel worker type and parallel update type
-        
-        raise NotImplementedError('Need to redefine this function in a child class of PTWorker')
-        
-      
-    def run(self):
-        
-        # to be defined in child class
-        
-        pass
-        
-
-
-        
+        if self.config['para_load']:
+            # send an stop mode
+            self.icomm.send('stop',dest=0,tag=40) # TODO use this only when loading process is ready to receive mode
+            self.icomm.send('stop',dest=0,tag=40)
+            self.icomm.Disconnect()
 
 if __name__ == '__main__':
     

@@ -1,4 +1,4 @@
-from base.PT import PTServer
+from PT import PTServer
 import time
 import numpy as np
 
@@ -35,12 +35,6 @@ class Async_PTServer(PTServer):
             self.uepoch = self.config['load_epoch']
             self.uidx['pretrained'] = self.uepoch * self.validFreq
                                 
-        
-    def prepare_param_exchanger(self):
-        
-        # To be defined in child class
-    
-        pass
                                     
     def process_request(self, worker_id, message):
         

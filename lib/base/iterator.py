@@ -244,8 +244,6 @@ class P_iter(object):
         self.img = None # the filename list
         self.labels = None
         
-
-            
         self.shared_x = model.shared_x
         self.img_mean = model.img_mean
         
@@ -279,59 +277,55 @@ class P_iter(object):
         
         # this function need to be called at the begining of an epoch
         
+        
+        # 0. batching
         raw_img, raw_labels = self.raw_img, self.raw_labels
+        
         n_batch = raw_img.shape[0]/self.config['file_batch_size']
+        # 312 = 40000 / 128 
         
-        if self.mode=='train':
-            
-            if self.config['shuffle']:
-                time_seed = int(time.time())*int(self.config['worker_id'])%1000
-                np.random.seed(time_seed)
-            
-                indices = np.random.permutation(n_batch)
-
-            else:
-                
-                indices = np.arange(n_batch)
-
-            x=[]
-            y=[]
-            
-            for index in range(n_batch):
-                batch_img =  raw_img[(index) \
-                                * self.config['file_batch_size']: \
-                				(index + 1) * self.config['file_batch_size']]
-                batch_label = raw_labels[(index) \
-                                * self.config['file_batch_size']: \
-                				(index + 1) * self.config['file_batch_size']]
-
-                x.append(batch_img)
-                y.append(batch_label)
-            
-            img = []
-            labels=[]
-      
-            for index in indices:
-                img.append(x[index])
-                labels.append(y[index])
+        x=[]
+        y=[]
         
+        for index in range(n_batch):
+            batch_img =  raw_img[(index) \
+                            * self.config['file_batch_size']: \
+            				(index + 1) * self.config['file_batch_size']]
+            batch_label = raw_labels[(index) \
+                            * self.config['file_batch_size']: \
+            				(index + 1) * self.config['file_batch_size']]
+
+            x.append(batch_img)
+            y.append(batch_label)
+
+        
+
+        # 1. generate random indices 
+        if self.mode=='train' and self.config['shuffle']:
+            
+            time_seed = int(time.time())*int(self.config['worker_id'])%1000
+            np.random.seed(time_seed)
+        
+            indices = np.random.permutation(n_batch)
+            
             if self.verbose: print 'training data shuffled'
 
         else:
-            img=[]
-            labels=[]
-            for index in range(n_batch):
-                batch_img =  raw_img[(index) \
-                                * self.config['file_batch_size']: \
-    							(index + 1) * self.config['file_batch_size']]
-                batch_label = raw_labels[index \
-                                * self.config['file_batch_size']: \
-    							(index + 1) * self.config['file_batch_size']]
-			
-                labels.append(batch_label)
-                img.append(batch_img)
+            
+            indices = np.arange(n_batch)
+
+        
+        
+        # 2. shuffle batches based on indices
+        img = []
+        labels=[]
+  
+        for index in indices:
+            img.append(x[index])
+            labels.append(y[index])
+    
                 
-                
+        # 3. localizing to each worker        
         if self.config['worker_type'] in ['avg', 'cdd']: # Synchronous Training needs data localization
             # localize data
 
@@ -340,7 +334,8 @@ class P_iter(object):
             
             self.len = len(img)
             
-            print 'len', self.len
+        else:
+            raise NotImplementedError()
             
         self.img = img
         self.labels = labels
@@ -350,15 +345,11 @@ class P_iter(object):
         self.current = 0
         self.subb=0
         
-        self.icomm.isend('stop',dest=0,tag=40)
-        
     def stop_load(self):
         
         # to stop the paraloading process
         
-        self.icomm.isend('stop',dest=0,tag=40)
-        
-        self.icomm.isend('stop',dest=0,tag=40)
+        pass
 
         
     def next(self, recorder, count):	

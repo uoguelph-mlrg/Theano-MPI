@@ -1,3 +1,4 @@
 **/*.pyc
 lib/models/*.pyc
+run/ompi-server.txt
 test/test-train-mode/mlp_base/mnist.pkl.gz

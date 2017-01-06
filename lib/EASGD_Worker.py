@@ -17,6 +17,8 @@ class EASGD_PTWorker(Async_PTWorker):
         self.spawn_load()
         
         self.init_base()
+        self.get_data()
+        self.build_model()
                                       
         import time
         compile_time = time.time()

@@ -30,8 +30,9 @@ class Async_PTWorker(Client,PTWorker):
             self.MPI_register()
             self.model.verbose = self.verbose
         
-        self.train_len = self.config['sync_freq']  # need to be 1 for asgd
-        self.val_len = len(self.data[2])
+        # self.train_len = self.config['sync_freq']  # need to be 1 for asgd
+        # self.val_len = len(self.data[2])
+        
         self.mode = None
         self.lastmode = None
         self.count = 0
@@ -94,24 +95,12 @@ class Async_PTWorker(Client,PTWorker):
             self.intercomm.Disconnect()
         except:
             pass
-    
-        
-    def prepare_param_exchanger(self):
-        
-        # different in EASGD and ASGD
-        
-        pass
                                     
     def prepare_recorder(self):
         
         from base.recorder import Recorder
         
         self.recorder = Recorder(self.config)
-                                    
-    def prepare_iterator(self):
-        
-        # different in EASGD and ASGD
-        pass
                                     
                                     
     def load_model(self, load_epoch):
@@ -181,10 +170,12 @@ class Async_PTWorker(Client,PTWorker):
         #save_momentums(vels,self.config['weights_dir'], self.uepoch)
         if self.verbose:
             print '\nweights and momentums saved at epoch %d' % self.uepoch
-            
-    def train(self):
+    
+    def train(self, train_len):
         
-        for i in range(self.train_len):
+        # Train on [train_len] batches, then sync with server
+        
+        for i in range(train_len):
             
             for subb_ind in range(self.config['n_subb']):
                 #print self.count
@@ -205,14 +196,16 @@ class Async_PTWorker(Client,PTWorker):
         self.lastmode = 'train'
 
         
-    def val(self):
+    def val(self, val_len):
+        
+        # validate on [val_len] batches
         
         if self.lastmode == 'train':
             self.train_iterator.reset()
         
         self.model.set_dropout_off()
         
-        for i in range(self.val_len):
+        for i in range(val_len):
         
             self.val_iterator.next(self.recorder,self.count)
             

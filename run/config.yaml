@@ -7,7 +7,6 @@
 
 # Model choose
 name: cnncifar10 # alexnet, googlenet, vggnet or cnncifar10
-data: cifar10 # cifar10 or imagenet
 
 pretrain: False
 monitor_grad: False
@@ -15,6 +14,8 @@ monitor_grad: False
 resume_train: False # load the following parameters during training. Val will load the parameters regardless of this
 load_epoch: 20
 load_path: ./pretrained-models/ # edit here to find your pretrained weights
+weights_dir : ./models # directory for saving weights and results
+record_dir: ./inforec/
 initial_val: False
 
 # Momentum
@@ -25,42 +26,25 @@ use_nesterov_momentum: False # def: False
 sync_start: True # start worker process together with server process in one mpirun call
 sync_freq: 1 # def: 1, if average weights every iteration in EASGD
 
-worker_type: avg # mode selection: avg or cdd, EASGD or ASGD
+worker_type: cdd # mode selection: avg or cdd, EASGD or ASGD
 exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
-# cuda_aware: True # deprecated in avg mode
-# fp: 32 # when cuda_aware == True, select parameter communication in float point 16 or 32
 
-# Data
-file_batch_size: 128 # def: choose according to the preprocessed hkl file size
-use_data_layer: False # def: False
 para_load: False # def: should be always true, training and loading data in parallel
-data_source: hkl # hkl or lmdb or both
-image_mean: img_mean # def: img_mean, RGB_mean or img_mean
-# Directories
-
-dir_head : /scratch/ilsvrc12/#/work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
-label_folder : /labels/  # 
-mean_file : /misc/img_mean.npy   
-weights_dir : ./models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
-record_dir: ./inforec/
-train_folder: /train_hkl_b256_b_128/   #/hkl_data/  
-val_folder: /val_hkl_b256_b_128/   
 
 # conv library
 lib_conv: cudnn
 
 # output
 flag_top_5: True
-print_info_every: 5120 # print time and error info every 5120 images
+print_info_every: 20480 # print time and error info every 5120 images
 snapshot_freq: 2  # epoch frequency of saving weights def: 20
 print_train_error: True
 print_freq: 2  # iteration frequency of printing training error rate def: 200
 
 # randomness
-
 shuffle: True # def: True, if shuffle the batches
 rand_crop: True # def: True, if False will likely be overfitting
-batch_crop_mirror: True  # if False, do randomly on each image separately
+batch_crop_mirror: False  # if False, do randomly on each image separately
 weight_init_seed: 23455 # to change, see layer.py file
 dropout_init_seed: 0 # to change, see layer.py file
 
