@@ -33,7 +33,7 @@ class BSP_PTWorker(PTWorker):
         self.verbose = self.config['verbose']
         self.spawn_load()
 
-        self.init_base()
+        self.init_device()
         self.get_data()
         self.build_model()
         

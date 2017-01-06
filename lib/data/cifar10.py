@@ -4,7 +4,7 @@ class Cifar10_data():
     
     def __init__(self, config):
         
-        self.data_path='/home/mahe6562/data/cifar10/cifar-10-batches-py/'
+        self.data_path='/scratch/hma02/data/cifar10/cifar-10-batches-py/'
         
         self.channels = 3
         self.input_width =28

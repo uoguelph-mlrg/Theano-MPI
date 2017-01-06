@@ -33,18 +33,18 @@ exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
 # Data
 file_batch_size: 128 # def: choose according to the preprocessed hkl file size
 use_data_layer: False # def: False
-para_load: True # def: should be always true, training and loading data in parallel
+para_load: False # def: should be always true, training and loading data in parallel
 data_source: hkl # hkl or lmdb or both
 image_mean: img_mean # def: img_mean, RGB_mean or img_mean
 # Directories
 
-dir_head : /work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
+dir_head : /scratch/ilsvrc12/#/work/mahe6562/prepdata_1000cat_128b/   # base dir where hkl training data is kept
 label_folder : /labels/  # 
 mean_file : /misc/img_mean.npy   
 weights_dir : ./models # name like models-alex-8gpu-1000/ will be automatically setup  # directory for saving weights and results
 record_dir: ./inforec/
-train_folder: /train_hkl_128b/   #/hkl_data/  
-val_folder: /val_hkl_128b/   
+train_folder: /train_hkl_b256_b_128/   #/hkl_data/  
+val_folder: /val_hkl_b256_b_128/   
 
 # conv library
 lib_conv: cudnn

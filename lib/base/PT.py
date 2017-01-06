@@ -84,9 +84,6 @@ class PTBase(object):
 
         self.process_config()
         
-    def init_base(self):
-        self.init_device()
-        
     def process_config(self):
     
         '''
