@@ -13,9 +13,8 @@ class Recorder(object):
     
     '''
     
-    def __init__(self, config):
+    def __init__(self, comm, printFreq, modelname, verbose):
 
-        self.config = config
         self.t_start = None
         self.t_end = None
 
@@ -43,7 +42,8 @@ class Recorder(object):
         self.info_dict['lr'] = []
 
         self.epoch_time = None
-        self.verbose = self.config['verbose']
+        self.verbose = verbose
+        self.comm, self.printFreq, self.modelname = comm, printFreq, modelname
 	
     def start(self):
 	
@@ -84,8 +84,7 @@ class Recorder(object):
 
     def print_train_info(self, count):
 
-        printFreq = self.config['print_info_every']   \
-                                /self.config['file_batch_size']
+        printFreq = self.printFreq #self.config['print_info_every']   \/self.config['file_batch_size']
         if (count) % printFreq ==0:
 
             #print train info
@@ -110,8 +109,8 @@ class Recorder(object):
             self.info_dict['all_time'].append([count, t_all, calc, comm, wait])
 
             if self.verbose:
-                print 'time per %d images: %.2f (train %.2f comm %.2f wait %.2f)' % \
-                            (self.config['print_info_every'], t_all, calc, comm, wait)
+                print 'time per %d batches: %.2f (train %.2f comm %.2f wait %.2f)' % \
+                            (printFreq, t_all, calc, comm, wait)
              
             self.all_time['calc'][:] = []
             self.all_time['comm'][:] = []
@@ -120,15 +119,15 @@ class Recorder(object):
     def gather_val_info(self):
         
         self.val_info['cost'] = np.array(
-        self.config['comm'].allgather(
+        self.comm.allgather(
                                      self.val_info['cost'])
                                      ).flatten().tolist()
         self.val_info['error'] = np.array(
-        self.config['comm'].allgather(
+        self.comm.allgather(
                                      self.val_info['error'])
                                      ).flatten().tolist()
         self.val_info['error_top5'] = np.array(
-        self.config['comm'].allgather(
+        self.comm.allgather(
                                      self.val_info['error_top5'])
                                      ).flatten().tolist()
 
@@ -228,14 +227,14 @@ class Recorder(object):
         	                    hspace = 0.14)
 
 	        ax = plt.subplot(211) # one record per 40 iterations , total 250 recordings for 10008 iterations in an epoch
-	        ax.plot(train_loss, color[0+color_id], label=self.config['name']+ label)
+	        ax.plot(train_loss, color[0+color_id], label=self.modelname+ label)
 	        ax.legend(loc='upper right',prop=fontP)
 	        #ax.set_xlabel('epoch')
 	        ax.set_ylabel('loss')
         
 
 	        ax = plt.subplot(212)
-	        ax.plot(train_error, color[0+color_id], label=self.config['name']+ label)
+	        ax.plot(train_error, color[0+color_id], label=self.modelname+ label)
 	        ax.legend(loc='upper right',prop=fontP)
 	        ax.set_xlabel('epoch')
 	        ax.set_ylabel('error')
@@ -254,19 +253,19 @@ class Recorder(object):
 	                            hspace = 0.14)
 	
 	        ax = plt.subplot(311) # one record per epoch
-	        ax.plot(val_loss, color[0+color_id], label=self.config['name']+ label)
+	        ax.plot(val_loss, color[0+color_id], label=self.modelname+ label)
 	        ax.legend(loc='upper right',prop=fontP)
 	        #ax.set_xlabel('epoch')
 	        ax.set_ylabel('loss')
 	
 	        ax = plt.subplot(312)
-	        ax.plot(val_error, color[0+color_id], label=self.config['name']+ label)
+	        ax.plot(val_error, color[0+color_id], label=self.modelname+ label)
 	        ax.legend(loc='upper right',prop=fontP)
 	        #ax.set_xlabel('epoch')
 	        ax.set_ylabel('error')
 	
 	        ax = plt.subplot(313)
-	        ax.plot(val_error_top5, color[0+color_id], label=self.config['name']+ label)
+	        ax.plot(val_error_top5, color[0+color_id], label=self.modelname+ label)
 	        ax.legend(loc='upper right',prop=fontP)
 	        ax.set_xlabel('epoch')
 	        ax.set_ylabel('top5 error')

@@ -9,6 +9,7 @@
 name: cnncifar10 # alexnet, googlenet, vggnet or cnncifar10
 
 monitor_grad: False
+verbose: True
 
 pretrain: False
 

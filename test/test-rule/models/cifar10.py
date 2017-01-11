@@ -1,11 +1,26 @@
+import os
+if 'THEANO_FLAGS' in os.environ:
+    raise ValueError('Use theanorc to set the theano config')
+os.environ['THEANO_FLAGS'] = 'device={0}'.format('cuda0')
+import theano.gpuarray
+# This is a bit of black magic that may stop working in future
+# theano releases
+ctx = theano.gpuarray.type.get_context(None)
+
 import theano
 import theano.tensor as T
 import numpy as np
 from layers2 import Conv,Pool,Dropout,FC,Softmax,Flatten,LRN, \
                     HeUniform, HeNormal, Constant, Normal, \
-                    get_params, get_layers
-# from modelbase import ModelBase
+                    get_params, get_layers, count_params
 
+
+import sys
+sys.path.append('../')
+from lib.opt import pre_model_iter_fn
+from lib.helper_funcs import get_rand3d
+from lib.proc_load_mpi import crop_and_mirror
+        
 # model hyperparams
 
 n_epochs = 70
@@ -24,53 +39,45 @@ use_nesterov_momentum = False
 #cropping hyperparams
 input_width = 28
 input_height = 28
-
-# lr_adapt_threshold =
+batch_crop_mirror = False
+rand_crop = True
 
 image_mean = 'img_mean'
 dataname = 'cifar10'
-
-# needs parallel loading or not
-para_load = False
 
 class Cifar10_model(object): # c01b input
     
     def __init__(self,config): 
 
         self.verbose = config['verbose']
-        self.monitor_grad = config['monitor_grad']
         
         self.name = 'Cifar10_model'
         
-        # input shape in c01b 
+        # data
         from data.cifar10 import Cifar10_data
-        
-        self.data = Cifar10_data()
-        self.para_load = para_load
-        
+        self.data = Cifar10_data(self.verbose)
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
         self.batch_size = batch_size # 'b'
-        
         self.file_batch_size = file_batch_size
-        
-        # output dimension
         self.n_softmax_out = self.data.n_class
         
-        # training related
+        # mini batching
+        self.data.batch_data(file_batch_size)
         
+        # training related
+        self.n_epochs = n_epochs
+        self.epoch = 0
         self.step_idx = 0
         self.mu = momentum # def: 0.9 # momentum
         self.use_momentum = use_momentum
         self.use_nesterov_momentum = use_nesterov_momentum
         self.eta = weight_decay #0.0002 # weight decay
-        
-        
+        self.monitor_grad = config['monitor_grad']
         
         self.base_lr = np.float32(learning_rate)
         self.shared_lr = theano.shared(self.base_lr)
-        
         self.shared_x = theano.shared(np.zeros((
                                                 3,
                                                 self.input_width, 
@@ -78,41 +85,40 @@ class Cifar10_model(object): # c01b input
                                                 file_batch_size
                                                 ), 
                                                 dtype=theano.config.floatX),  
-                                                borrow=True)
-                                              
+                                                borrow=True)                           
         self.shared_y = theano.shared(np.zeros((file_batch_size,), 
-                                          dtype=int),   borrow=True)                                  
-        
-        # build model
-        self.build_model()
-        
-        self.output = self.output_layer.output
-        
-        self.layers = get_layers(lastlayer = self.output_layer)
-        
-        
-        self.layers = [layer for layer in self.layers \
-            if layer.name not in ['LRN\t','Pool\t','Flatten\t','Dropout'+ str(0.5)]]
-            
-        self.params,self.weight_types = get_params(self.layers)
-
-        # if multi-stream layers exist, redefine and abstract into one layer class in layers2.py
-        
-        # count params
-        self.count_params()
-        
-        self.grads = T.grad(self.cost,self.params)
-        
+                                          dtype=int),   borrow=True) 
+        # slice batch if needed                     
         subb_ind = T.iscalar('subb')  # sub batch index
-        #print self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size].shape.eval()
         self.subb_ind = subb_ind
         self.shared_x_slice = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
-        self.shared_y_slice = self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
+        self.shared_y_slice = self.shared_y[subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]                             
+        # build model
+        self.build_model()
+        self.output = self.output_layer.output
+        self.layers = get_layers(lastlayer = self.output_layer)
+        self.params,self.weight_types = get_params(self.layers)
+        count_params(self.params)
+        self.grads = T.grad(self.cost,self.params)
         
-        
+        # To be compiled
         self.compiled_train_fn_list = []
-        self.train_iter = None
-        self.val_iter = None
+        self.train_iter_fn = None
+        self.val_iter_fn = None
+        
+        # iter related
+        self.n_subb = file_batch_size/batch_size
+        self.current_t = 0 # current filename pointer in the filename list
+        self.last_one_t = False # if pointer is pointing to the last filename in the list
+        self.subb_t = 0 # sub-batch index
+        
+        self.current_v=0
+        self.last_one_v=False
+        self.subb_v=0
+        
+        # preprocessing
+        self.batch_crop_mirror = batch_crop_mirror
+        self.input_width = input_width
         
     def build_model(self):
         
@@ -221,21 +227,6 @@ class Cifar10_model(object): # c01b input
         self.error = softmax.errors(self.y)
         self.error_top_5 = softmax.errors_top_x(self.y)
         
-    def count_params(self):
-        
-        if self.verbose:
-            
-            print '\nmodel param shapes follow'
-            size=0
-            for param in self.params:
-            
-                size+=param.size.eval()
-            
-                print param.shape.eval()
-            
-            self.model_size = size
-            
-            print 'model size %d\n' % int(self.model_size)
     
     def compile_train(self, *args):
         
@@ -257,25 +248,137 @@ class Cifar10_model(object): # c01b input
     def compile_inference(self):
 
         if self.verbose: print 'compiling inference function...'
-    
-        self.inference = theano.function([self.x],self.output)
+        
+        self.inf_fn = theano.function([self.x],self.output)
         
     def compile_val(self):
 
         if self.verbose: print 'compiling validation function...'
         
-        self.val =  theano.function([self.subb_ind], [self.cost,self.error,self.error_top_5], updates=[], 
+        self.val_fn =  theano.function([self.subb_ind], [self.cost,self.error,self.error_top_5], updates=[], 
                                           givens=[(self.x, self.shared_x_slice),
                                                   (self.y, self.shared_y_slice)]
                                                                 )
-    def set_dropout_off(self):
-        
-        Dropout.SetDropoutOff()
     
-    def set_dropout_on(self):
+    def compile_iter_fns(self):
+
+        pre_model_iter_fn(model, sync_type='avg')
+            
+    def iter_reset(self, mode):
         
-        Dropout.SetDropoutOn()
-                                                                                                      
+        self.current = 0
+        self.subb=0
+        
+    def train_iter(self,count,recorder):
+        
+
+        img= self.data.train_img
+        labels = self.data.train_labels
+        img_mean = self.data.rawdata[4]
+        mode='train'
+        function=self.train_iter_fn
+            
+        if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
+              
+            if self.current_t == 0:
+
+                self.data.shuffle_data()
+        
+            recorder.start()
+        
+            arr = img[self.current_t] - img_mean
+            
+            arr = np.rollaxis(arr,0,4)
+            
+            rand_arr = get_rand3d(rand_crop, mode)
+
+            arr = crop_and_mirror(arr, rand_arr, \
+                                    flag_batch=self.batch_crop_mirror, \
+                                    cropsize = self.input_width)
+                                    
+            self.shared_x.set_value(arr)
+            self.shared_y.set_value(labels[self.current_t])
+            
+            
+            if self.current_t == self.data.n_batch_train - 1:
+                self.last_one_t = True
+            else:
+                self.last_one_t = False
+                
+        
+            recorder.end('wait')
+                
+        recorder.start()
+        
+        cost,error= function(self.subb_t)
+        
+        if self.verbose: 
+            #print count+self.config['rank'], cost, error
+            #if count+self.config['rank']>45: exit(0)
+            if self.monitor_grad: 
+                print np.array(self.get_norm(self.subb_t))
+                #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
+            
+        recorder.train_error(count, cost, error)
+        recorder.end('calc')
+
+
+            
+        if (self.subb_t+1)//self.n_subb == 1: # test if next sub-batch is in another file
+            
+            if self.last_one_t == False:
+                self.current_t+=1
+            else:
+                self.current_t=0
+            
+            self.subb_t=0
+        else:
+            self.subb_t+=1
+        
+    def val_iter(self, count, recorder):
+        
+        img= self.data.val_img
+        labels = self.data.val_labels
+        img_mean = self.data.rawdata[4]
+        mode='val'
+        function=self.val_iter_fn
+        
+        if self.subb_v == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
+        
+    
+            arr = img[self.current_v] - img_mean
+        
+            arr = np.rollaxis(arr,0,4)
+        
+            rand_arr = get_rand3d(rand_crop, mode)
+
+            arr = crop_and_mirror(arr, rand_arr, \
+                                    flag_batch=self.batch_crop_mirror, \
+                                    cropsize = self.input_width)
+                                
+            self.shared_x.set_value(arr)
+            self.shared_y.set_value(labels[self.current_v])
+        
+        
+            if self.current_v == self.data.n_batch_val - 1:
+                self.last_one_v = True
+            else:
+                self.last_one_v = False
+            
+        cost,error,error_top5 = function(self.subb_v)
+        recorder.val_error(count, cost, error, error_top5)
+        
+        if (self.subb_v+1)//self.n_subb == 1: # test if next sub-batch is in another file
+        
+            if self.last_one_v == False:
+                self.current_v+=1
+            else:
+                self.current_v=0
+        
+            self.subb_v=0
+        else:
+            self.subb_v+=1
+                                                               
     def adjust_hyperp(self, epoch):
             
         '''
@@ -308,42 +411,48 @@ class Cifar10_model(object): # c01b input
             raise NotImplementedError()
         
         self.shared_lr.set_value(np.float32(tuned_base_lr))
-        
-    def save(self):
-        
-        pass
-        
-    def load(self):
-        
-        pass
-            
-    def test(self):
-        
-        self.train(0)
-        self.val(0)
                   
                             
                             
 if __name__ == '__main__': 
     
-    import yaml
-    with open('../../../run/config.yaml', 'r') as f:
-        config = yaml.load(f)
     
+    import yaml
+    with open('../config.yaml', 'r') as f:
+        config = yaml.load(f)
     
     model = Cifar10_model(config)
     
+    model.compile_iter_fns()
     
-    model.compile_train()
+    # get recorder
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
     
-    print model.train(0)
+    from lib.recorder import Recorder
+    recorder = Recorder(comm, printFreq=40, modelname='cifar10', verbose=True)
     
-    model.compile_val()
+    # train
     
-    print model.val(0)
+    for batch_i in range(model.data.n_batch_train):
+        
+        model.train_iter(batch_i, recorder)
+        
+        print batch_i
+        
+    # val
     
+    for batch_j in range(model.data.n_batch_val):
+        
+        model.val_iter(batch_i, recorder)
+        
+        print batch_j
+    
+    print 'finish one epoch'
+    
+    model.batch_size=1
     model.compile_inference()
     
-    print model.inference(model.shared_x.get_value()[0])
+    print model.inf_fn(model.shared_x.get_value()[:,:,:,:1])
     
-    model.adjust_lr(epoch=40,size=1)
+    model.adjust_hyperp(epoch=40)

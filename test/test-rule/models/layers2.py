@@ -580,6 +580,8 @@ class Softmax(Layer):
     
 def get_layers(lastlayer):
     
+    # if multi-stream layers exist, redefine and abstract into one layer class in layers2.py
+    
     assert hasattr(lastlayer, 'output')
 
     layers = [lastlayer]
@@ -595,6 +597,8 @@ def get_layers(lastlayer):
     
 def get_params(layers):
     
+    #layers = [layer for layer in layers if layer.name not in ['LRN\t','Pool\t','Flatten\t','Dropout'+ str(0.5)]]
+    
     params = []
     weight_types = []
     for layer in layers:
@@ -605,6 +609,16 @@ def get_params(layers):
             
     return params, weight_types
     
+    
+def count_params(params):
+        
+    model_size=0
+    for param in params:
+        
+        model_size+=param.size.eval()
+    print 'model size %d' % int(model_size)
+        
+    return model_size
     
     
             

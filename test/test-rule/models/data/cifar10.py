@@ -2,7 +2,7 @@ import numpy as np
 
 class Cifar10_data():
     
-    def __init__(self):
+    def __init__(self, verbose):
         
         # data hyperparams
         
@@ -15,6 +15,8 @@ class Cifar10_data():
         self.n_class = 10
         
         self.get_data()
+        
+        self.verbose = verbose
         
     def get_data(self):
 
@@ -59,6 +61,85 @@ class Cifar10_data():
         
         self.rawdata=[train_data, train_labels, val_data, val_labels, img_mean]
         
+        
+        
+    def batch_data(self, file_batch_size):
+    
+        self.n_batch_train = self.rawdata[0].shape[0]/file_batch_size
+        
+        self.train_img, self.train_labels=[],[]
+
+        raw_img = self.rawdata[0]
+        raw_labels = self.rawdata[1]
+    
+        for index in range(self.n_batch_train):
+            batch_img =  raw_img[(index) \
+                            * file_batch_size: \
+            				(index + 1) * file_batch_size]
+            batch_label = raw_labels[(index) \
+                            * file_batch_size: \
+            				(index + 1) * file_batch_size]
+
+            self.train_img.append(batch_img)
+            self.train_labels.append(batch_label)
+            
+            
+            
+        self.n_batch_val = self.rawdata[2].shape[0]/file_batch_size
+        
+        self.val_img, self.val_labels=[],[]
+
+        raw_img = self.rawdata[2]
+        raw_labels = self.rawdata[3]
+    
+        for index in range(self.n_batch_train):
+            batch_img =  raw_img[(index) \
+                            * file_batch_size: \
+            				(index + 1) * file_batch_size]
+            batch_label = raw_labels[(index) \
+                            * file_batch_size: \
+            				(index + 1) * file_batch_size]
+
+            self.val_img.append(batch_img)
+            self.val_labels.append(batch_label)
+    
+    
+    def shuffle_data(self):
+    
+        # To be called at the begining of an epoch for shuffling the order of training data
+
+        # 312 = 40000 / 128 
+    
+        # 1. generate random indices 
+
+        import time, os
+        time_seed = int(time.time())*int(os.getpid())%1000
+        np.random.seed(time_seed)
+
+        indices = np.random.permutation(self.n_batch_train)
+
+        # 2. shuffle batches based on indices
+        img = []
+        labels=[]
+
+        for index in indices:
+            img.append(self.train_img[index])
+            labels.append(self.train_labels[index])
+            
+        self.train_img = img
+        self.train_labels = labels
+        
+        if self.verbose: print 'training data shuffled'
+
+    
+    def shard_data(self, img, labels, rank, size):
+        
+        # usually after each shuffle_data call
+        
+        img = img[rank::size]
+        labels = labels[rank::size]
+    
+        return img,labels
         
         
         

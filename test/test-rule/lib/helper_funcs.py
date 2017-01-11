@@ -114,14 +114,14 @@ def dtype_to_mpi(t):
         raise ValueError('cannot convert type')
     return mpi_type
 
-def get_rand3d(config, mode):  
+def get_rand3d(rand_crop, mode):  
     
     if mode == 'val':
         return np.float32([0.5, 0.5, 0])
         
     else:
         
-        if config['rand_crop'] == True:
+        if rand_crop == True:
         
             # time_seed = int(time.time())*int(config['worker_id'])%1000
             # np.random.seed(time_seed)

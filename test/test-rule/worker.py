@@ -107,10 +107,17 @@ class Worker(object):
         from lib.exchanger import BSP_Exchanger
         self.recorder = BSP_Exchanger(self.comm, self.gpucomm, config['exch_strategy'], self.sync_type, self.ctx, model)
 
-        
-    def run(self):
-        
-        pass
+
+    def run(self, model):
+
+        for epoch in range(model.n_epochs):
+            
+            model.train()
+
+            model.val()
+            
+            model.adjust_hyperp()
+
         
 if __name__ == '__main__':
     
