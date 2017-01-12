@@ -10,6 +10,7 @@ name: cnncifar10 # alexnet, googlenet, vggnet or cnncifar10
 
 monitor_grad: False
 verbose: True
+print_info_every: 20480
 
 pretrain: False
 
@@ -37,10 +38,8 @@ lib_conv: cudnn
 
 # output
 flag_top_5: True
-print_info_every: 20480 # print time and error info every 5120 images
 snapshot_freq: 2  # epoch frequency of saving weights def: 20
-print_train_error: True
-print_freq: 2  # iteration frequency of printing training error rate def: 200
+
 
 # randomness
 shuffle: True # def: True, if shuffle the batches
@@ -50,5 +49,6 @@ weight_init_seed: 23455 # to change, see layer.py file
 dropout_init_seed: 0 # to change, see layer.py file
 
 # gpu and socket
-sock_data: 5020
+sock_data: 5020 # specific to parallel loading models so to be moved to iter definition
+
 debug: False # def: False ; True: run a small sample of training data for shorter epoch testing time

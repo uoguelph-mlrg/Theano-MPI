@@ -1,23 +1,7 @@
-import os
-if 'THEANO_FLAGS' in os.environ:
-    raise ValueError('Use theanorc to set the theano config')
-os.environ['THEANO_FLAGS'] = 'device={0}'.format('cuda0')
-import theano.gpuarray
-# This is a bit of black magic that may stop working in future
-# theano releases
-ctx = theano.gpuarray.type.get_context(None)
-
-import theano
-import theano.tensor as T
 import numpy as np
-from layers2 import Conv,Pool,Dropout,FC,Softmax,Flatten,LRN, \
-                    HeUniform, HeNormal, Constant, Normal, \
-                    get_params, get_layers, count_params
-
-
 import sys
 sys.path.append('../')
-from lib.opt import pre_model_iter_fn
+
 from lib.helper_funcs import get_rand3d
 from lib.proc_load_mpi import crop_and_mirror
         
@@ -51,6 +35,7 @@ class Cifar10_model(object): # c01b input
 
         self.verbose = config['verbose']
         
+        import theano
         self.name = 'Cifar10_model'
         
         # data
@@ -88,7 +73,8 @@ class Cifar10_model(object): # c01b input
                                                 borrow=True)                           
         self.shared_y = theano.shared(np.zeros((file_batch_size,), 
                                           dtype=int),   borrow=True) 
-        # slice batch if needed                     
+        # slice batch if needed
+        import theano.tensor as T                     
         subb_ind = T.iscalar('subb')  # sub batch index
         self.subb_ind = subb_ind
         self.shared_x_slice = self.shared_x[:,:,:,subb_ind*self.batch_size:(subb_ind+1)*self.batch_size]
@@ -96,6 +82,7 @@ class Cifar10_model(object): # c01b input
         # build model
         self.build_model()
         self.output = self.output_layer.output
+        from layers2 import get_params, get_layers, count_params
         self.layers = get_layers(lastlayer = self.output_layer)
         self.params,self.weight_types = get_params(self.layers)
         count_params(self.params)
@@ -126,6 +113,9 @@ class Cifar10_model(object): # c01b input
         if self.verbose: print self.name
 
         # start graph construction from scratch
+        import theano.tensor as T
+        from layers2 import Conv,Pool,Dropout,FC,Softmax,Flatten,LRN, \
+                            HeUniform, HeNormal, Constant, Normal
         
         self.x = T.ftensor4('x')
         
@@ -234,6 +224,8 @@ class Cifar10_model(object): # c01b input
         
         if self.verbose: print 'compiling training function...'
         
+        import theano
+        
         for arg_list in args:
             self.compiled_train_fn_list.append(theano.function(**arg_list))
         
@@ -249,11 +241,15 @@ class Cifar10_model(object): # c01b input
 
         if self.verbose: print 'compiling inference function...'
         
+        import theano
+        
         self.inf_fn = theano.function([self.x],self.output)
         
     def compile_val(self):
 
         if self.verbose: print 'compiling validation function...'
+        
+        import theano
         
         self.val_fn =  theano.function([self.subb_ind], [self.cost,self.error,self.error_top_5], updates=[], 
                                           givens=[(self.x, self.shared_x_slice),
@@ -261,6 +257,8 @@ class Cifar10_model(object): # c01b input
                                                                 )
     
     def compile_iter_fns(self):
+        
+        from lib.opt import pre_model_iter_fn
 
         pre_model_iter_fn(model, sync_type='avg')
             
@@ -416,6 +414,16 @@ class Cifar10_model(object): # c01b input
                             
 if __name__ == '__main__': 
     
+    # setting up device
+    import os
+    if 'THEANO_FLAGS' in os.environ:
+        raise ValueError('Use theanorc to set the theano config')
+    os.environ['THEANO_FLAGS'] = 'device={0}'.format('cuda0')
+    import theano.gpuarray
+    # This is a bit of black magic that may stop working in future
+    # theano releases
+    ctx = theano.gpuarray.type.get_context(None)
+    
     
     import yaml
     with open('../config.yaml', 'r') as f:
@@ -430,13 +438,15 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     
     from lib.recorder import Recorder
-    recorder = Recorder(comm, printFreq=40, modelname='cifar10', verbose=True)
+    recorder = Recorder(comm, printFreq=4, modelname='cifar10', verbose=True)
     
     # train
     
     for batch_i in range(model.data.n_batch_train):
         
         model.train_iter(batch_i, recorder)
+        
+        #recorder.print_train_info(batch_i)
         
         print batch_i
         
@@ -447,6 +457,8 @@ if __name__ == '__main__':
         model.val_iter(batch_i, recorder)
         
         print batch_j
+        
+    recorder.print_val_info(batch_i)
     
     print 'finish one epoch'
     
