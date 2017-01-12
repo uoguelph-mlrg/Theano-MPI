@@ -158,7 +158,7 @@ class Recorder(object):
             
         return latest
     
-    def save(self, count,lr, filepath = 'inforec/inforec.pkl'):
+    def save(self, count, lr, filepath = './inforec/inforec.pkl'):
         
         '''
         save dictionaries to file inforec.pkl (from epoch=1 to current epoch)

@@ -261,4 +261,55 @@ def load_momentums(vels, weights_dir, epoch):
     for ind in range(len(vels)):
         vels[ind].set_value(np.load(os.path.join(
             weights_dir, 'mom_' + str(ind) + '_' + str(epoch) + '.npy')))
+            
+def check_model(model):
+            
+    try:
+        
+        assert hasattr(model, 'params') == True
+        
+        assert isinstance(model.params, list)
+        
+        import theano
+        
+        assert isinstance(model.params[0], theano.gpuarray.type.GpuArraySharedVariable)
+        
+        assert hasattr(model, 'data') == True
+        
+        assert hasattr(model, 'epoch') == True
+        
+        assert hasattr(model, 'compile_iter_fns') == True and callable(getattr(model, 'compile_iter_fns')) == True
+        
+        assert hasattr(model, 'train_iter') == True and callable(getattr(model, 'train_iter')) == True
+        
+        assert hasattr(model, 'val_iter') == True and callable(getattr(model, 'val_iter')) == True
+        
+        assert hasattr(model, 'reset_iter') == True and callable(getattr(model, 'reset_iter')) == True
+        
+        assert hasattr(model, 'adjust_hyperp') == True and callable(getattr(model, 'adjust_hyperp')) == True
+        
+        assert hasattr(model, 'cleanup') == True and callable(getattr(model, 'cleanup')) == True
+        
+    
+    except AssertionError:
+        
+        print 'Model def lacks some attributes and/or methods'
+        raise
 
+
+def save_model(model, path, verbose): 
+      
+        layers = model.layers
+        vels = model.vels  
+
+        save_weights(layers, path, model.epoch)
+        np.save(path + 'lr_' + str(model.epoch) + \
+                        '.npy', model.shared_lr.get_value())
+        #save_momentums(vels, self.config['weights_dir'], self.epoch)
+        
+        if verbose:
+            print '\nweights and momentums saved at epoch %d' % model.epoch
+        
+        with open(path+"val_info.txt", "a") as f:
+            f.write("\nepoch: {} val_info {}:".format(model.epoch, \
+                                                    model.current_info))

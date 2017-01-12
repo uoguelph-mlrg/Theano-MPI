@@ -205,6 +205,10 @@ class BSP_Exchanger(object):
                 
                 self.exch.exchange()
                 
+        else:
+            
+            raise NotImplementedError('wrong sync type')
+                
         
 class EASGD_Exchanger(object):
     '''

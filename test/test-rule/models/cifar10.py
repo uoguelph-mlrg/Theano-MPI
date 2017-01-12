@@ -24,14 +24,14 @@ use_nesterov_momentum = False
 input_width = 28
 input_height = 28
 batch_crop_mirror = False
-rand_crop = True
+rand_crop = False
 
 image_mean = 'img_mean'
 dataname = 'cifar10'
 
 class Cifar10_model(object): # c01b input
     
-    def __init__(self,config): 
+    def __init__(self, config): 
 
         self.verbose = config['verbose']
         
@@ -40,7 +40,7 @@ class Cifar10_model(object): # c01b input
         
         # data
         from data.cifar10 import Cifar10_data
-        self.data = Cifar10_data(self.verbose)
+        self.data = Cifar10_data(verbose=False)
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
@@ -260,12 +260,21 @@ class Cifar10_model(object): # c01b input
         
         from lib.opt import pre_model_iter_fn
 
-        pre_model_iter_fn(model, sync_type='avg')
+        pre_model_iter_fn(self, sync_type='avg')
             
-    def iter_reset(self, mode):
+    def reset_iter(self, mode):
         
-        self.current = 0
-        self.subb=0
+        if mode=='train':
+            
+            self.current_t = 0
+            self.subb_t=0
+            self.last_one_t = False
+        else:
+            
+            self.current_v = 0
+            self.subb_v=0
+            self.last_one_v = False
+            
         
     def train_iter(self,count,recorder):
         
@@ -280,7 +289,8 @@ class Cifar10_model(object): # c01b input
               
             if self.current_t == 0:
 
-                self.data.shuffle_data()
+                #self.data.shuffle_data()
+                pass
         
             recorder.start()
         
@@ -409,6 +419,10 @@ class Cifar10_model(object): # c01b input
             raise NotImplementedError()
         
         self.shared_lr.set_value(np.float32(tuned_base_lr))
+        
+    def cleanup(self):
+        
+        pass
                   
                             
                             
@@ -460,6 +474,7 @@ if __name__ == '__main__':
         
     recorder.print_val_info(batch_i)
     
+    model.epoch+=1
     print 'finish one epoch'
     
     model.batch_size=1

@@ -10,12 +10,17 @@ sync_type = 'avg' # or 'cdd'
 
 class BSP(object):
     
-    def __init__(self,config):
+    # Bulk Synchronous Parallel rule
+    
+    # When to exchange: workers run iterations synchronously and exchange after each iteration
+    
+    
+    def __init__(self):
         
         self.pid =None
         self.sync_type=sync_type
         
-    def init(self, devices):
+    def init(self, devices, modelfile, modelclass):
         
         N_WORKERS = len(devices)
         
@@ -37,7 +42,7 @@ class BSP(object):
             command += ["--bind-to", "none"]
             command += [sys.executable, "-u", "worker.py"] 
         
-            command += [device, self.sync_type]
+            command += [device, self.sync_type, modelfile,  modelclass]
             
             if index!= N_WORKERS-1:
                 command += [":"]
@@ -57,12 +62,7 @@ class BSP(object):
                 sys.exit(3)
             if os.WIFEXITED(status):
                 rcode = os.WEXITSTATUS(status)
-                print("\n## terminated with return code: {}.".format(rcode))
-                if rcode != 0:
-                    print("\nAn error has occured.")
-                    sys.exit(1)
-                else:
-                    print("worker %d finished." % pid)
+                print("\n Rule session {0} terminated with return code: {1}.".format(pid,rcode))
             
         except (RuntimeError, KeyboardInterrupt):
 

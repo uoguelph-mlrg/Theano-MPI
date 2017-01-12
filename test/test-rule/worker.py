@@ -58,65 +58,77 @@ class Worker(object):
         
     def build(self, model, config):
         
-        try:
-            
-            assert hasattr(model, 'params') == True
-            
-            assert isinstance(model.params, list)
-            
-            import theano
-            
-            assert isinstance(model.params[0], theano.gpuarray.type.GpuArraySharedVariable)
-            
-            assert hasattr(model, 'data') == True
-            
-            assert hasattr(model, 'train_iter') == True
-            
-            assert hasattr(model, 'val_iter') == True
-            
-            assert hasattr(model, 'compile_train') == True and callable(getattr(model, 'compile_train')) == True
-            
-            assert hasattr(model, 'compile_val') == True and callable(getattr(model, 'compile_val')) == True
-            
-            assert hasattr(model, 'adjust_hyperp') == True and callable(getattr(model, 'adjust_hyperp')) == True
-            
-            assert hasattr(model, 'save') == True and  callable(getattr(model, 'save')) == True
-            
-            assert hasattr(model, 'load') == True and  callable(getattr(model, 'load')) == True
+        from lib.helper_funcs import check_model
         
-        except AssertionError:
-            
-            print 'Model def lacks some attributes and/or methods'
-            raise
-            
+        # check model has necessary attributes
+        check_model(model)
         
         # construct model train function based on sync rule
-        from lib.opt import pre_model_fn
-        pre_model_fn(model, self.sync_type)
+        model.compile_iter_fns()
         
-        # choose between Iterator and Iterator_hkl. 
-        # Iterator_hkl supports parallel loading hkl files
-        from lib.iterator import Iterator 
-        model.train_iter = Iterator(model, self.sync_type, 'train')
-        model.val_iter = Iterator(model, self.sync_type, 'val')
-        
+        self.verbose = (self.rank==0)
         from lib.recorder import Recorder
-        self.recorder = Recorder(config)
+        self.recorder = Recorder(self.comm, printFreq=200, modelname='cifar10', verbose=self.verbose)
         
         # choose the type of exchanger
         from lib.exchanger import BSP_Exchanger
-        self.recorder = BSP_Exchanger(self.comm, self.gpucomm, config['exch_strategy'], self.sync_type, self.ctx, model)
-
-
-    def run(self, model):
+        self.exchanger = BSP_Exchanger(self.comm, self.gpucomm, config['exch_strategy'], self.sync_type, self.ctx, model)
+            
+            
+    def BSP_run(self, model):
+        
+        self.comm.Barrier()
+        
+        exchange_freq = 1 # iterations
+        snapshot_freq = 2 # epochs
+        snapshot_path = './snapshots/'
+        recorder=self.recorder
+        exchanger=self.exchanger
+        
+        from lib.helper_funcs import save_model
 
         for epoch in range(model.n_epochs):
             
-            model.train()
-
-            model.val()
+            model.epoch=epoch
             
-            model.adjust_hyperp()
+            recorder.start_epoch()
+            
+            # train
+    
+            for batch_i in range(model.data.n_batch_train):
+        
+                model.train_iter(batch_i, recorder)
+                
+                if batch_i % exchange_freq == 0: 
+                    exchanger.exchange()
+        
+                recorder.print_train_info(batch_i)
+            
+            model.reset_iter('train')
+        
+            # val
+            
+            self.comm.Barrier()
+    
+            for batch_j in range(model.data.n_batch_val):
+        
+                model.val_iter(batch_i, recorder)
+
+                
+            model.reset_iter('val')
+        
+            recorder.print_val_info(batch_i)
+            model.current_info = recorder.get_latest_val_info()
+            
+            recorder.save(batch_i, model.shared_lr.get_value())
+            
+            if epoch % snapshot_freq == 0: save_model(model, snapshot_path, verbose=self.verbose)
+            
+            model.adjust_hyperp(epoch)
+            
+            recorder.end_epoch(batch_i, epoch)
+            
+        model.cleanup()
 
         
 if __name__ == '__main__':
@@ -134,9 +146,16 @@ if __name__ == '__main__':
         config = yaml.load(f)
     
     config['verbose'] = (worker.rank==0)
+    
+    modelfile = sys.argv[3]
+    modelclass = sys.argv[4]
+    
+    import importlib
+    mod = importlib.import_module(modelfile)
+    modcls = getattr(mod, modelclass)
 
-    from models.cifar10 import Cifar10_model
-
-    model = Cifar10_model(config)
+    model = modcls(config)
 
     worker.build(model, config)
+    
+    worker.BSP_run(model)
