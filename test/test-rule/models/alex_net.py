@@ -9,6 +9,7 @@ sys.path.append('../')
 
 from lib.helper_funcs import get_rand3d
 from lib.proc_load_mpi import crop_and_mirror
+import hickle as hkl
 
 # model hyperparams
 n_epochs = 70
@@ -35,7 +36,7 @@ image_mean = 'img_mean'
 dataname = 'imagenet'
 
 # conv
-lib_conv='cudnn'
+lib_conv='corrmm'
 
 class AlexNet(object):
 
@@ -127,7 +128,7 @@ class AlexNet(object):
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import ConvPoolLRN,Dropout,FC, \
+        from layers2 import ConvPoolLRN,Dropout,FC, Dimshuffle, \
                             Softmax,Flatten,LRN, Constant, Normal
         
         
@@ -195,9 +196,13 @@ class AlexNet(object):
                                         printinfo = self.verbose
                                         #output_shape=(256, 6, 6, batch_size),
                                         )
-
-        fc_layer6_input = Flatten(input=convpool_layer5.output.dimshuffle(3, 0, 1, 2),
-                                  input_shape=(batch_size, 256, 6, 6),
+        shuffle = Dimshuffle(input=convpool_layer5,
+                             new_axis_order=(3,0,1,2),
+                             printinfo=self.verbose
+                             )
+        
+        fc_layer6_input = Flatten(input=shuffle,
+                                  #input_shape=(batch_size, 256, 6, 6),
                                   axis = 2,
                                   printinfo=self.verbose
                                   )
@@ -289,7 +294,143 @@ class AlexNet(object):
         from lib.opt import pre_model_iter_fn
 
         pre_model_iter_fn(self, sync_type='avg')
+    
+    def reset_iter(self, mode):
+        
+        if mode=='train':
+            
+            self.current_t = 0
+            self.subb_t=0
+            self.last_one_t = False
+        else:
+            
+            self.current_v = 0
+            self.subb_v=0
+            self.last_one_v = False
+        
+        if self.para_load:
+            
+            pass
+            
+            #self.icomm.isend('stop',dest=0,tag=40)
+        
+    def train_iter(self, count,recorder):
+        
+        '''use the train_iter_fn compiled'''
+        '''use parallel loading for large or remote data'''
+        
+        img = self.data.train_img
+        labels = self.data.train_labels
+        img_mean = self.data.rawdata[4]
+        mode = 'train'
+        function = self.train_iter_fn
+            
+        if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
+              
+            if self.current_t == 0:
 
+                #self.data.shuffle_data()
+                pass
+        
+            recorder.start()
+            
+            arr = hkl.load(img[self.current_t]) - img_mean
+            
+            # arr = np.rollaxis(arr,0,4)
+            
+            rand_arr = get_rand3d(rand_crop, mode)
+
+            arr = crop_and_mirror(arr, rand_arr, \
+                                    flag_batch=self.batch_crop_mirror, \
+                                    cropsize = self.input_width)
+                                    
+            self.shared_x.set_value(arr)
+            self.shared_y.set_value(labels[self.current_t])
+            
+            
+            if self.current_t == self.data.n_batch_train - 1:
+                self.last_one_t = True
+            else:
+                self.last_one_t = False
+                
+        
+            recorder.end('wait')
+                
+        recorder.start()
+        
+        cost,error= function(self.subb_t)
+        
+        if self.verbose: 
+            #print count+self.config['rank'], cost, error
+            #if count+self.config['rank']>45: exit(0)
+            if self.monitor_grad: 
+                print np.array(self.get_norm(self.subb_t))
+                #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
+            
+        recorder.train_error(count, cost, error)
+        recorder.end('calc')
+
+
+            
+        if (self.subb_t+1)//self.n_subb == 1: # test if next sub-batch is in another file
+            
+            if self.last_one_t == False:
+                self.current_t+=1
+            else:
+                self.current_t=0
+            
+            self.subb_t=0
+        else:
+            self.subb_t+=1
+        
+    def val_iter(self, count,recorder):
+        
+        '''use the val_iter_fn compiled'''
+        
+        img= self.data.val_img
+        labels = self.data.val_labels
+        img_mean = self.data.rawdata[4]
+        mode='val'
+        function=self.val_iter_fn
+        
+        if self.subb_v == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
+        
+    
+            arr = hkl.load(img[self.current_v]) - img_mean
+        
+            # arr = np.rollaxis(arr,0,4)
+        
+            rand_arr = get_rand3d(rand_crop, mode)
+
+            arr = crop_and_mirror(arr, rand_arr, \
+                                    flag_batch=self.batch_crop_mirror, \
+                                    cropsize = self.input_width)
+                                
+            self.shared_x.set_value(arr)
+            self.shared_y.set_value(labels[self.current_v])
+        
+        
+            if self.current_v == self.data.n_batch_val - 1:
+                self.last_one_v = True
+            else:
+                self.last_one_v = False
+                
+        Dropout.SetDropoutOff()
+        cost,error,error_top5 = function(self.subb_v)
+        Dropout.SetDropoutOn()
+        
+        recorder.val_error(count, cost, error, error_top5)
+        
+        if (self.subb_v+1)//self.n_subb == 1: # test if next sub-batch is in another file
+        
+            if self.last_one_v == False:
+                self.current_v+=1
+            else:
+                self.current_v=0
+        
+            self.subb_v=0
+        else:
+            self.subb_v+=1
         
     def adjust_hyperp(self, epoch):
             
@@ -355,23 +496,39 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     
     from lib.recorder import Recorder
-    recorder = Recorder(comm, printFreq=4, modelname='cifar10', verbose=True)
+    recorder = Recorder(comm, printFreq=40, modelname='alexnet', verbose=True)
     
     
+    # train
     
+    for batch_i in range(model.data.n_batch_train):
+        
+        model.train_iter(batch_i, recorder)
+        
+        recorder.print_train_info(batch_i)
+        
+    # val
     
+    for batch_j in range(model.data.n_batch_val):
+        
+        model.val_iter(batch_i, recorder)
+
+        
+    recorder.print_val_info(batch_i)
     
-    
-    
-    
+    model.epoch+=1
+    print 'finish one epoch'
     
     
     # inference demo
+    
+    model.batch_size = 1
+    
     model.compile_inference()
     
     test_image = np.zeros((3,227,227,1),dtype=theano.config.floatX) # inference on an image 
     
-    soft_prob = model.inference(test_image)
+    soft_prob = model.inf_fn(test_image)
     
     num_top = 5
     

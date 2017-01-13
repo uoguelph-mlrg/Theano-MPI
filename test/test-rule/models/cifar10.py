@@ -278,7 +278,8 @@ class Cifar10_model(object): # c01b input
         
     def train_iter(self,count,recorder):
         
-
+        '''use the train_iter_fn compiled'''
+        
         img= self.data.train_img
         labels = self.data.train_labels
         img_mean = self.data.rawdata[4]
@@ -344,6 +345,8 @@ class Cifar10_model(object): # c01b input
             self.subb_t+=1
         
     def val_iter(self, count, recorder):
+        
+        '''use the val_iter_fn compiled'''
         
         img= self.data.val_img
         labels = self.data.val_labels

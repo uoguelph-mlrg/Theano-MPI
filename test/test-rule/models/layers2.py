@@ -15,7 +15,6 @@ rng = np.random.RandomState(23455)
 # set a fixed number for 2 purpose:
 #  1. repeatable experiments; 2. for multiple-GPU, the same initial weights
 
-lib_conv = 'cudnn'
 
 class Weight(object):
 
@@ -222,7 +221,7 @@ class Layer(object):
 class Conv(Layer):
     def __init__(self, input, convstride, padsize, 
                  b, W = None, filter_shape = None, 
-                 lib_conv=lib_conv, printinfo=True, 
+                 lib_conv='cudnn', printinfo=True, 
                  input_shape=None, output_shape=None):
         
         if W == None and filter_shape == None:
@@ -404,122 +403,113 @@ class ConvPoolLRN(Layer):
             self.output = T.maximum(conv_out, 0)
 
             # Pooling
-            if self.poolsize != 1:
+            if poolsize != 1:
                 self.output = dnn.dnn_pool(self.output,
                                            ws=(poolsize, poolsize),
                                            stride=(poolstride, poolstride))
 
             self.output = self.output.dimshuffle(1, 2, 3, 0)  # bc01 to c01b
             
-        elif lib_conv == 'cudaconvnet':
-            
-            from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
+        # elif lib_conv == 'cudaconvnet':
+#
+#             from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
+#
+#             self.conv_op = FilterActs(pad=self.padsize, stride=self.convstride,
+#                                       partial_sum=1)
+#
+#             from theano.gpuarray.basic_ops import gpu_contiguous
+#
+#             # Conv
+#             if group == 1:
+#                 contiguous_input = gpu_contiguous(self.input)
+#                 contiguous_filters = gpu_contiguous(self.W.val)
+#                 conv_out = self.conv_op(contiguous_input, contiguous_filters)
+#                 conv_out = conv_out + self.b.val.dimshuffle(0, 'x', 'x', 'x')
+#             else:
+#                 contiguous_input0 = gpu_contiguous(
+#                     self.input[:channel/2, :, :, :])
+#                 contiguous_filters0 = gpu_contiguous(self.W0.val)
+#                 conv_out0 = self.conv_op(
+#                     contiguous_input0, contiguous_filters0)
+#                 conv_out0 = conv_out0 + \
+#                     self.b0.val.dimshuffle(0, 'x', 'x', 'x')
+#
+#                 contiguous_input1 = gpu_contiguous(
+#                     self.input[channel/2:, :, :, :])
+#                 contiguous_filters1 = gpu_contiguous(self.W1.val)
+#                 conv_out1 = self.conv_op(
+#                     contiguous_input1, contiguous_filters1)
+#                 conv_out1 = conv_out1 + \
+#                     self.b1.val.dimshuffle(0, 'x', 'x', 'x')
+#                 conv_out = T.concatenate([conv_out0, conv_out1], axis=0)
+#
+#             # ReLu
+#             conv_out = gpu_contiguous(conv_out)
+#             self.output = T.maximum(conv_out, 0)
+#
+#             # Pooling
+#             if poolsize != 1:
+#                 from pylearn2.sandbox.cuda_convnet.pool import MaxPool
+#                 self.pool_op = MaxPool(ds=poolsize, stride=poolstride)
+#                 self.output = self.pool_op(self.output)
 
-            self.conv_op = FilterActs(pad=self.padsize, stride=self.convstride,
-                                      partial_sum=1)
+        elif lib_conv == 'corrmm':
 
             from theano.gpuarray.basic_ops import gpu_contiguous
+            from theano.gpuarray.blas import GpuCorrMM
 
-            # Conv
-            if group == 1:
-                contiguous_input = gpu_contiguous(self.input)
-                contiguous_filters = gpu_contiguous(self.W.val)
-                conv_out = self.conv_op(contiguous_input, contiguous_filters)
-                conv_out = conv_out + self.b.val.dimshuffle(0, 'x', 'x', 'x')
+            border_mode = 'half' if padsize == (filter_shape[1]-1)/2 else (padsize, padsize)
+            self.corr_mm_op = GpuCorrMM(subsample=(convstride,convstride),
+                                                border_mode=border_mode)
+
+            input_shuffled = self.input.dimshuffle(3, 0, 1, 2)  # c01b to bc01
+
+
+            if group==1:
+
+                filters = self.W.val.dimshuffle(3, 0, 1, 2)
+
+                # flip top-down, left-right to compute convolution instead of correlation  
+                contiguous_filters = gpu_contiguous(filters[:, :, ::-1, ::-1])
+                contiguous_input = gpu_contiguous(input_shuffled)
+
+                conv_out = self.corr_mm_op(contiguous_input, contiguous_filters)
+                conv_out = conv_out + self.b.val.dimshuffle('x', 0, 'x', 'x')
+
             else:
-                contiguous_input0 = gpu_contiguous(
-                    self.input[:channel/2, :, :, :])
-                contiguous_filters0 = gpu_contiguous(self.W0.val)
-                conv_out0 = self.conv_op(
-                    contiguous_input0, contiguous_filters0)
-                conv_out0 = conv_out0 + \
-                    self.b0.val.dimshuffle(0, 'x', 'x', 'x')
 
-                contiguous_input1 = gpu_contiguous(
-                    self.input[channel/2:, :, :, :])
-                contiguous_filters1 = gpu_contiguous(self.W1.val)
-                conv_out1 = self.conv_op(
-                    contiguous_input1, contiguous_filters1)
-                conv_out1 = conv_out1 + \
-                    self.b1.val.dimshuffle(0, 'x', 'x', 'x')
-                conv_out = T.concatenate([conv_out0, conv_out1], axis=0)
+                W0_shuffled = self.W0.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
+
+                contiguous_filters0 = gpu_contiguous(W0_shuffled[:, :, ::-1, ::-1])
+                contiguous_input0 = gpu_contiguous(input_shuffled[:, :channel / 2,:, :])
+
+                conv_out0 = self.corr_mm_op(contiguous_input0, contiguous_filters0)
+                conv_out0 = conv_out0 + self.b0.val.dimshuffle('x', 0, 'x', 'x')
+
+                W1_shuffled = self.W1.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
+
+                contiguous_filters1 = gpu_contiguous(W1_shuffled[:, :, ::-1, ::-1])
+                contiguous_input1 = gpu_contiguous(input_shuffled[:, channel / 2:,:, :])
+
+                conv_out1 = self.corr_mm_op(contiguous_input1, contiguous_filters1)
+                conv_out1 = conv_out1 + self.b1.val.dimshuffle('x', 0, 'x', 'x')
+                conv_out = T.concatenate([conv_out0, conv_out1], axis=1)
 
             # ReLu
-            conv_out = gpu_contiguous(conv_out)
             self.output = T.maximum(conv_out, 0)
+   
 
             # Pooling
-            if self.poolsize != 1:
-                from pylearn2.sandbox.cuda_convnet.pool import MaxPool
-                self.pool_op = MaxPool(ds=poolsize, stride=poolstride)
-                self.output = self.pool_op(self.output)
-
-        # elif lib_conv == 'corrmm':
-        #
-        #     from theano.sandbox.cuda.basic_ops import gpu_contiguous
-        #     from theano.sandbox.cuda.blas import GpuCorrMM
-        #
-        #     border_mode = 'half' if padsize == (filter_shape[1]-1)/2 else (padsize, padsize)
-        #     self.corr_mm_op = GpuCorrMM(subsample=(convstride,convstride),
-        #                                         border_mode=border_mode)
-        #     flip_filters=True
-        #     input_shuffled = input.dimshuffle(3, 0, 1, 2)  # c01b to bc01
-        #
-        #
-        #     if group==1:
-        #
-        #         filters = self.W.val.dimshuffle(3, 0, 1, 2)
-        #
-        #         if flip_filters:
-        #             filters = filters[:, :, ::-1, ::-1]  # flip top-down, left-right
-        #         contiguous_filters = gpu_contiguous(filters)
-        #         contiguous_input = gpu_contiguous(input_shuffled)
-        #
-        #         conv_out = self.corr_mm_op(contiguous_input, contiguous_filters)
-        #         conv_out = conv_out + self.b.val.dimshuffle('x', 0, 'x', 'x')
-        #
-        #     else:
-        #
-        #         W0_shuffled = \
-        #             self.W0.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
-        #         if flip_filters:
-        #             W0_shuffled = W0_shuffled[:, :, ::-1, ::-1]
-        #
-        #         contiguous_filters0 = gpu_contiguous(W0_shuffled)
-        #         contiguous_input0 = gpu_contiguous(input_shuffled[:, :self.channel / 2,:, :])
-        #
-        #         conv_out0 = self.corr_mm_op(contiguous_input0, contiguous_filters0)
-        #         conv_out0 = conv_out0 + \
-        #             self.b0.val.dimshuffle('x', 0, 'x', 'x')
-        #
-        #         W1_shuffled = \
-        #             self.W1.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
-        #         if flip_filters:
-        #             W1_shuffled = W1_shuffled[:, :, ::-1, ::-1]
-        #
-        #         contiguous_filters1 = gpu_contiguous(W1_shuffled)
-        #         contiguous_input1 = gpu_contiguous(input_shuffled[:, self.channel / 2:,:, :])
-        #
-        #         conv_out1 = self.corr_mm_op(contiguous_input1, contiguous_filters1)
-        #         conv_out1 = conv_out1 + \
-        #             self.b1.val.dimshuffle('x', 0, 'x', 'x')
-        #         conv_out = T.concatenate([conv_out0, conv_out1], axis=1)
-        #
-        #     # ReLu
-        #     self.output = T.maximum(conv_out, 0)
-        #
-        #     # Pooling
-        #     if self.poolsize != 1:
-        #         from theano.tensor.signal import downsample
-        #         self.output = downsample.max_pool_2d(self.output,
-        #                                     ds=(poolsize,poolsize),
-        #                                     st=(poolstride,poolstride),
-        #                                     ignore_border=False,
-        #                                     padding=(0,0),
-        #                                     mode='max',
-        #                                                 )
-        #
-        #     self.output = self.output.dimshuffle(1, 2, 3, 0)  # bc01 to c01b
+            if poolsize != 1:
+                from theano.gpuarray.pool import GpuPool
+                
+                
+                ds_op = GpuPool(ignore_border=False, mode='max', ndim=2)
+                
+                self.output = ds_op(inp=self.output, ws=(poolsize,poolsize),
+                                    stride=(poolstride,poolstride), pad=(0,0))
+                
+            self.output = self.output.dimshuffle(1, 2, 3, 0)  # bc01 to c01b
 
         else:
             NotImplementedError("lib_conv can only be cudnn or cudaconvnet for now")
@@ -541,7 +531,7 @@ class ConvPoolLRN(Layer):
         else:
             self.output_shape = self.get_output_shape(self.input_shape)
         
-        self.name = 'ConvPoolLRN    '
+        self.name = 'ConvPoolLRN (%s) ' % lib_conv
         if printinfo: self.print_shape()                           
                                                          
 
@@ -610,7 +600,26 @@ class LRN(Layer):
         self.name = 'LRN\t'
         if printinfo: self.print_shape()
         
+
+class Dimshuffle(Layer):
+    
+    def __init__(self, input, new_axis_order, 
+                 printinfo=True, 
+                 input_shape=None, output_shape=None):
         
+        self.get_input_shape(input,input_shape)
+        
+        self.output = self.input.dimshuffle(*new_axis_order)
+        
+        if output_shape:
+            self.output_shape = output_shape 
+        else:
+            self.output_shape = self.get_output_shape(self.input_shape)
+            
+        self.name = 'Dimshuffle    '
+        if printinfo: self.print_shape()
+    
+
 class Flatten(Layer):
     
     def __init__(self, input, axis, 
@@ -807,7 +816,7 @@ def count_params(params):
         
         print param.shape.eval()
         
-    print 'model size %d' % int(model_size)
+    print 'model size %d M floats' % (int(model_size)/(1024*1024))
         
     return model_size
     

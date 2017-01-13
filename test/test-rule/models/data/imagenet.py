@@ -17,6 +17,8 @@ class ImageNet_data():
         # data hyperparams
         
         self.data_path  = '/scratch/ilsvrc12/'
+        self.train_folder = 'train_hkl_b256_b_128'
+        self.val_folder = 'val_hkl_b256_b_128'
         
         self.channels = 3
         self.width =256
@@ -30,17 +32,20 @@ class ImageNet_data():
         
     def get_data(self):
 
-        path = self.data_path
-        '''processes the raw downloaded cifar10 dataset, and returns test/val/train set'''
+        dir_head = self.data_path
+        ext_data='.hkl'
+        ext_label='.npy'
         
-        
-        train_folder = dir_head + train_folder
-        val_folder = dir_head + val_folder
-        label_folder = dir_head + label_folder
-        train_filenames = sorted(glob.glob(train_folder + '/*' + ext_data))
-        val_filenames = sorted(glob.glob(val_folder + '/*' + ext_data))
-        train_labels = np.load(label_folder + 'train_labels' + ext_label)
-        val_labels = np.load(label_folder + 'val_labels' + ext_label)
+         
+        train_folder_path = dir_head + self.train_folder
+        val_folder_path = dir_head + self.val_folder
+        label_folder_path = dir_head + label_folder
+        import glob
+        import numpy as np
+        train_filenames = sorted(glob.glob(train_folder_path + '/*' + ext_data))
+        val_filenames = sorted(glob.glob(val_folder_path + '/*' + ext_data))
+        train_labels = np.load(label_folder_path + 'train_labels' + ext_label)
+        val_labels = np.load(label_folder_path + 'val_labels' + ext_label)
         img_mean = np.load(dir_head + mean_file)
         img_mean = img_mean[:, :, :, np.newaxis].astype('float32')
             
