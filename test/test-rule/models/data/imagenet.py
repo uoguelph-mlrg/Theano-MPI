@@ -10,6 +10,10 @@ val_folder = '/val_hkl_128b/'
 
 RGB_mean = False
 
+# parallel loading
+para_load = True
+sock_data = 5020
+        
 class ImageNet_data():
     
     def __init__(self, verbose):
@@ -29,6 +33,9 @@ class ImageNet_data():
         self.get_data()
         
         self.verbose = verbose
+        
+        # parallel loading
+        self.para_load = para_load
         
     def get_data(self):
 
@@ -156,6 +163,94 @@ class ImageNet_data():
         labels = labels[rank::size]
     
         return img,labels
+        
+        
+    def spawn_load(self):
+    
+        '''spwan a parallel loading process using MPI'''
+
+        if not para_load:
+            return
+
+        num_spawn = 1
+        
+        from mpi4py import MPI
+        import os
+        import sys
+        
+        hostname = MPI.Get_processor_name()
+        mpiinfo = MPI.Info.Create()
+        mpiinfo.Set(key = 'host',value = hostname)
+        
+        env = dict(os.environ)
+        # for key, value in dict(os.environ).iteritems():
+            # envstr+= '%s=%s ' % (key,value)
+        
+        # see https://gist.github.com/lebedov/eadce02a320d10f0e81c
+        envstr='LD_LIBRARY_PATH=%s\n' %  env['LD_LIBRARY_PATH']
+        
+        mpiinfo.Set(key = 'env', value = envstr) 
+
+        
+        ninfo = mpiinfo.Get_nkeys()
+        #if self.verbose: print ninfo
+        
+        mpicommand = sys.executable
+
+        file_dir = os.path.dirname(os.path.realpath(__file__))# get the dir of imagenet.py
+    
+        self.icomm= MPI.COMM_SELF.Spawn(mpicommand, \
+                args=[file_dir+'/proc_load_mpi.py'],\
+                info = mpiinfo, maxprocs = num_spawn)
+                
+                
+    def para_load_init(self, shared_x, img_mean, rand_crop, batch_crop_mirror, input_width):
+        
+        # 0. send config dict (can't carry any special objects) to loading process
+        if not self.para_load:
+            return
+            
+        assert self.icomm != None
+        
+        # get the context running on 
+        import theano.gpuarray
+        # This is a bit of black magic that may stop working in future
+        # theano releases
+        ctx = theano.gpuarray.type.get_context(None)
+        
+        config={}
+
+        config['rand_crop'] = rand_crop
+        config['batch_crop_mirror'] = batch_crop_mirror
+        config['input_width'] = input_width
+        config['gpuid'] = ctx.dev
+        config['verbose'] = self.verbose
+        
+        self.icomm.send(config,dest=0,tag=99)
+
+        import zmq
+        sock = zmq.Context().socket(zmq.PAIR)
+        sock.connect('tcp://localhost:{0}'.format(sock_data))
+    
+        gpuarray_batch = shared_x.container.value
+        # pass ipc handle and related information
+        h = gpuarray_batch.get_ipc_handle()
+        # 1. send ipc handle of shared_x
+        sock.send_pyobj((gpuarray_batch.shape, gpuarray_batch.dtype, h))
+
+        # 2. send img_mean
+        self.icomm.send(img_mean, dest=0, tag=66)
+        
+    def para_load_close():
+        
+        # to stop the paraloading process
+        
+        self.icomm.isend('stop',dest=0,tag=40)
+
+        self.icomm.isend('stop',dest=0,tag=40)
+        
+                
+        
         
         
         

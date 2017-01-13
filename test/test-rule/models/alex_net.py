@@ -7,8 +7,8 @@ import numpy as np
 import sys
 sys.path.append('../')
 
-from lib.helper_funcs import get_rand3d
-from lib.proc_load_mpi import crop_and_mirror
+from data.helper_funcs import get_rand3d, crop_and_mirror
+
 import hickle as hkl
 
 # model hyperparams
@@ -36,7 +36,7 @@ image_mean = 'img_mean'
 dataname = 'imagenet'
 
 # conv
-lib_conv='corrmm'
+lib_conv='cudnn' # cudnn or corrmm
 
 class AlexNet(object):
 
@@ -120,6 +120,12 @@ class AlexNet(object):
         # preprocessing
         self.batch_crop_mirror = batch_crop_mirror
         self.input_width = input_width
+        
+        if self.data.para_load:
+            
+            self.data.spawn_load()
+            self.data.para_load_init(self.shared_x, self.data.rawdata[4], 
+                                rand_crop, batch_crop_mirror, input_width)
         
     
     def build_model(self):
@@ -308,11 +314,9 @@ class AlexNet(object):
             self.subb_v=0
             self.last_one_v = False
         
-        if self.para_load:
+        if self.data.para_load:
             
-            pass
-            
-            #self.icomm.isend('stop',dest=0,tag=40)
+            self.data.icomm.isend('stop',dest=0,tag=40)
         
     def train_iter(self, count,recorder):
         
@@ -324,6 +328,7 @@ class AlexNet(object):
         img_mean = self.data.rawdata[4]
         mode = 'train'
         function = self.train_iter_fn
+        
             
         if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
               
@@ -334,24 +339,55 @@ class AlexNet(object):
         
             recorder.start()
             
-            arr = hkl.load(img[self.current_t]) - img_mean
+            # parallel loading of shared_x
+            if self.data.para_load:
+                
+                icomm = self.data.icomm
+                
+                if self.current_t == 0:
+                    
+                    # 3.0 give mode signal to adjust loading mode between train and val
+                    icomm.isend('train',dest=0,tag=40)
+                    # 3.1 give load signal to load the very first file
+                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                    
+                    
+                if self.current_t == self.data.n_batch_train - 1:
+                    self.last_one_t = True
+                    # Only to get the last copy_finished signal from load
+                    icomm.isend(img[self.current_t],dest=0,tag=40) 
+                else:
+                    self.last_one_t = False
+                    # 4. give preload signal to load next file
+                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                    
+                # 5. wait for the batch to be loaded into shared_x
+                msg = icomm.recv(source=0,tag=55) #
+                assert msg == 'copy_finished'
+                    
             
-            # arr = np.rollaxis(arr,0,4)
-            
-            rand_arr = get_rand3d(rand_crop, mode)
-
-            arr = crop_and_mirror(arr, rand_arr, \
-                                    flag_batch=self.batch_crop_mirror, \
-                                    cropsize = self.input_width)
-                                    
-            self.shared_x.set_value(arr)
-            self.shared_y.set_value(labels[self.current_t])
-            
-            
-            if self.current_t == self.data.n_batch_train - 1:
-                self.last_one_t = True
             else:
-                self.last_one_t = False
+            
+                arr = hkl.load(img[self.current_t]) - img_mean
+            
+                # arr = np.rollaxis(arr,0,4)
+            
+                rand_arr = get_rand3d(rand_crop, mode)
+
+                arr = crop_and_mirror(arr, rand_arr, \
+                                        flag_batch=self.batch_crop_mirror, \
+                                        cropsize = self.input_width)
+                                    
+                self.shared_x.set_value(arr)
+                
+                if self.current_t == self.data.n_batch_train - 1:
+                    self.last_one_t = True
+                else:
+                    self.last_one_t = False
+                    
+                
+            # direct loading of shared_y
+            self.shared_y.set_value(labels[self.current_t])
                 
         
             recorder.end('wait')
@@ -361,8 +397,6 @@ class AlexNet(object):
         cost,error= function(self.subb_t)
         
         if self.verbose: 
-            #print count+self.config['rank'], cost, error
-            #if count+self.config['rank']>45: exit(0)
             if self.monitor_grad: 
                 print np.array(self.get_norm(self.subb_t))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
@@ -395,18 +429,50 @@ class AlexNet(object):
         
         if self.subb_v == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
         
+            # parallel loading of shared_x
+            if self.data.para_load:
+                
+                icomm = self.data.icomm
+            
+                if self.current_t == 0:
+                
+                    # 3.0 give mode signal to adjust loading mode between train and val
+                    icomm.isend('val',dest=0,tag=40)
+                    # 3.1 give load signal to load the very first file
+                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                
+                
+                if self.current_t == self.data.n_batch_train - 1:
+                    self.last_one_t = True
+                    # Only to get the last copy_finished signal from load
+                    icomm.isend(img[self.current_t],dest=0,tag=40) 
+                else:
+                    self.last_one_t = False
+                    # 4. give preload signal to load next file
+                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                
+                # 5. wait for the batch to be loaded into shared_x
+                msg = icomm.recv(source=0,tag=55) #
+                assert msg == 'copy_finished'
+                
+        
+            else:
+        
     
-            arr = hkl.load(img[self.current_v]) - img_mean
+                arr = hkl.load(img[self.current_v]) - img_mean
         
-            # arr = np.rollaxis(arr,0,4)
+                # arr = np.rollaxis(arr,0,4)
         
-            rand_arr = get_rand3d(rand_crop, mode)
+                rand_arr = get_rand3d(rand_crop, mode)
 
-            arr = crop_and_mirror(arr, rand_arr, \
-                                    flag_batch=self.batch_crop_mirror, \
-                                    cropsize = self.input_width)
+                arr = crop_and_mirror(arr, rand_arr, \
+                                        flag_batch=self.batch_crop_mirror, \
+                                        cropsize = self.input_width)
                                 
-            self.shared_x.set_value(arr)
+                self.shared_x.set_value(arr)
+                
+                
+            # direct loading of shared_y    
             self.shared_y.set_value(labels[self.current_v])
         
         
@@ -467,10 +533,15 @@ class AlexNet(object):
         
     def cleanup(self):
         
-        pass
+        if self.data.para_load:
+            
+            self.data.para_load_close()
         
 if __name__ == '__main__':
     
+    from mpi4py import MPI
+
+    comm = MPI.COMM_WORLD
     
     # setting up device
     import os
@@ -486,14 +557,14 @@ if __name__ == '__main__':
     import yaml
     with open('../config.yaml', 'r') as f:
         config = yaml.load(f)
+        
+    config['device'] = 'cuda0'
     
     model = AlexNet(config)
     
     model.compile_iter_fns()
     
     # get recorder
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
     
     from lib.recorder import Recorder
     recorder = Recorder(comm, printFreq=40, modelname='alexnet', verbose=True)
@@ -508,7 +579,6 @@ if __name__ == '__main__':
         recorder.print_train_info(batch_i)
         
     # val
-    
     for batch_j in range(model.data.n_batch_val):
         
         model.val_iter(batch_i, recorder)
@@ -518,6 +588,12 @@ if __name__ == '__main__':
     
     model.epoch+=1
     print 'finish one epoch'
+    
+    model.adjust_hyperp(epoch=40)
+    
+    model.cleanup()
+    
+    exit(0)
     
     
     # inference demo

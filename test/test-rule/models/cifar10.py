@@ -483,9 +483,11 @@ if __name__ == '__main__':
     model.epoch+=1
     print 'finish one epoch'
     
+    model.adjust_hyperp(epoch=40)
+    
     model.batch_size=1
     model.compile_inference()
     
     print model.inf_fn(model.shared_x.get_value()[:,:,:,:1])
     
-    model.adjust_hyperp(epoch=40)
+    
