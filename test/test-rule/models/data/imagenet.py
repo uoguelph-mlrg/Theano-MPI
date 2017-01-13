@@ -180,7 +180,11 @@ class ImageNet_data():
         
         hostname = MPI.Get_processor_name()
         mpiinfo = MPI.Info.Create()
-        mpiinfo.Set(key = 'host',value = hostname)
+        # uncommenting the following gives error:
+        # -------------------------------------------------------------------------- 
+        # All nodes which are allocated for this job are already filled.
+        # --------------------------------------------------------------------------
+        # mpiinfo.Set(key = 'host',value = hostname) 
         
         env = dict(os.environ)
         # for key, value in dict(os.environ).iteritems():
@@ -225,12 +229,16 @@ class ImageNet_data():
         config['input_width'] = input_width
         config['gpuid'] = ctx.dev
         config['verbose'] = self.verbose
+        import os
+        _sock_data = ((sock_data + int(os.getpid())) % 64511)+1024
+        config['sock_data'] = _sock_data
         
         self.icomm.send(config,dest=0,tag=99)
 
         import zmq
         sock = zmq.Context().socket(zmq.PAIR)
-        sock.connect('tcp://localhost:{0}'.format(sock_data))
+        
+        sock.connect('tcp://localhost:{0}'.format(_sock_data))
     
         gpuarray_batch = shared_x.container.value
         # pass ipc handle and related information

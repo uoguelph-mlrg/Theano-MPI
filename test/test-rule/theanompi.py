@@ -36,10 +36,11 @@ class BSP(object):
             command += ["--mca", "mpi_common_cuda_cumemcpy_async", "1"]
             #command += ["-np", str(len(hosts))]
             #command += ["-H", ','.join(hosts)]
-            #command += ["--map-by", "ppr:1:node"]
+            #command += ["--map-by", "ppr:4:node"]
             command += shlex.split("-x " + " -x ".join(env.keys()))
             command += ["-n", "%d" % 1]
             command += ["--bind-to", "none"]
+            # command += ["--report-bindings"]
             command += [sys.executable, "-u", "worker.py"] 
         
             command += [device, self.sync_type, modelfile,  modelclass]

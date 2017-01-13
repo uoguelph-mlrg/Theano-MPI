@@ -68,7 +68,7 @@ class Worker(object):
         
         self.verbose = (self.rank==0)
         from lib.recorder import Recorder
-        self.recorder = Recorder(self.comm, printFreq=200, modelname='cifar10', verbose=self.verbose)
+        self.recorder = Recorder(self.comm, printFreq=40, modelname='alexnet', verbose=self.verbose)
         
         # choose the type of exchanger
         from lib.exchanger import BSP_Exchanger
@@ -102,7 +102,7 @@ class Worker(object):
                 if batch_i % exchange_freq == 0: 
                     exchanger.exchange()
         
-                recorder.print_train_info(batch_i)
+                recorder.print_train_info(batch_i * self.size)
             
             model.reset_iter('train')
         
