@@ -807,18 +807,16 @@ def get_params(layers):
     return params, weight_types
     
     
-def count_params(params):
+def count_params(params, verbose):
         
     model_size=0
     for param in params:
         
         model_size+=param.size.eval()
         
-        print param.shape.eval()
+        if verbose: print param.shape.eval()
         
-    print 'model size %d M floats' % (int(model_size)/(1024*1024))
-        
-    return model_size
+    if verbose: print 'model size %d M floats' % (int(model_size)/(1024*1024))
     
     
             

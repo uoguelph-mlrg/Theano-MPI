@@ -17,7 +17,7 @@ momentum = 0.90
 weight_decay = 0.0005
 batch_size = 128
 file_batch_size = 128
-learning_rate = 0.01
+learning_rate = 0.01 * 2
 
 lr_policy = 'step'
 lr_step = [20, 40, 60]
@@ -99,7 +99,7 @@ class AlexNet(object):
         from layers2 import get_params, get_layers, count_params
         self.layers = get_layers(lastlayer = self.output_layer)
         self.params,self.weight_types = get_params(self.layers)
-        count_params(self.params)
+        count_params(self.params, verbose=self.verbose)
         self.grads = T.grad(self.cost,self.params)
 
         # To be compiled

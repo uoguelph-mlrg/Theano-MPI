@@ -141,7 +141,9 @@ class BSP_Exchanger(object):
             self.exch.prepare(self.ctx, self.param_list)
                 
 
-    def exchange(self):
+    def exchange(self, recorder):
+        
+        recorder.start()
         
         # average w
         if self.sync_type == 'avg' and self.size > 1:
@@ -208,6 +210,8 @@ class BSP_Exchanger(object):
         else:
             
             raise NotImplementedError('wrong sync type')
+            
+        recorder.end('comm')
                 
         
 class EASGD_Exchanger(object):

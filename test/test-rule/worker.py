@@ -100,7 +100,7 @@ class Worker(object):
                 model.train_iter(batch_i, recorder)
                 
                 if batch_i % exchange_freq == 0: 
-                    exchanger.exchange()
+                    exchanger.exchange(recorder)
         
                 recorder.print_train_info(batch_i * self.size)
             
