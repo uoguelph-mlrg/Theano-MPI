@@ -114,8 +114,8 @@ class Cifar10_model(object): # c01b input
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import Conv,Pool,Dropout,FC,Softmax,Flatten,LRN, \
-                            HeUniform, HeNormal, Constant, Normal
+        from layers2 import Conv,Pool,Dropout,FC, \
+                            Softmax,Flatten,LRN, Constant, Normal
         
         self.x = T.ftensor4('x')
         
@@ -372,8 +372,11 @@ class Cifar10_model(object): # c01b input
                 self.last_one_v = True
             else:
                 self.last_one_v = False
-            
+                
+        Dropout.SetDropoutOff()
         cost,error,error_top5 = function(self.subb_v)
+        Dropout.SetDropoutOn()
+        
         recorder.val_error(count, cost, error, error_top5)
         
         if (self.subb_v+1)//self.n_subb == 1: # test if next sub-batch is in another file
