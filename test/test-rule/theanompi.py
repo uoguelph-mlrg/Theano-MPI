@@ -5,7 +5,7 @@ import subprocess
 import signal
 
 
-sync_type = 'avg' # or 'cdd'
+sync_type = 'cdd' # or 'cdd'
 
 
 class BSP(object):

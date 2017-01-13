@@ -531,7 +531,7 @@ class ConvPoolLRN(Layer):
         else:
             self.output_shape = self.get_output_shape(self.input_shape)
         
-        self.name = 'ConvPoolLRN (%s) ' % lib_conv
+        self.name = 'ConvPoolLRN(%s) ' % lib_conv
         if printinfo: self.print_shape()                           
                                                          
 

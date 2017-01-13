@@ -17,7 +17,7 @@ momentum = 0.90
 weight_decay = 0.0005
 batch_size = 128
 file_batch_size = 128
-learning_rate = 0.01 * 2
+learning_rate = 0.01
 
 lr_policy = 'step'
 lr_step = [20, 40, 60]
@@ -30,7 +30,7 @@ input_width = 227
 input_height = 227
 
 batch_crop_mirror = False
-rand_crop = False
+rand_crop = True
 
 image_mean = 'img_mean'
 dataname = 'imagenet'

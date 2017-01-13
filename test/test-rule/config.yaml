@@ -5,9 +5,6 @@
 
 # If want to input None, use !!null
 
-# Model choose
-name: cnncifar10 # alexnet, googlenet, vggnet or cnncifar10
-
 monitor_grad: False
 
 verbose: True
@@ -15,8 +12,5 @@ verbose: True
 sync_type: cdd # mode selection: avg or cdd, EASGD or ASGD
 
 exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
-
-# gpu and socket
-sock_data: 5020 # specific to parallel loading models so to be moved to iter definition
 
 debug: False # def: False ; True: run a small sample of training data for shorter epoch testing time
