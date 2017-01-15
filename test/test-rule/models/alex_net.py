@@ -30,13 +30,13 @@ input_width = 227
 input_height = 227
 
 batch_crop_mirror = False
-rand_crop = False
+rand_crop = True
 
 image_mean = 'img_mean'
 dataname = 'imagenet'
 
 # conv
-lib_conv='corrmm' # cudnn or corrmm
+lib_conv='cudnn' # cudnn or corrmm
 
 class AlexNet(object):
 
@@ -153,6 +153,7 @@ class AlexNet(object):
                                         self.input_width,
                                         self.input_height,
                                         self.batch_size),
+                          flag_batch=batch_crop_mirror,
                           printinfo = self.verbose
                           )
                          

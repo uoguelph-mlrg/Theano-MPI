@@ -220,35 +220,31 @@ class Layer(object):
 
 class Crop(Layer):
     def __init__(self, input, input_shape, output_shape, 
-                 flag_rand=True, flag_batch=True, printinfo=True):
+                 flag_rand=True, flag_batch=False, printinfo=True):
         
         self.get_input_shape(input,input_shape)
         
+        mirror = self.input[:,:,::-1,:] # TODO find out if it's height or width that is being mirrored
+        self.input = T.concatenate([self.input, mirror], axis=0)
         
-        if flag_rand:
-                
-            import theano.sandbox.rng_mrg as RNG_MRG
-            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(234))
-        
-            rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
-            #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
-        
-        else:
-            
-            rand = np.float32([0.5, 0.5, 0])
+        cropsize = output_shape[2] # works for both c01b and bc01
+
+        # crop images
+        center_margin = (self.input_shape[2] - cropsize) / 2
         
         
         if flag_batch:
-    
-            mirror = self.input[:,:,::-1,:] # TODO find out if it's height or width that is being mirrored
-            self.input = T.concatenate([self.input, mirror], axis=0)
             
-            cropsize = output_shape[2] # works for both c01b and bc01
-    
-            # crop images
-            center_margin = (self.input_shape[2] - cropsize) / 2
             if flag_rand:
-                mirror_rand = T.cast(rand[2], 'int32')
+                
+                import theano.sandbox.rng_mrg as RNG_MRG
+                MRG = RNG_MRG.MRG_RandomStreams(rng.randint(234))
+    
+                rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
+                #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
+                    
+                    
+                mirror_rand = T.cast(T.round(rand[2]), 'int32')
                 crop_xs = T.cast(rand[0] * center_margin * 2, 'int32')
                 crop_ys = T.cast(rand[1] * center_margin * 2, 'int32')
             else:
@@ -261,10 +257,31 @@ class Crop(Layer):
                                           crop_ys:crop_ys + cropsize, :]
     
         else:
-        
-            raise NotImplementedError()
-                
             
+            import theano.sandbox.rng_mrg as RNG_MRG
+            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(234))
+
+            rand = MRG.uniform(size=(3,self.input_shape[3]), low=0.001, high=0.999)
+
+            conc_list = []
+            for ind in range(self.input_shape[3]):
+                
+                mirror_rand = T.cast(T.round(rand[2,ind]), 'int32')
+                crop_xs = T.cast(rand[0,ind] * center_margin * 2, 'int32')
+                crop_ys = T.cast(rand[1,ind] * center_margin * 2, 'int32')
+
+                    
+                cropped_img   = self.input[mirror_rand * 3:(mirror_rand + 1) * 3, 
+                                crop_xs:crop_xs + cropsize, 
+                                crop_ys:crop_ys + cropsize, ind]
+                
+                cropped_img = cropped_img.dimshuffle(0,1,2,'x')
+                                
+                conc_list.append(cropped_img)
+                    
+            self.output = T.concatenate(conc_list, axis=3)
+                
+                                           
         if output_shape:
             self.output_shape = output_shape 
         else:
