@@ -1,9 +1,6 @@
 import numpy as np
 import sys
 sys.path.append('../')
-
-from lib.helper_funcs import get_rand3d
-from lib.proc_load_mpi import crop_and_mirror
         
 # model hyperparams
 
@@ -24,7 +21,7 @@ use_nesterov_momentum = False
 input_width = 28
 input_height = 28
 batch_crop_mirror = False
-rand_crop = False
+rand_crop = True
 
 image_mean = 'img_mean'
 dataname = 'cifar10'
@@ -65,8 +62,8 @@ class Cifar10_model(object): # c01b input
         self.shared_lr = theano.shared(self.base_lr)
         self.shared_x = theano.shared(np.zeros((
                                                 3,
-                                                self.input_width, 
-                                                self.input_height,
+                                                self.data.width, 
+                                                self.data.height,
                                                 file_batch_size
                                                 ), 
                                                 dtype=theano.config.floatX),  
@@ -85,7 +82,7 @@ class Cifar10_model(object): # c01b input
         from layers2 import get_params, get_layers, count_params
         self.layers = get_layers(lastlayer = self.output_layer)
         self.params,self.weight_types = get_params(self.layers)
-        count_params(self.params)
+        count_params(self.params, self.verbose)
         self.grads = T.grad(self.cost,self.params)
         
         # To be compiled
@@ -114,7 +111,7 @@ class Cifar10_model(object): # c01b input
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import Conv,Pool,Dropout,FC, \
+        from layers2 import Conv,Pool,Dropout,FC, Subtract, Crop, Dimshuffle,\
                             Softmax,Flatten,LRN, Constant, Normal
         
         self.x = T.ftensor4('x')
@@ -123,9 +120,30 @@ class Cifar10_model(object): # c01b input
         
         self.lr = T.scalar('lr')
         
-        x_shuffled = self.x.dimshuffle(3, 0, 1, 2)  # c01b to bc01
+        subtract_layer = Subtract(input=self.x,
+                                  input_shape=(self.channels, 
+                                               self.data.width,
+                                               self.data.height,
+                                               self.batch_size),
+                                  subtract_arr = self.data.rawdata[4],
+                                  printinfo = self.verbose)
+                                  
+        crop_layer = Crop(input=subtract_layer,
+                          output_shape=(self.channels, 
+                                        self.input_width,
+                                        self.input_height,
+                                        self.batch_size),
+                          flag_batch=batch_crop_mirror,
+                          flag_rand = rand_crop,
+                          printinfo = self.verbose
+                          )
+                          
+        shuffle = Dimshuffle(input=crop_layer,
+                             new_axis_order=(3,0,1,2),
+                             printinfo=self.verbose
+                             )
         
-        conv_5x5 = Conv(input=x_shuffled,
+        conv_5x5 = Conv(input=shuffle,
                         input_shape=(self.batch_size,
                                     self.channels,
                                     self.input_width,
@@ -258,9 +276,15 @@ class Cifar10_model(object): # c01b input
     
     def compile_iter_fns(self):
         
+        import time
+        
+        start = time.time()
+        
         from lib.opt import pre_model_iter_fn
 
         pre_model_iter_fn(self, sync_type='avg')
+        
+        if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
             
     def reset_iter(self, mode):
         
@@ -295,15 +319,9 @@ class Cifar10_model(object): # c01b input
         
             recorder.start()
         
-            arr = img[self.current_t] - img_mean
+            arr = img[self.current_t] #- img_mean
             
             arr = np.rollaxis(arr,0,4)
-            
-            rand_arr = get_rand3d(rand_crop, mode)
-
-            arr = crop_and_mirror(arr, rand_arr, \
-                                    flag_batch=self.batch_crop_mirror, \
-                                    cropsize = self.input_width)
                                     
             self.shared_x.set_value(arr)
             self.shared_y.set_value(labels[self.current_t])
@@ -357,15 +375,9 @@ class Cifar10_model(object): # c01b input
         if self.subb_v == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
         
     
-            arr = img[self.current_v] - img_mean
+            arr = img[self.current_v] #- img_mean
         
             arr = np.rollaxis(arr,0,4)
-        
-            rand_arr = get_rand3d(rand_crop, mode)
-
-            arr = crop_and_mirror(arr, rand_arr, \
-                                    flag_batch=self.batch_crop_mirror, \
-                                    cropsize = self.input_width)
                                 
             self.shared_x.set_value(arr)
             self.shared_y.set_value(labels[self.current_v])
@@ -375,7 +387,8 @@ class Cifar10_model(object): # c01b input
                 self.last_one_v = True
             else:
                 self.last_one_v = False
-                
+        
+        from layers2 import Dropout        
         Dropout.SetDropoutOff()
         cost,error,error_top5 = function(self.subb_v)
         Dropout.SetDropoutOn()
@@ -452,41 +465,44 @@ if __name__ == '__main__':
     model = Cifar10_model(config)
     
     model.compile_iter_fns()
-    
+
     # get recorder
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
-    
+
     from lib.recorder import Recorder
     recorder = Recorder(comm, printFreq=4, modelname='cifar10', verbose=True)
-    
+
     # train
-    
+
     for batch_i in range(model.data.n_batch_train):
-        
+
         model.train_iter(batch_i, recorder)
-        
+
         #recorder.print_train_info(batch_i)
-        
+
         print batch_i
-        
+
     # val
-    
+
     for batch_j in range(model.data.n_batch_val):
-        
+
         model.val_iter(batch_i, recorder)
-        
+
         print batch_j
-        
+
     recorder.print_val_info(batch_i)
-    
+
     model.epoch+=1
     print 'finish one epoch'
-    
+
     model.adjust_hyperp(epoch=40)
     
     model.batch_size=1
+    
+    
     model.compile_inference()
+    
     
     print model.inf_fn(model.shared_x.get_value()[:,:,:,:1])
     

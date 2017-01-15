@@ -7,8 +7,6 @@ import numpy as np
 import sys
 sys.path.append('../')
 
-from data.helper_funcs import get_rand3d, crop_and_mirror
-
 import hickle as hkl
 
 # model hyperparams
@@ -77,8 +75,8 @@ class AlexNet(object):
         self.shared_lr = theano.shared(self.base_lr)
         self.shared_x = theano.shared(np.zeros((
                                                 3,
-                                                self.input_width, 
-                                                self.input_height,
+                                                self.data.width, 
+                                                self.data.height,
                                                 file_batch_size
                                                 ), 
                                                 dtype=theano.config.floatX),  
@@ -126,8 +124,7 @@ class AlexNet(object):
         if self.data.para_load:
             
             self.data.spawn_load()
-            self.data.para_load_init(self.shared_x, self.data.rawdata[4], 
-                                rand_crop, batch_crop_mirror, input_width)
+            self.data.para_load_init(self.shared_x)
         
     
     def build_model(self):
@@ -136,7 +133,7 @@ class AlexNet(object):
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import ConvPoolLRN,Dropout,FC, Dimshuffle, Crop, \
+        from layers2 import ConvPoolLRN,Dropout,FC, Dimshuffle, Crop, Subtract,\
                             Softmax,Flatten,LRN, Constant, Normal
         
         
@@ -144,11 +141,15 @@ class AlexNet(object):
         self.y = T.lvector('y')
         self.lr = T.scalar('lr')
         
-        crop_layer = Crop(input=self.x,
-                          input_shape=(self.channels, 
-                                       self.data.width,
-                                       self.data.height,
-                                       self.batch_size),
+        subtract_layer = Subtract(input=self.x,
+                                  input_shape=(self.channels, 
+                                               self.data.width,
+                                               self.data.height,
+                                               self.batch_size),
+                                  subtract_arr = self.data.rawdata[4],
+                                  printinfo = self.verbose)
+                                  
+        crop_layer = Crop(input=subtract_layer,
                           output_shape=(self.channels, 
                                         self.input_width,
                                         self.input_height,
@@ -157,7 +158,6 @@ class AlexNet(object):
                           printinfo = self.verbose
                           )
                          
-
         convpool_layer1 = ConvPoolLRN(input=crop_layer,
                                         # input_shape=(self.channels,
 #                                                      self.input_width,
@@ -312,9 +312,15 @@ class AlexNet(object):
     
     def compile_iter_fns(self):
         
+        import time
+        
+        start = time.time()
+        
         from lib.opt import pre_model_iter_fn
 
         pre_model_iter_fn(self, sync_type='avg')
+        
+        if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
     
     def reset_iter(self, mode):
         
@@ -345,7 +351,7 @@ class AlexNet(object):
             
         img = self.data.train_img
         labels = self.data.train_labels
-        img_mean = self.data.rawdata[4]
+
         mode = 'train'
         function = self.train_iter_fn
             
@@ -374,7 +380,7 @@ class AlexNet(object):
                 else:
                     self.last_one_t = False
                     # 4. give preload signal to load next file
-                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                    icomm.isend(img[self.current_t+1],dest=0,tag=40)
                     
                 # 5. wait for the batch to be loaded into shared_x
                 msg = icomm.recv(source=0,tag=55) #
@@ -383,15 +389,8 @@ class AlexNet(object):
             
             else:
             
-                arr = hkl.load(img[self.current_t]) - img_mean
-            
-            
-                #rand_arr = get_rand3d(rand_crop, mode)
-
-                # arr = crop_and_mirror(arr, rand_arr, \
-                #                         flag_batch=self.batch_crop_mirror, \
-                #                         cropsize = self.input_width)
-                                    
+                arr = hkl.load(img[self.current_t]) #- img_mean
+             
                 self.shared_x.set_value(arr)
                 
                 if self.current_t == self.data.n_batch_train - 1:
@@ -441,7 +440,7 @@ class AlexNet(object):
         
         img= self.data.val_img
         labels = self.data.val_labels
-        img_mean = self.data.rawdata[4]
+        
         mode='val'
         function=self.val_iter_fn
         
@@ -452,22 +451,22 @@ class AlexNet(object):
                 
                 icomm = self.data.icomm
             
-                if self.current_t == 0:
+                if self.current_v == 0:
                 
                     # 3.0 give mode signal to adjust loading mode between train and val
                     icomm.isend('val',dest=0,tag=40)
                     # 3.1 give load signal to load the very first file
-                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                    icomm.isend(img[self.current_v],dest=0,tag=40)
                 
                 
-                if self.current_t == self.data.n_batch_train - 1:
-                    self.last_one_t = True
+                if self.current_v == self.data.n_batch_train - 1:
+                    self.last_one_v = True
                     # Only to get the last copy_finished signal from load
-                    icomm.isend(img[self.current_t],dest=0,tag=40) 
+                    icomm.isend(img[self.current_v+1],dest=0,tag=40) 
                 else:
-                    self.last_one_t = False
+                    self.last_one_v = False
                     # 4. give preload signal to load next file
-                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                    icomm.isend(img[self.current_v+1],dest=0,tag=40)
                 
                 # 5. wait for the batch to be loaded into shared_x
                 msg = icomm.recv(source=0,tag=55) #
@@ -477,15 +476,9 @@ class AlexNet(object):
             else:
         
     
-                arr = hkl.load(img[self.current_v]) - img_mean
+                arr = hkl.load(img[self.current_v]) #- img_mean
         
                 # arr = np.rollaxis(arr,0,4)
-        
-                rand_arr = get_rand3d(rand_crop, mode)
-
-                arr = crop_and_mirror(arr, rand_arr, \
-                                        flag_batch=self.batch_crop_mirror, \
-                                        cropsize = self.input_width)
                                 
                 self.shared_x.set_value(arr)
                 
@@ -648,8 +641,3 @@ if __name__ == '__main__':
     for cat in y_pred_top_x[0]:
         print "%s: %s" % (cat,label_dict[cat])
         print ''
-    
-    
-    
-     
-     

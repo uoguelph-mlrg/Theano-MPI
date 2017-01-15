@@ -217,9 +217,35 @@ class Layer(object):
         print 'Layer %s \t in %s --> out %s' % (self.name, 
                                 self.input_shape, self.output_shape)
     
+class Subtract(Layer):
+    
+    def __init__(self, input, subtract_arr,
+                 printinfo=True, 
+                 input_shape=None, output_shape=None):
+        
+        self.get_input_shape(input,input_shape)
 
+        assert len(subtract_arr.shape) == len(self.input_shape)
+        assert subtract_arr.shape[0:3] == self.input_shape[0:3]
+        
+        self.sub_arr = theano.shared(subtract_arr,
+                                     broadcastable=(False,False,False,True)
+                                     ).astype(theano.config.floatX)
+        
+        self.output = self.input - self.sub_arr
+        
+        if output_shape:
+            self.output_shape = output_shape 
+        else:
+            self.output_shape = self.get_output_shape(self.input_shape)
+            
+        self.name = 'Subtract\t'
+        if printinfo: self.print_shape()
+        
+        
 class Crop(Layer):
-    def __init__(self, input, input_shape, output_shape, 
+    
+    def __init__(self, input, output_shape, input_shape=None,
                  flag_rand=True, flag_batch=False, printinfo=True):
         
         self.get_input_shape(input,input_shape)
@@ -238,7 +264,7 @@ class Crop(Layer):
             if flag_rand:
                 
                 import theano.sandbox.rng_mrg as RNG_MRG
-                MRG = RNG_MRG.MRG_RandomStreams(rng.randint(234))
+                MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
     
                 rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
                 #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
@@ -248,41 +274,63 @@ class Crop(Layer):
                 crop_xs = T.cast(rand[0] * center_margin * 2, 'int32')
                 crop_ys = T.cast(rand[1] * center_margin * 2, 'int32')
             else:
+                
                 mirror_rand = 0
                 crop_xs = center_margin
                 crop_ys = center_margin
     
-            self.output = self.input[mirror_rand * 3:(mirror_rand + 1) * 3, :, :, :]
-            self.output = self.output[ :, crop_xs:crop_xs + cropsize, 
-                                          crop_ys:crop_ys + cropsize, :]
-    
+            self.output = self.input[mirror_rand * 3:(mirror_rand + 1) * 3, 
+                                                    crop_xs:crop_xs + cropsize, 
+                                                    crop_ys:crop_ys + cropsize, :] 
+            # TODO add a flag like dropout
+                        # + self.flag_off * self.input[0:3,
+#                                                     center_margin:center_margin + cropsize,
+#                                                     center_margin:center_margin + cropsize, :]
+                         
         else:
             
+            # does not work when batch size changes, e.g. inference with a single image instead of with batch size of images
+            
             import theano.sandbox.rng_mrg as RNG_MRG
-            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(234))
+            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
 
             rand = MRG.uniform(size=(3,self.input_shape[3]), low=0.001, high=0.999)
 
+            
+            # ind = T.arange(self.input.shape[3])
+                                       
             conc_list = []
+
             for ind in range(self.input_shape[3]):
-                
+
                 mirror_rand = T.cast(T.round(rand[2,ind]), 'int32')
                 crop_xs = T.cast(rand[0,ind] * center_margin * 2, 'int32')
                 crop_ys = T.cast(rand[1,ind] * center_margin * 2, 'int32')
 
-                    
-                cropped_img   = self.input[mirror_rand * 3:(mirror_rand + 1) * 3, 
-                                crop_xs:crop_xs + cropsize, 
-                                crop_ys:crop_ys + cropsize, ind]
-                
+
+                cropped_img   = self.input[mirror_rand * 3:(mirror_rand + 1) * 3,
+                                           crop_xs:crop_xs + cropsize,
+                                           crop_ys:crop_ys + cropsize, ind]
+
                 cropped_img = cropped_img.dimshuffle(0,1,2,'x')
-                                
+
                 conc_list.append(cropped_img)
-                    
-            self.output = T.concatenate(conc_list, axis=3)
+
+            if len(conc_list)>1:
+
+                self.output = T.concatenate(conc_list, axis=3)
+
+            elif len(conc_list)==1:
+
+                self.output = conc_list[0]
+
+            else:
+
+                raise RuntimeError('self.input_shape[3] needs to be at list 1')
                 
                                            
         if output_shape:
+            
             self.output_shape = output_shape 
         else:
             self.output_shape = self.get_output_shape(self.input_shape)
@@ -291,6 +339,7 @@ class Crop(Layer):
         if printinfo: self.print_shape()
 
 class Conv(Layer):
+    
     def __init__(self, input, convstride, padsize, 
                  b, W = None, filter_shape = None, 
                  lib_conv='cudnn', printinfo=True, 
@@ -339,6 +388,7 @@ class Conv(Layer):
     
         
 class Pool(Layer):
+    
     def __init__(self, input, poolsize, poolstride, 
                  poolpad, mode = 'max', printinfo=True,
                  input_shape=None,output_shape=None):                 
@@ -603,7 +653,7 @@ class ConvPoolLRN(Layer):
         else:
             self.output_shape = self.get_output_shape(self.input_shape)
         
-        self.name = 'ConvPoolLRN(%s) ' % lib_conv
+        self.name = 'ConvPoolLRN(%s)' % lib_conv
         if printinfo: self.print_shape()                           
                                                          
 
@@ -713,6 +763,7 @@ class Flatten(Layer):
         
                              
 class Dropout(Layer):
+    
     seed_common = np.random.RandomState(0)  # for deterministic results
     # seed_common = np.random.RandomState()
     layers = []

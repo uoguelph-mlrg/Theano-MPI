@@ -7,16 +7,11 @@
 Load data in parallel with train.py
 '''
 
-import time
-import math
 
 import numpy as np
 import zmq
 import hickle as hkl
 import pygpu
-
-from helper_funcs import get_rand3d, crop_and_mirror
-from imagenet import sock_data
 
 if __name__ == '__main__':
     
@@ -26,9 +21,7 @@ if __name__ == '__main__':
     
     
     config = icomm.recv(source=MPI.ANY_SOURCE,tag=99)
-    rand_crop = config['rand_crop']
-    batch_crop_mirror = config['batch_crop_mirror']
-    input_width = config['input_width']
+    
     gpuid = config['gpuid']
     verbose = config['verbose']
     sock_data = config['sock_data']
@@ -58,8 +51,8 @@ if __name__ == '__main__':
     gpu_data_remote = pygpu.gpuarray.from_gpudata(gpu_data_remote_b, 0, dtype, shape, ctx)
     gpu_data = pygpu.empty(shape, dtype, context=ctx)
 
-    img_mean = icomm.recv(source=MPI.ANY_SOURCE, tag=66)
-    if verbose: print '[load] 2. img_mean received'
+    # img_mean = icomm.recv(source=MPI.ANY_SOURCE, tag=66)
+    # if verbose: print '[load] 2. img_mean received'
 
     import os
     print 'loading %s started' % os.getpid()
@@ -87,14 +80,9 @@ if __name__ == '__main__':
         
         while True:
 
-            data = hkl.load(str(filename)) - img_mean
-        
-            rand_arr = get_rand3d(rand_crop, mode)
-
-            data = crop_and_mirror(data, rand_arr, \
-                                    flag_batch= batch_crop_mirror, \
-                                    cropsize = input_width)
-                                    
+            data = hkl.load(str(filename)).astype('float32') 
+            
+            #data = np.ascontiguousarray(data)
 
             gpu_data.write(data)
 

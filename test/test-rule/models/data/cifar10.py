@@ -40,7 +40,7 @@ class Cifar10_data():
                     
         img=img.reshape([img.shape[0], 3, 32, 32]) # needs to be in c01b
         
-        img_mean = img.mean(axis=0) 
+        img_mean = img.mean(axis=0)[:,:,:,np.newaxis]
         
         
         l = np.concatenate((d1['labels'], d2['labels']), axis=0)

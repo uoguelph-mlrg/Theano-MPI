@@ -11,7 +11,7 @@ val_folder = '/val_hkl_128b/'
 RGB_mean = False
 
 # parallel loading
-para_load = False
+para_load = True
 sock_data = 5020
         
 class ImageNet_data():
@@ -216,7 +216,7 @@ class ImageNet_data():
                 info = mpiinfo, maxprocs = num_spawn)
                 
                 
-    def para_load_init(self, shared_x, img_mean, rand_crop, batch_crop_mirror, input_width):
+    def para_load_init(self, shared_x):
         
         # 0. send config dict (can't carry any special objects) to loading process
         if not self.para_load:
@@ -232,9 +232,6 @@ class ImageNet_data():
         
         config={}
 
-        config['rand_crop'] = rand_crop
-        config['batch_crop_mirror'] = batch_crop_mirror
-        config['input_width'] = input_width
         config['gpuid'] = ctx.dev
         config['verbose'] = self.verbose
         import os
@@ -254,8 +251,8 @@ class ImageNet_data():
         # 1. send ipc handle of shared_x
         sock.send_pyobj((gpuarray_batch.shape, gpuarray_batch.dtype, h))
 
-        # 2. send img_mean
-        self.icomm.send(img_mean, dest=0, tag=66)
+        # # 2. send img_mean
+        # self.icomm.send(img_mean, dest=0, tag=66)
         
     def para_load_close():
         
