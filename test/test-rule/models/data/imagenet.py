@@ -11,7 +11,7 @@ val_folder = '/val_hkl_128b/'
 RGB_mean = False
 
 # parallel loading
-para_load = True
+para_load = False
 sock_data = 5020
         
 class ImageNet_data():
@@ -140,9 +140,13 @@ class ImageNet_data():
         if self.verbose: print 'training data shuffled'
 
     
-    def shard_data(self, filenames, labels, rank, size):
+    def shard_data(self, mode, rank, size):
         
-        # usually after each shuffle_data call
+        # usually after batch_data and each shuffle_data call
+        if mode == 'train':
+            filenames, labels = self.train_img, self.train_labels
+        else:
+            filenames, labels = self.val_img, self.val_labels
         
         # make divisible
         n_files = len(filenames)
@@ -161,8 +165,12 @@ class ImageNet_data():
         # sharding
         filenames = filenames[rank::size]
         labels = labels[rank::size]
-    
-        return img,labels
+        
+        if mode == 'train':
+            self.train_img, self.train_labels = filenames, labels
+        else:
+            self.val_img, self.val_labels = filenames, labels
+        
         
         
     def spawn_load(self):

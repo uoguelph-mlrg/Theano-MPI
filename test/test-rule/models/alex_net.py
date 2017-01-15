@@ -30,19 +30,21 @@ input_width = 227
 input_height = 227
 
 batch_crop_mirror = False
-rand_crop = True
+rand_crop = False
 
 image_mean = 'img_mean'
 dataname = 'imagenet'
 
 # conv
-lib_conv='cudnn' # cudnn or corrmm
+lib_conv='corrmm' # cudnn or corrmm
 
 class AlexNet(object):
 
     def __init__(self, config):
 
         self.verbose = config['verbose']
+        self.rank = config['rank'] # will be used in sharding and distinguish rng
+        self.size = config['size']
         
         import theano
         theano.config.on_unused_input = 'warn'
@@ -134,20 +136,32 @@ class AlexNet(object):
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import ConvPoolLRN,Dropout,FC, Dimshuffle, \
+        from layers2 import ConvPoolLRN,Dropout,FC, Dimshuffle, Crop, \
                             Softmax,Flatten,LRN, Constant, Normal
         
         
         self.x = T.ftensor4('x')
         self.y = T.lvector('y')
         self.lr = T.scalar('lr')
+        
+        crop_layer = Crop(input=self.x,
+                          input_shape=(self.channels, 
+                                       self.data.width,
+                                       self.data.height,
+                                       self.batch_size),
+                          output_shape=(self.channels, 
+                                        self.input_width,
+                                        self.input_height,
+                                        self.batch_size),
+                          printinfo = self.verbose
+                          )
                          
 
-        convpool_layer1 = ConvPoolLRN(input=self.x,
-                                        input_shape=(self.channels, 
-                                                     self.input_width,
-                                                     self.input_height,
-                                                     self.batch_size),
+        convpool_layer1 = ConvPoolLRN(input=crop_layer,
+                                        # input_shape=(self.channels,
+#                                                      self.input_width,
+#                                                      self.input_height,
+#                                                      self.batch_size),
                                                      
                                         filter_shape=(3, 11, 11, 96),
                                         convstride=4, padsize=0, group=1,
@@ -323,19 +337,19 @@ class AlexNet(object):
         '''use the train_iter_fn compiled'''
         '''use parallel loading for large or remote data'''
         
+        if self.current_t == 0:
+
+            #self.data.shuffle_data()
+            if self.size>1: self.data.shard_data('train', self.rank, self.size)
+            
         img = self.data.train_img
         labels = self.data.train_labels
         img_mean = self.data.rawdata[4]
         mode = 'train'
         function = self.train_iter_fn
-        
+            
             
         if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
-              
-            if self.current_t == 0:
-
-                #self.data.shuffle_data()
-                pass
         
             recorder.start()
             
@@ -370,13 +384,12 @@ class AlexNet(object):
             
                 arr = hkl.load(img[self.current_t]) - img_mean
             
-                # arr = np.rollaxis(arr,0,4)
             
-                rand_arr = get_rand3d(rand_crop, mode)
+                #rand_arr = get_rand3d(rand_crop, mode)
 
-                arr = crop_and_mirror(arr, rand_arr, \
-                                        flag_batch=self.batch_crop_mirror, \
-                                        cropsize = self.input_width)
+                # arr = crop_and_mirror(arr, rand_arr, \
+                #                         flag_batch=self.batch_crop_mirror, \
+                #                         cropsize = self.input_width)
                                     
                 self.shared_x.set_value(arr)
                 
@@ -420,6 +433,10 @@ class AlexNet(object):
     def val_iter(self, count,recorder):
         
         '''use the val_iter_fn compiled'''
+        
+        if self.current_v == 0:
+            
+            if self.size>1: self.data.shard_data('val', self.rank, self.size)
         
         img= self.data.val_img
         labels = self.data.val_labels
@@ -559,6 +576,8 @@ if __name__ == '__main__':
         config = yaml.load(f)
         
     config['device'] = 'cuda0'
+    config['rank'] = comm.rank
+    config['size'] = comm.size
     
     model = AlexNet(config)
     

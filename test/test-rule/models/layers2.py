@@ -218,6 +218,61 @@ class Layer(object):
                                 self.input_shape, self.output_shape)
     
 
+class Crop(Layer):
+    def __init__(self, input, input_shape, output_shape, 
+                 flag_rand=True, flag_batch=True, printinfo=True):
+        
+        self.get_input_shape(input,input_shape)
+        
+        
+        if flag_rand:
+                
+            import theano.sandbox.rng_mrg as RNG_MRG
+            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(234))
+        
+            rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
+            #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
+        
+        else:
+            
+            rand = np.float32([0.5, 0.5, 0])
+        
+        
+        if flag_batch:
+    
+            mirror = self.input[:,:,::-1,:] # TODO find out if it's height or width that is being mirrored
+            self.input = T.concatenate([self.input, mirror], axis=0)
+            
+            cropsize = output_shape[2] # works for both c01b and bc01
+    
+            # crop images
+            center_margin = (self.input_shape[2] - cropsize) / 2
+            if flag_rand:
+                mirror_rand = T.cast(rand[2], 'int32')
+                crop_xs = T.cast(rand[0] * center_margin * 2, 'int32')
+                crop_ys = T.cast(rand[1] * center_margin * 2, 'int32')
+            else:
+                mirror_rand = 0
+                crop_xs = center_margin
+                crop_ys = center_margin
+    
+            self.output = self.input[mirror_rand * 3:(mirror_rand + 1) * 3, :, :, :]
+            self.output = self.output[ :, crop_xs:crop_xs + cropsize, 
+                                          crop_ys:crop_ys + cropsize, :]
+    
+        else:
+        
+            raise NotImplementedError()
+                
+            
+        if output_shape:
+            self.output_shape = output_shape 
+        else:
+            self.output_shape = self.get_output_shape(self.input_shape)
+            
+        self.name = 'Crop\t'
+        if printinfo: self.print_shape()
+
 class Conv(Layer):
     def __init__(self, input, convstride, padsize, 
                  b, W = None, filter_shape = None, 

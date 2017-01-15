@@ -9,7 +9,7 @@ monitor_grad: False
 
 verbose: True
 
-sync_type: cdd # mode selection: avg or cdd, EASGD or ASGD
+sync_type: avg # mode selection: avg or cdd, EASGD or ASGD
 
 exch_strategy: nccl32 # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
 

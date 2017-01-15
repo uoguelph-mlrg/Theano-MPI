@@ -146,6 +146,8 @@ if __name__ == '__main__':
         config = yaml.load(f)
     
     config['verbose'] = (worker.rank==0)
+    config['rank'] = worker.rank
+    config['size'] = worker.size
     
     modelfile = sys.argv[3]
     modelclass = sys.argv[4]
