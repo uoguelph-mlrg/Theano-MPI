@@ -245,8 +245,10 @@ class Subtract(Layer):
         
 class Crop(Layer):
     
+    layers = []
+    
     def __init__(self, input, output_shape, input_shape=None,
-                 flag_rand=True, flag_batch=False, printinfo=True):
+                 flag_batch=False, printinfo=True):
         
         self.get_input_shape(input,input_shape)
         
@@ -261,31 +263,21 @@ class Crop(Layer):
         
         if flag_batch:
             
-            if flag_rand:
+            import theano.sandbox.rng_mrg as RNG_MRG
+            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
+
+            rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
+            #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
                 
-                import theano.sandbox.rng_mrg as RNG_MRG
-                MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
-    
-                rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
-                #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
-                    
-                    
-                mirror_rand = T.cast(T.round(rand[2]), 'int32')
-                crop_xs = T.cast(rand[0] * center_margin * 2, 'int32')
-                crop_ys = T.cast(rand[1] * center_margin * 2, 'int32')
-            else:
                 
-                mirror_rand = 0
-                crop_xs = center_margin
-                crop_ys = center_margin
+            mirror_rand = T.cast(T.round(rand[2]), 'int32')
+            crop_xs = T.cast(rand[0] * center_margin * 2, 'int32')
+            crop_ys = T.cast(rand[1] * center_margin * 2, 'int32')
     
             self.output = self.input[mirror_rand * 3:(mirror_rand + 1) * 3, 
                                                     crop_xs:crop_xs + cropsize, 
-                                                    crop_ys:crop_ys + cropsize, :] 
-            # TODO add a flag like dropout
-                        # + self.flag_off * self.input[0:3,
-#                                                     center_margin:center_margin + cropsize,
-#                                                     center_margin:center_margin + cropsize, :]
+                                                    crop_ys:crop_ys + cropsize, :]
+                      
                          
         else:
             
@@ -325,10 +317,19 @@ class Crop(Layer):
                 self.output = conc_list[0]
 
             else:
-
                 raise RuntimeError('self.input_shape[3] needs to be at list 1')
+        
+        
+        self.flag_on = theano.shared(np.cast[theano.config.floatX](1.0))
+             
                 
-                                           
+        self.output = self.flag_on         * self.output \
+                    + (1.0 - self.flag_on) * self.input[0:3,
+                                                center_margin:center_margin + cropsize,
+                                                center_margin:center_margin + cropsize, :]
+                
+        Crop.layers.append(self)
+                      
         if output_shape:
             
             self.output_shape = output_shape 
@@ -337,6 +338,16 @@ class Crop(Layer):
             
         self.name = 'Crop\t'
         if printinfo: self.print_shape()
+        
+    @staticmethod
+    def SetRandCropOn():
+        for i in range(0, len(Crop.layers)):
+            Crop.layers[i].flag_on.set_value(1.0)
+
+    @staticmethod
+    def SetRandCropOff():
+        for i in range(0, len(Crop.layers)):
+            Crop.layers[i].flag_on.set_value(0.0)
 
 class Conv(Layer):
     
@@ -764,8 +775,8 @@ class Flatten(Layer):
                              
 class Dropout(Layer):
     
-    seed_common = np.random.RandomState(0)  # for deterministic results
-    # seed_common = np.random.RandomState()
+    # seed_common = np.random.RandomState(0)  # for deterministic results
+    # # seed_common = np.random.RandomState()
     layers = []
 
     def __init__(self, input, n_out, 
@@ -781,7 +792,7 @@ class Dropout(Layer):
         self.flag_on = theano.shared(np.cast[theano.config.floatX](1.0))
         self.flag_off = 1.0 - self.flag_on
 
-        seed_this = Dropout.seed_common.randint(0, 2**31-1)
+        seed_this = rng.randint(0, 2**31-1)
         mask_rng = theano.tensor.shared_randomstreams.RandomStreams(seed_this)
         self.mask = mask_rng.binomial(n=1, p=self.prob_keep, size=self.input.shape)
 
@@ -939,7 +950,7 @@ def count_params(params, verbose):
         
         if verbose: print param.shape.eval()
         
-    if verbose: print 'model size %d M floats' % (int(model_size)/(1024*1024))
+    if verbose: print 'model size %.3f M floats' % (float(model_size)/(1024*1024))
     
     
             

@@ -492,9 +492,12 @@ class AlexNet(object):
             else:
                 self.last_one_v = False
                 
+        from layers2 import Dropout, Crop       
         Dropout.SetDropoutOff()
+        Crop.SetRandCropOff()
         cost,error,error_top5 = function(self.subb_v)
         Dropout.SetDropoutOn()
+        Crop.SetRandCropOn()
         
         recorder.val_error(count, cost, error, error_top5)
         
@@ -611,9 +614,23 @@ if __name__ == '__main__':
     
     # inference demo
     
-    model.batch_size = 1
+    batch_size = 1
+    batch_crop_mirror = True
+    
+    # or
+    # batch_size=batch_size
+    # batch_crop_mirror=False
+    
+    trained_params = [param.get_value() for param in model.params]
+    
+    model = Cifar10_model(config)
+    
+    for p, p_old in zip(model.params, trained_params):
+        p.set_value(p_old)
     
     model.compile_inference()
+    
+    
     
     test_image = np.zeros((3,227,227,1),dtype=theano.config.floatX) # inference on an image 
     

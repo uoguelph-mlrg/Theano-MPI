@@ -48,6 +48,10 @@ class Cifar10_model(object): # c01b input
         # mini batching
         self.data.batch_data(file_batch_size)
         
+        # preprocessing
+        self.batch_crop_mirror = batch_crop_mirror
+        self.input_width = input_width
+        
         # training related
         self.n_epochs = n_epochs
         self.epoch = 0
@@ -100,10 +104,6 @@ class Cifar10_model(object): # c01b input
         self.last_one_v=False
         self.subb_v=0
         
-        # preprocessing
-        self.batch_crop_mirror = batch_crop_mirror
-        self.input_width = input_width
-        
     def build_model(self):
         
         
@@ -133,8 +133,7 @@ class Cifar10_model(object): # c01b input
                                         self.input_width,
                                         self.input_height,
                                         self.batch_size),
-                          flag_batch=batch_crop_mirror,
-                          flag_rand = rand_crop,
+                          flag_batch=self.batch_crop_mirror,
                           printinfo = self.verbose
                           )
                           
@@ -374,7 +373,6 @@ class Cifar10_model(object): # c01b input
         
         if self.subb_v == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
         
-    
             arr = img[self.current_v] #- img_mean
         
             arr = np.rollaxis(arr,0,4)
@@ -388,10 +386,12 @@ class Cifar10_model(object): # c01b input
             else:
                 self.last_one_v = False
         
-        from layers2 import Dropout        
+        from layers2 import Dropout, Crop       
         Dropout.SetDropoutOff()
+        Crop.SetRandCropOff()
         cost,error,error_top5 = function(self.subb_v)
         Dropout.SetDropoutOn()
+        Crop.SetRandCropOn()
         
         recorder.val_error(count, cost, error, error_top5)
         
@@ -498,12 +498,28 @@ if __name__ == '__main__':
 
     model.adjust_hyperp(epoch=40)
     
-    model.batch_size=1
     
+    
+    # inference demo
+    
+    batch_size=1
+    batch_crop_mirror=True
+    
+    # or
+    # batch_size=batch_size
+    # batch_crop_mirror=False
+    
+    trained_params = [param.get_value() for param in model.params]
+    
+    model = Cifar10_model(config)
+    
+    for p, p_old in zip(model.params, trained_params):
+        p.set_value(p_old)
     
     model.compile_inference()
     
-    
     print model.inf_fn(model.shared_x.get_value()[:,:,:,:1])
+    
+    model.cleanup()
     
     
