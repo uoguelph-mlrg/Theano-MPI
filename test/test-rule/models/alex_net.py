@@ -13,8 +13,8 @@ import hickle as hkl
 n_epochs = 70
 momentum = 0.90
 weight_decay = 0.0005
-batch_size = 128
-file_batch_size = 128
+batch_size = 256
+file_batch_size = 256
 learning_rate = 0.01
 
 lr_policy = 'step'
