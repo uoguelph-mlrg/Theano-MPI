@@ -7,6 +7,7 @@ import signal
 class BSP(object):
     
     sync_type = 'avg' # or 'cdd'
+    exch_strategy = 'nccl32' # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
     
     # Bulk Synchronous Parallel rule
     
@@ -42,7 +43,7 @@ class BSP(object):
             worker_file_dir = os.path.dirname(os.path.realpath(__file__))
             command += [sys.executable, "-u", worker_file_dir+"/worker.py"] 
         
-            command += [device, BSP.sync_type, modelfile,  modelclass]
+            command += [device, BSP.sync_type, BSP.exch_strategy, modelfile,  modelclass]
             
             if index!= N_WORKERS-1:
                 command += [":"]

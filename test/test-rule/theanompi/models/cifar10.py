@@ -25,6 +25,8 @@ rand_crop = True
 image_mean = 'img_mean'
 dataname = 'cifar10'
 
+monitor_grad = False
+
 class Cifar10_model(object): # c01b input
     
     def __init__(self, config): 
@@ -477,11 +479,9 @@ if __name__ == '__main__':
     # This is a bit of black magic that may stop working in future
     # theano releases
     ctx = theano.gpuarray.type.get_context(None)
-    
-    
-    import yaml
-    with open('../config.yaml', 'r') as f:
-        config = yaml.load(f)
+      
+    config={}
+    config['verbose'] = True
     config['rank'] = comm.rank 
     config['size'] = comm.size
     

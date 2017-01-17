@@ -1,10 +1,12 @@
 class Worker(object):
     
-    def __init__(self, device, sync_type):
+    def __init__(self, device, sync_type, exch_strategy):
         
         self.device = device
         
         self.sync_type = sync_type
+        
+        self.exch_strategy = exch_strategy
         
         self.get_internode_comm()
         
@@ -72,7 +74,7 @@ class Worker(object):
         
         # choose the type of exchanger
         from lib.exchanger import BSP_Exchanger
-        self.exchanger = BSP_Exchanger(self.comm, self.gpucomm, config['exch_strategy'], self.sync_type, self.ctx, model)
+        self.exchanger = BSP_Exchanger(self.comm, self.gpucomm, self.exch_strategy, self.sync_type, self.ctx, model)
             
             
     def BSP_run(self, model):
@@ -136,23 +138,18 @@ class Worker(object):
 if __name__ == '__main__':
     
     import sys
-    
     device = sys.argv[1]
-    
     sync_type = sys.argv[2]
+    exch_strategy = sys.argv[3]
+    modelfile = sys.argv[4]
+    modelclass = sys.argv[5]
     
-    worker = Worker(device, sync_type)
+    worker = Worker(device, sync_type, exch_strategy)
     
-    import yaml
-    with open('config.yaml', 'r') as f:
-        config = yaml.load(f)
-    
+    config={}
     config['verbose'] = (worker.rank==0)
     config['rank'] = worker.rank
     config['size'] = worker.size
-    
-    modelfile = sys.argv[3]
-    modelclass = sys.argv[4]
     
     import importlib
     mod = importlib.import_module(modelfile)

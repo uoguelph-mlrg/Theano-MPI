@@ -36,6 +36,8 @@ dataname = 'imagenet'
 # conv
 lib_conv='cudnn' # cudnn or corrmm
 
+monitor_grad = False
+
 class AlexNet(object):
 
     def __init__(self, config):
@@ -578,11 +580,9 @@ if __name__ == '__main__':
     ctx = theano.gpuarray.type.get_context(None)
     
     
-    import yaml
-    with open('../config.yaml', 'r') as f:
-        config = yaml.load(f)
-        
-    config['device'] = 'cuda0'
+    config={}
+    config['verbose'] = True
+    # config['device'] = 'cuda0'
     config['rank'] = comm.rank
     config['size'] = comm.size
     
@@ -633,7 +633,7 @@ if __name__ == '__main__':
     
     trained_params = [param.get_value() for param in model.params]
     
-    model = Cifar10_model(config)
+    model = AlexNet(config)
     
     for p, p_old in zip(model.params, trained_params):
         p.set_value(p_old)
