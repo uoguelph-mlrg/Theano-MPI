@@ -18,6 +18,11 @@ class Cifar10_data():
         
         self.verbose = verbose
         
+        self.batched=False
+        self.shuffled=False
+        self.extended=False
+        self.sharded=False
+        
     def get_data(self):
 
         path = self.data_path
@@ -65,43 +70,47 @@ class Cifar10_data():
         
     def batch_data(self, file_batch_size):
     
-        self.n_batch_train = self.rawdata[0].shape[0]/file_batch_size
+        if self.batched==False:
+            
+            self.n_batch_train = self.rawdata[0].shape[0]/file_batch_size
         
-        self.train_img, self.train_labels=[],[]
+            self.train_img, self.train_labels=[],[]
 
-        raw_img = self.rawdata[0]
-        raw_labels = self.rawdata[1]
+            raw_img = self.rawdata[0]
+            raw_labels = self.rawdata[1]
     
-        for index in range(self.n_batch_train):
-            batch_img =  raw_img[(index) \
-                            * file_batch_size: \
-            				(index + 1) * file_batch_size]
-            batch_label = raw_labels[(index) \
-                            * file_batch_size: \
-            				(index + 1) * file_batch_size]
+            for index in range(self.n_batch_train):
+                batch_img =  raw_img[(index) \
+                                * file_batch_size: \
+                				(index + 1) * file_batch_size]
+                batch_label = raw_labels[(index) \
+                                * file_batch_size: \
+                				(index + 1) * file_batch_size]
 
-            self.train_img.append(batch_img)
-            self.train_labels.append(batch_label)
+                self.train_img.append(batch_img)
+                self.train_labels.append(batch_label)
             
             
             
-        self.n_batch_val = self.rawdata[2].shape[0]/file_batch_size
+            self.n_batch_val = self.rawdata[2].shape[0]/file_batch_size
         
-        self.val_img, self.val_labels=[],[]
+            self.val_img, self.val_labels=[],[]
 
-        raw_img = self.rawdata[2]
-        raw_labels = self.rawdata[3]
+            raw_img = self.rawdata[2]
+            raw_labels = self.rawdata[3]
     
-        for index in range(self.n_batch_train):
-            batch_img =  raw_img[(index) \
-                            * file_batch_size: \
-            				(index + 1) * file_batch_size]
-            batch_label = raw_labels[(index) \
-                            * file_batch_size: \
-            				(index + 1) * file_batch_size]
+            for index in range(self.n_batch_val):
+                batch_img =  raw_img[(index) \
+                                * file_batch_size: \
+                				(index + 1) * file_batch_size]
+                batch_label = raw_labels[(index) \
+                                * file_batch_size: \
+                				(index + 1) * file_batch_size]
 
-            self.val_img.append(batch_img)
-            self.val_labels.append(batch_label)
+                self.val_img.append(batch_img)
+                self.val_labels.append(batch_label)
+                
+            self.batched=True
     
     
     def shuffle_data(self):
@@ -111,35 +120,60 @@ class Cifar10_data():
         # 312 = 40000 / 128 
     
         # 1. generate random indices 
-
-        import time, os
-        time_seed = int(time.time())*int(os.getpid())%1000
-        np.random.seed(time_seed)
-
-        indices = np.random.permutation(self.n_batch_train)
-
-        # 2. shuffle batches based on indices
-        img = []
-        labels=[]
-
-        for index in indices:
-            img.append(self.train_img[index])
-            labels.append(self.train_labels[index])
+        if self.shuffled == False:
             
-        self.train_img = img
-        self.train_labels = labels
+            import time, os
+            time_seed = int(time.time())*int(os.getpid())%1000
+            np.random.seed(time_seed)
+
+            indices = np.random.permutation(self.n_batch_train)
+
+            # 2. shuffle batches based on indices
+            img = []
+            labels=[]
+
+            for index in indices:
+                img.append(self.train_img[index])
+                labels.append(self.train_labels[index])
+            
+            self.train_img = img
+            self.train_labels = labels
         
-        if self.verbose: print 'training data shuffled'
+            if self.verbose: print 'training data shuffled'
+            
+            self.shuffled=True
 
     
-    def shard_data(self, img, labels, rank, size):
+    def shard_data(self, file_batch_size, rank, size):
         
-        # usually after each shuffle_data call
+        # usually after batch_data and each shuffle_data call
         
-        img = img[rank::size]
-        labels = labels[rank::size]
+        img_t, labels_t = self.train_img, self.train_labels
+        img_v, labels_v = self.val_img, self.val_labels
+        # make divisible
+        
+        if self.extended==False:
+        
+            from helper_funcs import extend_data
+            
+            if len(img_t) % size != 0: img_t, labels_t = extend_data(rank, size, img_t, labels_t)
+            if len(img_v) % size != 0: img_v, labels_v = extend_data(rank, size, img_v, labels_v)
+            
+            self.extended = True
+        
+        if self.sharded == False:
+            # sharding
+            img_t = img_t[rank::size]
+            img_v = img_v[rank::size]
+            labels_t = labels_t[rank::size]
+            labels_v = labels_v[rank::size]
+            
+            self.sharded=True
     
-        return img,labels
+        self.train_img_shard, self.train_labels_shard = img_t, labels_t
+        self.val_img_shard, self.val_labels_shard = img_v, labels_v
+        self.n_batch_train = len(self.train_img_shard)
+        self.n_batch_val = len(self.val_img_shard)
         
         
         

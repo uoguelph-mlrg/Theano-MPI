@@ -7,8 +7,8 @@ sys.path.append('../')
 n_epochs = 70
 momentum = 0.90
 weight_decay = 0.0001
-file_batch_size = 128
-batch_size = 128
+file_batch_size = 256
+batch_size = 256
 learning_rate = 0.01
 
 lr_policy = 'step'
@@ -31,6 +31,8 @@ class Cifar10_model(object): # c01b input
     def __init__(self, config): 
 
         self.verbose = config['verbose']
+        self.rank = config['rank'] # will be used in sharding and distinguish rng
+        self.size = config['size']
         
         import theano
         self.name = 'Cifar10_model'
@@ -41,12 +43,18 @@ class Cifar10_model(object): # c01b input
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
-        self.batch_size = batch_size # 'b'
+        if self.size>1: # only use avg
+            self.batch_size = batch_size/self.size
+        else:
+            self.batch_size = batch_size # 'b'
         self.file_batch_size = file_batch_size
         self.n_softmax_out = self.data.n_class
         
         # mini batching
         self.data.batch_data(file_batch_size)
+        #self.data.shuffle_data()
+        if self.size>1: self.data.shard_data(file_batch_size, self.rank, self.size)
+        
         
         # preprocessing
         self.batch_crop_mirror = batch_crop_mirror
@@ -303,18 +311,21 @@ class Cifar10_model(object): # c01b input
         
         '''use the train_iter_fn compiled'''
         
-        img= self.data.train_img
-        labels = self.data.train_labels
+        if self.size>1: 
+                
+            img= self.data.train_img_shard
+            labels = self.data.train_labels_shard
+        
+        else:
+            
+            img= self.data.train_img
+            labels = self.data.train_labels
+            
         img_mean = self.data.rawdata[4]
         mode='train'
         function=self.train_iter_fn
-            
+         
         if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
-              
-            if self.current_t == 0:
-
-                #self.data.shuffle_data()
-                pass
         
             recorder.start()
         
@@ -365,8 +376,16 @@ class Cifar10_model(object): # c01b input
         
         '''use the val_iter_fn compiled'''
         
-        img= self.data.val_img
-        labels = self.data.val_labels
+        if self.size>1: 
+                
+            img= self.data.val_img_shard
+            labels = self.data.val_labels_shard
+        
+        else:
+            
+            img= self.data.val_img
+            labels = self.data.val_labels
+            
         img_mean = self.data.rawdata[4]
         mode='val'
         function=self.val_iter_fn
@@ -461,6 +480,8 @@ if __name__ == '__main__':
     import yaml
     with open('../config.yaml', 'r') as f:
         config = yaml.load(f)
+    config['rank'] = comm.rank 
+    config['size'] = comm.size
     
     model = Cifar10_model(config)
     
@@ -484,21 +505,20 @@ if __name__ == '__main__':
         print batch_i
 
     # val
-
+    
     for batch_j in range(model.data.n_batch_val):
 
         model.val_iter(batch_i, recorder)
 
         print batch_j
-
+        
+    #recorder.gather_val_info()
     recorder.print_val_info(batch_i)
 
     model.epoch+=1
     print 'finish one epoch'
 
     model.adjust_hyperp(epoch=40)
-    
-    
     
     # inference demo
     

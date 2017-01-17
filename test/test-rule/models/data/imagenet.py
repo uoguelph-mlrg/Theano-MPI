@@ -34,6 +34,11 @@ class ImageNet_data():
         
         self.verbose = verbose
         
+        self.batched=False
+        self.shuffled=False
+        self.extended=False
+        self.sharded=False
+        
         # parallel loading
         self.para_load = para_load
         
@@ -77,99 +82,98 @@ class ImageNet_data():
         
     def batch_data(self, file_batch_size):
         
+        if self.batched==False:
+            self.n_batch_train = len(self.rawdata[0])
+            self.n_batch_val = len(self.rawdata[2])
         
-        self.n_batch_train = len(self.rawdata[0])
-        self.n_batch_val = len(self.rawdata[2])
-        
-        if self.verbose: print 'train on %d files' % n_train_files  
-        if self.verbose: print 'val on %d files' % n_val_files
+            if self.verbose: print 'train on %d files' % n_train_files  
+            if self.verbose: print 'val on %d files' % n_val_files
                 
                 
         
-        self.train_img, self.train_labels = self.rawdata[0],[]
+            self.train_img, self.train_labels = self.rawdata[0],[]
 
-        raw_labels = self.rawdata[1]
+            raw_labels = self.rawdata[1]
 
-        for index in range(self.n_batch_train):
+            for index in range(self.n_batch_train):
 
-            batch_label = raw_labels[(index) \
-                            * file_batch_size: \
-                            (index + 1) * file_batch_size]
+                batch_label = raw_labels[(index) \
+                                * file_batch_size: \
+                                (index + 1) * file_batch_size]
 
-            self.train_labels.append(batch_label)
+                self.train_labels.append(batch_label)
         
 
 
 
-        self.val_img, self.val_labels=self.rawdata[2],[]
+            self.val_img, self.val_labels=self.rawdata[2],[]
 
-        raw_labels = self.rawdata[3]
+            raw_labels = self.rawdata[3]
 
-        for index in range(self.n_batch_train):
+            for index in range(self.n_batch_train):
            
-            batch_label = raw_labels[(index) \
-                            * file_batch_size: \
-                            (index + 1) * file_batch_size]
+                batch_label = raw_labels[(index) \
+                                * file_batch_size: \
+                                (index + 1) * file_batch_size]
 
-            self.val_labels.append(batch_label)
+                self.val_labels.append(batch_label)
+                
+            self.batched=True
     
     
     def shuffle_data(self):
     
         # To be called at the begining of an epoch for shuffling the order of training data
-    
-        # 1. generate random indices 
+        if self.shuffled == False:
+            # 1. generate random indices 
 
-        import time, os
-        time_seed = int(time.time())*int(os.getpid())%1000
-        np.random.seed(time_seed)
+            import time, os
+            time_seed = int(time.time())*int(os.getpid())%1000
+            np.random.seed(time_seed)
 
-        indices = np.random.permutation(self.n_batch_train)
+            indices = np.random.permutation(self.n_batch_train)
 
-        # 2. shuffle batches based on indices
-        img = []
-        labels=[]
+            # 2. shuffle batches based on indices
+            img = []
+            labels=[]
 
-        for index in indices:
-            img.append(self.train_img[index])
-            labels.append(self.train_labels[index])
+            for index in indices:
+                img.append(self.train_img[index])
+                labels.append(self.train_labels[index])
             
-        self.train_img = img
-        self.train_labels = labels
+            self.train_img = img
+            self.train_labels = labels
         
-        if self.verbose: print 'training data shuffled'
+            if self.verbose: print 'training data shuffled'
+            self.shuffled=True
 
     
-    def shard_data(self, mode, rank, size):
+    def shard_data(self, file_batch_size, rank, size):
         
         # usually after batch_data and each shuffle_data call
-        if mode == 'train':
-            filenames, labels = self.train_img, self.train_labels
-        else:
-            filenames, labels = self.val_img, self.val_labels
+        filenames_t, labels_t = self.train_img, self.train_labels
+        filenames_v, labels_v = self.val_img, self.val_labels
         
-        # make divisible
-        n_files = len(filenames)
-        labels = labels[:n_files*file_batch_size]  # cut unused labels 
-   
-        # get a list of training filenames that cannot be allocated to any rank
-        bad_left_list = get_bad_list(n_files, size)
-        if rank == 0: print 'bad list is '+str(bad_left_list)
-        need = (size - len(bad_left_list))  % size  
-        if need !=0: 
-            filenames.extend(filenames[-1*need:])
-            labels=labels.tolist()
-            labels.extend(labels[-1*need*file_batch_size:])
-        n_files = len(filenames)
+        if self.extended==False:
+            # make divisible
+            from helper_funcs import extend_data
+            filenames_t, labels_t = extend_data(rank, size, filenames_t, labels_t)
+            filenames_v, labels_v = extend_data(rank, size, filenames_v, labels_v)
+            self.extended = True
         
-        # sharding
-        filenames = filenames[rank::size]
-        labels = labels[rank::size]
+        if self.sharded == False:
+            # sharding
+            filenames_t = filenames_t[rank::size]
+            labels_t = labels_t[rank::size]
+            filenames_v = filenames_v[rank::size]
+            labels_v = labels_v[rank::size]
+            
+            self.sharded=True
         
-        if mode == 'train':
-            self.train_img, self.train_labels = filenames, labels
-        else:
-            self.val_img, self.val_labels = filenames, labels
+        self.train_img_shard, self.train_labels_shard = filenames_t, labels_t
+        self.val_img_shard, self.val_labels_shard = filenames_v, labels_v
+        self.n_batch_train = len(self.train_img_shard)
+        self.n_batch_val = len(self.val_img_shard)
         
         
         
