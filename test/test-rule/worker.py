@@ -116,6 +116,8 @@ class Worker(object):
 
                 
             model.reset_iter('val')
+            
+            recorder.gather_val_info()
         
             recorder.print_val_info(batch_i)
             model.current_info = recorder.get_latest_val_info()

@@ -4,11 +4,9 @@ import os
 import subprocess
 import signal
 
-
-sync_type = 'cdd' # or 'cdd'
-
-
 class BSP(object):
+    
+    sync_type = 'avg' # or 'cdd'
     
     # Bulk Synchronous Parallel rule
     
@@ -18,7 +16,6 @@ class BSP(object):
     def __init__(self):
         
         self.pid =None
-        self.sync_type=sync_type
         
     def init(self, devices, modelfile, modelclass):
         
@@ -30,7 +27,7 @@ class BSP(object):
         
         for index, device in enumerate(devices):
             
-            #command += ["--output-filename", "%s" % 'out']
+            command += ["--output-filename", "%s" % 'out']
             command += ["--mca", "mpi_warn_on_fork", "0"]
             command += ["--mca", "btl_smcuda_use_cuda_ipc", "1"]
             command += ["--mca", "mpi_common_cuda_cumemcpy_async", "1"]
@@ -43,14 +40,14 @@ class BSP(object):
             # command += ["--report-bindings"]
             command += [sys.executable, "-u", "worker.py"] 
         
-            command += [device, self.sync_type, modelfile,  modelclass]
+            command += [device, BSP.sync_type, modelfile,  modelclass]
             
             if index!= N_WORKERS-1:
                 command += [":"]
                 
         p = subprocess.Popen(command)
         
-        print("started %d workers " % N_WORKERS)
+        print("Theano-MPI started %d workers working on \n 1.iterating on updating %s and\n 2.exchange their params with BSP(%s)\nSee output log." % ( N_WORKERS, modelclass, BSP.sync_type))
         
         self.pid=p.pid
         

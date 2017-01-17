@@ -207,7 +207,7 @@ class BSP_Exchanger(object):
                 
                 self.exch.exchange()
                 
-        else:
+        elif self.size>1:
             
             raise NotImplementedError('wrong sync type')
             

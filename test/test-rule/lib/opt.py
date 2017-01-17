@@ -1,61 +1,64 @@
 
-def pre_model_iter_fn(model, sync_type):
+def pre_model_iter_fn(model, sync_type, f_train=True, f_val=True):
     
     # to make sure model compiles necessary functions (get_vels() and descent() for cdd, or train() for avg) and allocate necessary extra param memory (vels,vels2 for cdd, or nothing for avg)
         
     # allocate supporting params for this worker type
-
-    if sync_type == 'cdd':
+    if f_train:
+        
+        if sync_type == 'cdd':
     
-        import theano
+            import theano
     
-        model.vels = [theano.shared(param_i.get_value() * 0.)
-            for param_i in model.params]
+            model.vels = [theano.shared(param_i.get_value() * 0.)
+                for param_i in model.params]
     
-        model.vels2 = [theano.shared(param_i.get_value() * 0.)
-                    for param_i in model.params]
+            model.vels2 = [theano.shared(param_i.get_value() * 0.)
+                        for param_i in model.params]
                 
-        updates_v, updates_dv = prepare_update_dict(model, sync_type='cdd')
+            updates_v, updates_dv = prepare_update_dict(model, sync_type='cdd')
     
-        get_vel_args = {"inputs":[model.subb_ind], "outputs":[model.cost,model.error], "updates":updates_v, \
-                                                       "givens":[(model.x,  model.shared_x_slice), 
-                                                                 (model.y,  model.shared_y_slice),
-                                                                 (model.lr, model.shared_lr)]}
+            get_vel_args = {"inputs":[model.subb_ind], "outputs":[model.cost,model.error], "updates":updates_v, \
+                                                           "givens":[(model.x,  model.shared_x_slice), 
+                                                                     (model.y,  model.shared_y_slice),
+                                                                     (model.lr, model.shared_lr)]}
                                                              
-        descent_vel_args = {"inputs":[], "outputs":[], "updates":updates_dv}
+            descent_vel_args = {"inputs":[], "outputs":[], "updates":updates_dv}
                                                 
-        model.compile_train(get_vel_args, descent_vel_args) # needs compile model before para_load_init() # 2 (local to worker type)
+            model.compile_train(get_vel_args, descent_vel_args) # needs compile model before para_load_init() # 2 (local to worker type)
     
-        model.get_vel, model.descent_vel = model.compiled_train_fn_list
+            model.get_vel, model.descent_vel = model.compiled_train_fn_list
         
         
-    else: # avg or other sync types
+        else: # avg or other sync types
     
-        import theano
+            import theano
     
-        model.vels = [theano.shared(param_i.get_value() * 0.)
-            for param_i in model.params]
+            model.vels = [theano.shared(param_i.get_value() * 0.)
+                for param_i in model.params]
             
-        model.vels2 = [theano.shared(param_i.get_value() * 0.)
-                    for param_i in model.params]
+            model.vels2 = [theano.shared(param_i.get_value() * 0.)
+                        for param_i in model.params]
     
-        updates_w, = prepare_update_dict(model, sync_type='avg')
+            updates_w, = prepare_update_dict(model, sync_type='avg')
     
-        train_args = {"inputs":[model.subb_ind], "outputs": [model.cost,model.error], "updates": updates_w, \
-                                                                  "givens": [(model.x,  model.shared_x_slice), 
-                                                                             (model.y,  model.shared_y_slice),
-                                                                             (model.lr, model.shared_lr)]}
+            train_args = {"inputs":[model.subb_ind], "outputs": [model.cost,model.error], "updates": updates_w, \
+                                                                      "givens": [(model.x,  model.shared_x_slice), 
+                                                                                 (model.y,  model.shared_y_slice),
+                                                                                 (model.lr, model.shared_lr)]}
     
-        model.compile_train(train_args)
+            model.compile_train(train_args)
     
-        model.train_fn , = model.compiled_train_fn_list
+            model.train_fn , = model.compiled_train_fn_list
         
         
-    model.train_iter_fn = choose_iter_fn(model, sync_type)
-        
-    model.compile_val()
+        model.train_iter_fn = choose_iter_fn(model, sync_type)
     
-    model.val_iter_fn = model.val_fn
+    if f_val:    
+        
+        model.compile_val()
+    
+        model.val_iter_fn = model.val_fn
 
 def choose_iter_fn(model, sync_type):
     

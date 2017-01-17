@@ -6,7 +6,7 @@ rule=BSP()
 
 # modelfile: the relative path to the model file
 # modelclass: the class name of the model to be imported
-rule.init(devices=['cuda0', 'cuda1'] , modelfile = 'models.alex_net', modelclass = 'AlexNet') 
+rule.init(devices=['cuda1'] , modelfile = 'models.cifar10', modelclass = 'Cifar10_model') 
 rule.wait()
 
 

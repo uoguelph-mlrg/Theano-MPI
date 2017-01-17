@@ -66,7 +66,7 @@ class Recorder(object):
         self.info_dict['epoch_time'].append([count, duration])
 
         if self.verbose: 
-            print 'global epoch %d took %.2f h' % (uepoch, duration/3600.0)
+            print 'global epoch %d took %.4f h' % (uepoch, duration/3600.0)
             print ''
 
         self.epoch_time = None
