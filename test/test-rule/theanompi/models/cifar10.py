@@ -1,7 +1,6 @@
-import numpy as np
-import sys
-sys.path.append('../')
-        
+from __future__ import absolute_import
+
+import numpy as np    
 # model hyperparams
 
 n_epochs = 70
@@ -38,7 +37,7 @@ class Cifar10_model(object): # c01b input
         self.name = 'Cifar10_model'
         
         # data
-        from data.cifar10 import Cifar10_data
+        from theanompi.models.data import Cifar10_data
         self.data = Cifar10_data(verbose=False)
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
@@ -91,7 +90,7 @@ class Cifar10_model(object): # c01b input
         # build model
         self.build_model()
         self.output = self.output_layer.output
-        from layers2 import get_params, get_layers, count_params
+        from theanompi.models.layers2 import get_params, get_layers, count_params
         self.layers = get_layers(lastlayer = self.output_layer)
         self.params,self.weight_types = get_params(self.layers)
         count_params(self.params, self.verbose)
@@ -119,7 +118,7 @@ class Cifar10_model(object): # c01b input
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import Conv,Pool,Dropout,FC, Subtract, Crop, Dimshuffle,\
+        from theanompi.models.layers2 import Conv,Pool,Dropout,FC, Subtract, Crop, Dimshuffle,\
                             Softmax,Flatten,LRN, Constant, Normal
         
         self.x = T.ftensor4('x')
@@ -287,7 +286,7 @@ class Cifar10_model(object): # c01b input
         
         start = time.time()
         
-        from lib.opt import pre_model_iter_fn
+        from theanompi.lib.opt import pre_model_iter_fn
 
         pre_model_iter_fn(self, sync_type='avg')
         
@@ -405,7 +404,7 @@ class Cifar10_model(object): # c01b input
             else:
                 self.last_one_v = False
         
-        from layers2 import Dropout, Crop       
+        from theanompi.models.layers2 import Dropout, Crop       
         Dropout.SetDropoutOff()
         Crop.SetRandCropOff()
         cost,error,error_top5 = function(self.subb_v)
@@ -466,6 +465,9 @@ class Cifar10_model(object): # c01b input
                             
 if __name__ == '__main__': 
     
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    
     # setting up device
     import os
     if 'THEANO_FLAGS' in os.environ:
@@ -488,10 +490,8 @@ if __name__ == '__main__':
     model.compile_iter_fns()
 
     # get recorder
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
 
-    from lib.recorder import Recorder
+    from theanompi.lib.recorder import Recorder
     recorder = Recorder(comm, printFreq=4, modelname='cifar10', verbose=True)
 
     # train

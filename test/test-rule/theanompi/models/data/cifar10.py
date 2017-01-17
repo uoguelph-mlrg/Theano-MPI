@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import numpy as np
 
 class Cifar10_data():
@@ -28,7 +30,7 @@ class Cifar10_data():
         path = self.data_path
         '''processes the raw downloaded cifar10 dataset, and returns test/val/train set'''
         
-        from helper_funcs import unpickle
+        from theanompi.models.data.utils import unpickle
 
         d1 = unpickle(path+'data_batch_1')
         d2 = unpickle(path+'data_batch_2')
@@ -154,7 +156,7 @@ class Cifar10_data():
         
         if self.extended==False:
         
-            from helper_funcs import extend_data
+            from theanompi.models.data.utils import extend_data
             
             if len(img_t) % size != 0: img_t, labels_t = extend_data(rank, size, img_t, labels_t)
             if len(img_v) % size != 0: img_v, labels_v = extend_data(rank, size, img_v, labels_v)

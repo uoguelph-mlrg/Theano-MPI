@@ -38,7 +38,9 @@ class BSP(object):
             command += ["-n", "%d" % 1]
             command += ["--bind-to", "none"]
             # command += ["--report-bindings"]
-            command += [sys.executable, "-u", "worker.py"] 
+ 
+            worker_file_dir = os.path.dirname(os.path.realpath(__file__))
+            command += [sys.executable, "-u", worker_file_dir+"/worker.py"] 
         
             command += [device, BSP.sync_type, modelfile,  modelclass]
             
