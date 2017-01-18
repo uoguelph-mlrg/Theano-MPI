@@ -1,14 +1,12 @@
 from __future__ import absolute_import
 
-class Worker(object):
+from theanompi.lib.client import MPIClient
+
+class EASGD_Worker(MPIClient):
     
-    def __init__(self, device, sync_type, exch_strategy):
+    def __init__(self, device):
         
         self.device = device
-        
-        self.sync_type = sync_type
-        
-        self.exch_strategy = exch_strategy
         
         self.get_internode_comm()
         
@@ -59,6 +57,7 @@ class Worker(object):
         # This is a bit of black magic that may stop working in future
         # theano releases
         self.ctx = theano.gpuarray.type.get_context(None)
+        
         
     def build(self, model, config):
         
