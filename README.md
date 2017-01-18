@@ -53,13 +53,13 @@ It is recommended to organize your model and data definition in the following wa
 
 Your model class should provides the following attributes:
 
-* self.params : a list of Theano shared variables, i.e. trainable model parameters
-* self.data : an instance of your customized data class
-* self.compile_iter_fns : a method, your way of compiling train_iter_fn and val_iter_fn
-* self.train_iter: a method, your way of using your train_iter_fn
-* self.val_iter: a method, your way of using your val_iter_fn
-* self.adjust_hyperp: a method, your way of adjusting hyperparameters, e.g., learning rate.
-* self.cleanup: a method, necessary model and data clean-up steps.
+* `self.params` : a list of Theano shared variables, i.e. trainable model parameters
+* `self.data` : an instance of your customized data class
+* `self.compile_iter_fns` : a method, your way of compiling train_iter_fn and val_iter_fn
+* `self.train_iter` : a method, your way of using your train_iter_fn
+* `self.val_iter` : a method, your way of using your val_iter_fn
+* `self.adjust_hyperp` : a method, your way of adjusting hyperparameters, e.g., learning rate.
+* `self.cleanup` : a method, necessary model and data clean-up steps.
 
 Then your can choose the desired way of sharing params, e.g. BSP.
 
