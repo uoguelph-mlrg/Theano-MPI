@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 from mpi4py import MPI
 import numpy as np
 import theano
 import pygpu
 
-from helper_funcs import bufint, dtype_to_mpi
+from theanompi.lib.helper_funcs import bufint, dtype_to_mpi
 
 
 def do_sendrecv(comm, glist, wlist, dest):
@@ -58,85 +59,85 @@ class BSP_Exchanger(object):
         
         if self.sync_type == 'cdd' and self.exch_strategy == 'ar':
             
-            from exchanger_strategy import Exch_allreduce
+            from theanompi.lib.exchanger_strategy import Exch_allreduce
             self.exch = Exch_allreduce(self.comm, avg=False)
             self.exch.prepare(self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'copper':
             
-            from exchanger_strategy import Exch_copper
+            from theanompi.lib.exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'copper16':
             
-            from exchanger_strategy import Exch_copper16
+            from theanompi.lib.exchanger_strategy import Exch_copper16
             self.exch = Exch_copper16(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'asa32':
             
-            from exchanger_strategy import Exch_asa32
+            from theanompi.lib.exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'asa16':
             
-            from exchanger_strategy import Exch_asa16
+            from theanompi.lib.exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'nccl32':
             
-            from exchanger_strategy import Exch_nccl32
+            from theanompi.lib.exchanger_strategy import Exch_nccl32
             self.exch = Exch_nccl32(intercomm=self.comm, intracomm=self.gpucomm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'nccl16':
             
-            from exchanger_strategy import Exch_nccl16
+            from theanompi.lib.exchanger_strategy import Exch_nccl16
             self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm, avg=False)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
          
         elif self.sync_type == 'avg' and self.exch_strategy == 'ar':
             
-            from exchanger_strategy import Exch_allreduce
+            from theanompi.lib.exchanger_strategy import Exch_allreduce
             self.exch = Exch_allreduce(self.comm)
             self.exch.prepare(self.param_list)
             
         elif self.sync_type == 'avg' and self.exch_strategy == 'copper':
             
-            from exchanger_strategy import Exch_copper
+            from theanompi.lib.exchanger_strategy import Exch_copper
             self.exch = Exch_copper(self.comm)
             self.exch.prepare(self.ctx, self.param_list)
             
         elif self.sync_type == 'avg' and self.exch_strategy == 'copper16':
             
-            from exchanger_strategy import Exch_copper16
+            from theanompi.lib.exchanger_strategy import Exch_copper16
             self.exch = Exch_copper16(self.comm)
             self.exch.prepare(self.ctx, self.param_list)
             
         elif self.sync_type == 'avg' and self.exch_strategy == 'asa32':
             
-            from exchanger_strategy import Exch_asa32
+            from theanompi.lib.exchanger_strategy import Exch_asa32
             self.exch = Exch_asa32(self.comm)
             self.exch.prepare(self.ctx, self.param_list)
             
         elif self.sync_type == 'avg' and self.exch_strategy == 'asa16':
             
-            from exchanger_strategy import Exch_asa16
+            from theanompi.lib.exchanger_strategy import Exch_asa16
             self.exch = Exch_asa16(self.comm)
             self.exch.prepare(self.ctx, self.param_list)
             
         elif self.sync_type == 'avg' and self.exch_strategy == 'nccl32':
             
-            from exchanger_strategy import Exch_nccl32
+            from theanompi.lib.exchanger_strategy import Exch_nccl32
             self.exch = Exch_nccl32(intercomm=self.comm, intracomm=self.gpucomm)
             self.exch.prepare(self.ctx, self.param_list)
             
         elif self.sync_type == 'avg' and self.exch_strategy == 'nccl16':
             
-            from exchanger_strategy import Exch_nccl16
+            from theanompi.lib.exchanger_strategy import Exch_nccl16
             self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm)
             self.exch.prepare(self.ctx, self.param_list)
                 

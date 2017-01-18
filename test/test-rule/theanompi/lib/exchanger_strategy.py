@@ -1,5 +1,6 @@
+from __future__ import absolute_import
 import theano
-from helper_funcs import bufint, dtype_to_mpi
+from theanompi.lib.helper_funcs import bufint, dtype_to_mpi
 import numpy as np
 import pygpu
 

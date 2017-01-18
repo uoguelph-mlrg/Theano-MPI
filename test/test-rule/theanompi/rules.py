@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import shlex
 import sys
 import os
@@ -28,7 +29,7 @@ class BSP(object):
         
         for index, device in enumerate(devices):
             
-            command += ["--output-filename", "%s" % 'out']
+            # command += ["--output-filename", "%s" % 'out']
             command += ["--mca", "mpi_warn_on_fork", "0"]
             command += ["--mca", "btl_smcuda_use_cuda_ipc", "1"]
             command += ["--mca", "mpi_common_cuda_cumemcpy_async", "1"]
@@ -50,7 +51,7 @@ class BSP(object):
                 
         p = subprocess.Popen(command)
         
-        print("Theano-MPI started %d workers working on \n 1.iterating on updating %s and\n 2.exchange their params with BSP(%s)\nSee output log." % ( N_WORKERS, modelclass, BSP.sync_type))
+        print("Theano-MPI started %d workers for \n 1.updating %s params through iterations and\n 2.exchange the params with BSP(%s)\nSee output log." % ( N_WORKERS, modelclass, BSP.sync_type))
         
         self.pid=p.pid
         

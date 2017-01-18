@@ -4,8 +4,6 @@
 # All rights reserved.
 
 import numpy as np
-import sys
-sys.path.append('../')
 
 import hickle as hkl
 
@@ -51,7 +49,7 @@ class AlexNet(object):
         self.name = 'AlexNet'
         
         # data
-        from data.imagenet import ImageNet_data
+        from theanompi.data import ImageNet_data
         self.data = ImageNet_data(verbose=False)
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
@@ -76,7 +74,7 @@ class AlexNet(object):
         self.use_momentum = use_momentum
         self.use_nesterov_momentum = use_nesterov_momentum
         self.eta = weight_decay #0.0002 # weight decay
-        self.monitor_grad = config['monitor_grad']
+        self.monitor_grad = monitor_grad
         
         self.base_lr = np.float32(learning_rate)
         self.shared_lr = theano.shared(self.base_lr)
@@ -103,7 +101,7 @@ class AlexNet(object):
         
         self.build_model()
         self.output = self.output_layer.output
-        from layers2 import get_params, get_layers, count_params
+        from theanompi.models.layers2 import get_params, get_layers, count_params
         self.layers = get_layers(lastlayer = self.output_layer)
         self.params,self.weight_types = get_params(self.layers)
         count_params(self.params, verbose=self.verbose)
@@ -140,8 +138,9 @@ class AlexNet(object):
 
         # start graph construction from scratch
         import theano.tensor as T
-        from layers2 import ConvPoolLRN,Dropout,FC, Dimshuffle, Crop, Subtract,\
-                            Softmax,Flatten,LRN, Constant, Normal
+        from theanompi.models.layers2 import (ConvPoolLRN,Dropout,FC, 
+                                                Dimshuffle, Crop, Subtract,
+                                                Softmax,Flatten,LRN, Constant, Normal)
         
         
         self.x = T.ftensor4('x')
@@ -323,7 +322,7 @@ class AlexNet(object):
         
         start = time.time()
         
-        from lib.opt import pre_model_iter_fn
+        from theanompi.lib.opt import pre_model_iter_fn
 
         pre_model_iter_fn(self, sync_type='avg')
         
@@ -504,7 +503,7 @@ class AlexNet(object):
             else:
                 self.last_one_v = False
                 
-        from layers2 import Dropout, Crop       
+        from theanompi.models.layers2 import Dropout, Crop       
         Dropout.SetDropoutOff()
         Crop.SetRandCropOff()
         cost,error,error_top5 = function(self.subb_v)
@@ -592,7 +591,7 @@ if __name__ == '__main__':
     
     # get recorder
     
-    from lib.recorder import Recorder
+    from theanompi.lib.recorder import Recorder
     recorder = Recorder(comm, printFreq=40, modelname='alexnet', verbose=True)
     
     

@@ -25,7 +25,8 @@ def extend_data(rank, size, img_batches, label_batches):
        
     # get a list of training filenames that cannot be allocated to any rank
     bad_left_list = get_bad_list(n_files, size)
-    if rank == 0: print 'bad list is '+str(bad_left_list)
+    if rank == 0: 
+        print 'bad list is %s, nfiles is %d, size is %d' % (str(bad_left_list),n_files, size)
     need = (size - len(bad_left_list))  % size  
     if need !=0: 
         _img_batches.extend(_img_batches[-1*need:])

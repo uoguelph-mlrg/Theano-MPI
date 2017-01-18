@@ -69,7 +69,7 @@ class Cifar10_model(object): # c01b input
         self.use_momentum = use_momentum
         self.use_nesterov_momentum = use_nesterov_momentum
         self.eta = weight_decay #0.0002 # weight decay
-        self.monitor_grad = config['monitor_grad']
+        self.monitor_grad = monitor_grad
         
         self.base_lr = np.float32(learning_rate)
         self.shared_lr = theano.shared(self.base_lr)

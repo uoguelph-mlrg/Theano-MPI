@@ -6,7 +6,7 @@ rule=BSP()
 
 # modelfile: the relative path to the model file
 # modelclass: the class name of the model to be imported
-rule.init(devices=['cuda1', 'cuda2'] , modelfile = 'theanompi.models', modelclass = 'AlexNet') 
+rule.init(devices=['cuda1', 'cuda2'] , modelfile = 'theanompi.models', modelclass = 'Cifar10_model') 
 rule.wait()
 
 
