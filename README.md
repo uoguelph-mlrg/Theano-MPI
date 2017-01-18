@@ -1,6 +1,5 @@
 # Theano-MPI
-Theano-MPI is a distributed framework for training deep learning models built in Theano based on data-parallelism. 
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
+Theano-MPI is a framework for distributed training deep learning models built in Theano. It implements data-parallelism is implemented in serveral ways, e.g., Bulk Synchronous Parallel, ASGD and [Elastic Averaging SGD](https://arxiv.org/abs/1412.6651). This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
 
 ```bibtex
 @article{ma2016theano,
@@ -11,11 +10,11 @@ The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and E
 }
 ```
 
-Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variables. See wiki for a tutorial on building customized neural networks.
-
-
+Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build your own models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a tutorial on building customized neural networks.
 
 ## Dependencies
+
+Theano-MPI depends on the following libraries and packages. [Here]() provides some guidance to the installing them.
 * [OpenMPI 1.8.7](http://www.open-mpi.org/) or an MPI-2 standard equivalent that supports CUDA.
 * [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI 1.8.7
 * [numpy](http://www.numpy.org/)
@@ -27,36 +26,67 @@ Theano-MPI is compatible for training models built in different framework librar
 * [pygpu](http://deeplearning.net/software/libgpuarray/installation.html)
 * [NCCL](https://github.com/NVIDIA/nccl)
 
-## How to run
+## Installation 
 
-### Prepare image data batches
-Follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
+After all dependeices are ready, one can clone Theano-MPI and install it by the following.
 
-### Run training sessions on copper
-- 1. ssh copper.sharcnet.ca
-- 2. ssh to one computing node e.g., cop3
-- 3. set ~/.theanorc to the following:
 ```
-[global]
-
-mode = FAST_RUN
-
-floatX = float32
-
-base_compiledir = /home/USERNAME/.theano
+ $ python setup.py install [--user]
 ```
-- 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model, e.g., alexnet.yaml, googlenet.yaml, vggnet.yaml or customized.yaml.
-- to start a BSP training session: 
-  - 1) In config.yaml, choose as follows:
-  ```
-  worker_type: BSP
-  ```
-  - 2) choose a parameter exchanging strategy from "ar", "nccl32" and "nccl16", where "ar" means using Allreduce() from mpi4py, "nccl32" and "nccl16" mean using the NCCL collective communication in float32 and float16 respectively.
-  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. 
 
-- to start an EASGD training session [TODO]: 
+## Usage
 
-## Performance Testing
+To accelerate your Theano model, Theano-MPI tries to identify two components from your model definition:
+
+* the iteratively updating function of your model
+* the parameter sharing rule between instances of this model
+
+
+It is recommended to organize your model and data definition in the following way.
+
+* `launch_session.py`
+  * `models/*.py`
+    * `__init__.py`
+    * 'modelname.py' : defines the your customized model class
+    * `data/*.py`
+      * `dataname.py` : defines the your customized data class
+
+Your model class should provides the following attributes:
+
+* self.params : a list of Theano shared variables, i.e. trainable model parameters
+* self.data : an instance of your customized data class
+* self.compile_iter_fns : a method, your way of compiling train_iter_fn and val_iter_fn
+* self.train_iter: a method, your way of using your train_iter_fn
+* self.val_iter: a method, your way of using your val_iter_fn
+* self.adjust_hyperp: a method, your way of adjusting hyperparameters, e.g., learning rate.
+* self.cleanup: a method, necessary model and data clean-up steps.
+
+Then your can choose the desired way of sharing params, e.g. BSP.
+
+* BSP (Bulk Syncrhonous Parallel)
+* ASGD (Asynchronous Parallel)
+* EASGD (Elastic Averaging)
+
+Finally you can edit your launch_session.py and train your models. Below is an example launch script for trainig AlexNet on two GPUs:
+
+```python
+
+from theanompi import BSP
+
+rule=BSP()
+# modelfile: the relative path to the model file
+# modelclass: the class name of the model to be imported from that file
+rule.init(devices=['cuda0', 'cuda1'] , 
+          modelfile = 'theanompi.models', 
+          modelclass = 'AlexNet') 
+rule.wait()
+```
+
+To prepare the ImageNet data for this example, follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
+
+Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/lib/base/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
+
+## Example Performance
 
 ###BSP [TODO]
 Time per 5120 images in seconds: [allow_gc = True]
@@ -70,12 +100,6 @@ Time per 5120 images in seconds: [allow_gc = True]
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_a.png width=500/>
 <img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_g.png width=500/>
 
-## How to customize your model
-
-See wiki for a tutorial of customizing a MLP model in the framework.
-
-Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/lib/base/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
-
 ## Note
 
 To get the best running speed performance, the memory cache may need to be cleaned before running.
@@ -83,3 +107,7 @@ To get the best running speed performance, the memory cache may need to be clean
 Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
 
 Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
+
+## License
+
+© Contributors, 2016-2017. Licensed under an [ECL-2.0](https://github.com/uoguelph-mlrg/Theano-MPI/blob/reorg/LICENSE) license.
