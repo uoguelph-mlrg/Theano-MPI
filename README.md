@@ -88,7 +88,7 @@ Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano
 
 ## Example Performance
 
-###BSP [TODO]
+###BSP tested on up to eight Tesla K80 GPUs
 Time per 5120 images in seconds: [allow_gc = True]
 
 | Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
@@ -102,11 +102,11 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 ## Note
 
-To get the best running speed performance, the memory cache may need to be cleaned before running.
+* To get the best running speed performance, the memory cache may need to be cleaned before running.
 
-Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
+* Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
 
-Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
+* Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
 
 ## License
 
