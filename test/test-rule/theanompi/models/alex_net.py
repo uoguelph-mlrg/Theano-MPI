@@ -49,7 +49,7 @@ class AlexNet(object):
         self.name = 'AlexNet'
         
         # data
-        from theanompi.data import ImageNet_data
+        from theanompi.models.data import ImageNet_data
         self.data = ImageNet_data(verbose=False)
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
