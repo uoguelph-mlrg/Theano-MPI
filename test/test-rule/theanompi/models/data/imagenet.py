@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import numpy as np
 
 
@@ -14,7 +15,7 @@ RGB_mean = False
 para_load = True
 sock_data = 5020
         
-class ImageNet_data():
+class ImageNet_data(object):
     
     def __init__(self, verbose):
         
@@ -30,7 +31,7 @@ class ImageNet_data():
 
         self.n_class = 1000
         
-        self.get_data()
+        self.get_data(file_batch_size=128) # TODO file_batch_size=256 does not work for some reason right now
         
         self.verbose = verbose
         
@@ -42,11 +43,25 @@ class ImageNet_data():
         # parallel loading
         self.para_load = para_load
         
-    def get_data(self):
+    def get_data(self, file_batch_size=128):
 
         dir_head = self.data_path
         ext_data='.hkl'
         ext_label='.npy'
+        
+        if file_batch_size==128:
+            
+            self.train_folder = 'train_hkl_b256_b_128'
+            self.val_folder = 'val_hkl_b256_b_128'
+            
+        elif file_batch_size==256:
+            
+            self.train_folder = 'train_hkl_b256_b_256'
+            self.val_folder = 'val_hkl_b256_b_256'
+            
+        else:
+            
+            raise ValueError('Wrong file_batch_size')
         
          
         train_folder_path = dir_head + self.train_folder
@@ -156,7 +171,7 @@ class ImageNet_data():
         
         if self.extended==False:
             # make divisible
-            from helper_funcs import extend_data
+            from theanompi.models.data.utils import extend_data
             filenames_t, labels_t = extend_data(rank, size, filenames_t, labels_t)
             filenames_v, labels_v = extend_data(rank, size, filenames_v, labels_v)
             self.extended = True
@@ -198,14 +213,14 @@ class ImageNet_data():
         # --------------------------------------------------------------------------
         # mpiinfo.Set(key = 'host',value = hostname) 
         
-        env = dict(os.environ)
+        #env = dict(os.environ)
         # for key, value in dict(os.environ).iteritems():
             # envstr+= '%s=%s ' % (key,value)
         
         # see https://gist.github.com/lebedov/eadce02a320d10f0e81c
-        envstr='LD_LIBRARY_PATH=%s\n' %  env['LD_LIBRARY_PATH']
+        #envstr='LD_LIBRARY_PATH=%s' %  env['LD_LIBRARY_PATH']
         
-        mpiinfo.Set(key = 'env', value = envstr) 
+        #mpiinfo.Set(key = 'env', value = envstr) 
 
         
         ninfo = mpiinfo.Get_nkeys()
@@ -258,7 +273,7 @@ class ImageNet_data():
         # # 2. send img_mean
         # self.icomm.send(img_mean, dest=0, tag=66)
         
-    def para_load_close():
+    def para_load_close(self):
         
         # to stop the paraloading process
         

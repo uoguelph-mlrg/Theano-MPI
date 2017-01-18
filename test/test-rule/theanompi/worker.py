@@ -1,28 +1,17 @@
 from __future__ import absolute_import
 
-class Worker(object):
+from theanompi.lib.base import MPI_GPU_Process
+
+class BSP_Worker(MPI_GPU_Process):
     
     def __init__(self, device, sync_type, exch_strategy):
+        MPI_GPU_Process.__init__(self, device)
         
-        self.device = device
+        self.get_intranode_comm()
         
         self.sync_type = sync_type
         
         self.exch_strategy = exch_strategy
-        
-        self.get_internode_comm()
-        
-        self.init_device()
-        
-        self.get_intranode_comm()
-        
-    def get_internode_comm(self):
-        
-        from mpi4py import MPI
-        self.comm=MPI.COMM_WORLD
-        
-        self.rank=self.comm.rank
-        self.size=self.comm.size
         
     def get_intranode_comm(self):
         
@@ -49,17 +38,6 @@ class Worker(object):
  
         self.gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)  
         
-        
-    def init_device(self):
-        import os
-        if 'THEANO_FLAGS' in os.environ:
-            raise ValueError('Use theanorc to set the theano config')
-        os.environ['THEANO_FLAGS'] = 'device={0}'.format(self.device)
-        import theano.gpuarray
-        # This is a bit of black magic that may stop working in future
-        # theano releases
-        self.ctx = theano.gpuarray.type.get_context(None)
-        
     def build(self, model, config):
         
         from theanompi.lib.helper_funcs import check_model
@@ -72,7 +50,7 @@ class Worker(object):
         
         self.verbose = (self.rank==0)
         from theanompi.lib.recorder import Recorder
-        self.recorder = Recorder(self.comm, printFreq=40, modelname='alexnet', verbose=self.verbose)
+        self.recorder = Recorder(self.comm, printFreq=40, modelname=model.name, verbose=self.verbose)
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import BSP_Exchanger
@@ -146,7 +124,7 @@ if __name__ == '__main__':
     modelfile = sys.argv[4]
     modelclass = sys.argv[5]
     
-    worker = Worker(device, sync_type, exch_strategy)
+    worker = BSP_Worker(device, sync_type, exch_strategy)
     
     config={}
     config['verbose'] = (worker.rank==0)

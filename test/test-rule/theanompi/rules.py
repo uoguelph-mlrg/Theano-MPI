@@ -5,6 +5,8 @@ import os
 import subprocess
 import signal
 
+START_INFO = "Theano-MPI started %d workers for \n 1.updating %s params through iterations and\n 2.exchange the params with %s\nSee output log."
+
 class Rule(object):
     
     def __init__(self):
@@ -24,7 +26,7 @@ class Rule(object):
         
         if self.pid == None:
             
-            'Rule %s not initiated' % self.rulename
+            'Rule %s not initialized' % self.rulename
             
             return
         
@@ -61,7 +63,7 @@ class BSP(Rule):
     def __init__(self):
         Rule.__init__(self)
         
-        self.rulename = 'BSP'
+        self.rulename = 'BSP(%s)' % BSP.sync_type
         
     def init(self, devices, modelfile, modelclass):
         
@@ -77,6 +79,7 @@ class BSP(Rule):
             command += ["--mca", "mpi_warn_on_fork", "0"]
             command += ["--mca", "btl_smcuda_use_cuda_ipc", "1"]
             command += ["--mca", "mpi_common_cuda_cumemcpy_async", "1"]
+            command += ["--mca", "mpi_max_info_val", "10240"]
             #command += ["-np", str(len(hosts))]
             #command += ["-H", ','.join(hosts)]
             #command += ["--map-by", "ppr:4:node"]
@@ -95,7 +98,7 @@ class BSP(Rule):
                 
         p = subprocess.Popen(command)
         
-        print("Theano-MPI started %d workers for \n 1.updating %s params through iterations and\n 2.exchange the params with BSP(%s)\nSee output log." % ( N_WORKERS, modelclass, BSP.sync_type))
+        print(START_INFO % ( N_WORKERS, modelclass, self.rulename))
         
         self.pid=p.pid
 
@@ -108,7 +111,7 @@ class EASGD(Rule):
     def __init__(self):
         Rule.__init__(self)
         
-        self.rulename = 'BSP'
+        self.rulename = 'EASGD'
     
     def init(self, devices, modelfile, modelclass):
         
@@ -133,10 +136,10 @@ class EASGD(Rule):
             #command += ["-np", str(len(hosts))]
             #command += ["-H", ','.join(hosts)]
             #command += ["--map-by", "ppr:4:node"]
-            if index==0:  # the server
-                command += ["--report-uri", "./ompi-server.txt"]
-            else: # the workers
-                command += ["--ompi-server","file:./ompi-server.txt"]
+            # if index==0:  # the sock server
+            #     command += ["--report-uri", "./ompi-server.txt"]
+            # else: # the sock workers
+            #     command += ["--ompi-server","file:./ompi-server.txt"]
             
             command += ["-n", "%d" % 1]
             # command += ["--bind-to", "none"]
@@ -155,7 +158,7 @@ class EASGD(Rule):
                 
         p = subprocess.Popen(command)
         
-        print("Theano-MPI started %d workers and one server for \n 1.updating %s params through iterations and\n 2.exchange the params with EASGD\nSee output log." % ( N_WORKERS -1 , modelclass))
+        print(START_INFO % ( N_WORKERS, modelclass, self.rulename))
         
         self.pid=p.pid
         

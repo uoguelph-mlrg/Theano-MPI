@@ -11,8 +11,8 @@ import hickle as hkl
 n_epochs = 70
 momentum = 0.90
 weight_decay = 0.0005
-batch_size = 256
-file_batch_size = 256
+batch_size = 128
+file_batch_size = 128
 learning_rate = 0.01
 
 lr_policy = 'step'
@@ -25,7 +25,9 @@ use_nesterov_momentum = False
 input_width = 227
 input_height = 227
 
-batch_crop_mirror = False
+# apparently, training converges better with batch_crop_mirror=False. 
+# 1200 6.898191 vs 1320 6.892865
+batch_crop_mirror = False 
 rand_crop = True
 
 image_mean = 'img_mean'
@@ -592,7 +594,7 @@ if __name__ == '__main__':
     # get recorder
     
     from theanompi.lib.recorder import Recorder
-    recorder = Recorder(comm, printFreq=40, modelname='alexnet', verbose=True)
+    recorder = Recorder(comm, printFreq=5120/model.batch_size, modelname='alexnet', verbose=True)
     
     
     # train

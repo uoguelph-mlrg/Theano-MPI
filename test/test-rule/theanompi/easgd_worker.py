@@ -1,62 +1,57 @@
 from __future__ import absolute_import
 
-from theanompi.lib.client import MPIClient
+from theanompi.lib.base import MPI_GPU_Process
 
-class EASGD_Worker(MPIClient):
+class EASGD_Worker(MPI_GPU_Process):
     
     def __init__(self, device):
+        MPI_GPU_Process.__init__(self, device)
         
-        self.device = device
+        self.server_rank=0
         
-        self.get_internode_comm()
+        import os
+        self.worker_id = os.getpid()
         
-        self.init_device()
-        
-        self.get_intranode_comm()
-        
-    def get_internode_comm(self):
-        
-        from mpi4py import MPI
-        self.comm=MPI.COMM_WORLD
-        
-        self.rank=self.comm.rank
-        self.size=self.comm.size
-        
-    def get_intranode_comm(self):
-        
+    def get_intranode_pair_comm(self, pair):
+    
         from pygpu import collectives
     
         _local_id = collectives.GpuCommCliqueId(context=self.ctx)
 
         string =  _local_id.comm_id.decode('utf-8')
 
-        comm=self.comm
-        rank=comm.rank
-        size=comm.size
+        pid = str(self.worker_id)
+        len_pid =len(pid)
 
-        if rank==0:
-            _string=string
-        else:
-            _string=None
+        # replace the process-unique id to be the universal id "0......" so that a intranode gpucomm can be created
         
-        _string=comm.bcast(_string, root=0)
+        pair_index=0
+
+        replacement = ''.join(('%d' % pair_index) for i in range(len_pid))
+        _string = string.replace(pid, replacement)
+    
+        # if rank==0:
+        #     comm.send(_string, dest=1)
+        # else:
+        #     res = comm.recv(source=0)
+        #
+        #     print res == _string
+        #
+        # comm.Barrier()
 
         _local_id.comm_id = bytearray(_string.encode('utf-8'))
-        _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
-        _local_rank = rank # assuming running within a node here 
- 
-        self.gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)  
+        _local_size = len(pair) # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
+    
+        if self.interrank==pair[0]:
+            _local_rank=0
+        else:
+            _local_rank=1
         
-        
-    def init_device(self):
-        import os
-        if 'THEANO_FLAGS' in os.environ:
-            raise ValueError('Use theanorc to set the theano config')
-        os.environ['THEANO_FLAGS'] = 'device={0}'.format(self.device)
-        import theano.gpuarray
-        # This is a bit of black magic that may stop working in future
-        # theano releases
-        self.ctx = theano.gpuarray.type.get_context(None)
+        _local_rank = _local_rank # assuming running within a node here 
+     
+        self.gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)
+    
+        print 'on rank %d, pair %s generated' % (self.interrank, pair)
         
         
     def build(self, model, config):
@@ -74,12 +69,56 @@ class EASGD_Worker(MPIClient):
         self.recorder = Recorder(self.comm, printFreq=40, modelname='alexnet', verbose=self.verbose)
         
         # choose the type of exchanger
-        from theanompi.lib.exchanger import BSP_Exchanger
-        self.exchanger = BSP_Exchanger(self.comm, self.gpucomm, self.exch_strategy, self.sync_type, self.ctx, model)
-            
-            
-    def BSP_run(self, model):
+        from theanompi.lib.exchanger import EASGD_Exchanger
+        self.exchanger = EASGD_Exchanger(self.comm, self.gpucomm, self.exch_strategy, self.sync_type, self.ctx, model)
         
+        
+    def comm_request(self, message):
+        
+        if self.comm == None:
+            
+            print 'Worker communicator not initialized'
+            
+            return
+            
+            
+        request = {'id': self.worker_id, 'rank': self.rank, 'message':message }
+        
+        self.comm.send(request, dest=self.server_rank, tag=199)
+        
+        reply = self.comm.recv(source=self.server_rank, tag=200)
+        
+        return reply
+
+        
+    def comm_action(self, message, action=None):
+        
+        if self.comm == None:
+            
+            print 'MPIClient not initialized'
+            
+            return
+        
+        request = {'id': self.worker_id, 'rank': self.rank, 'message': message }
+        
+        self.comm.send(request, dest=self.server_rank, tag=199)
+        
+        reply = self.comm.recv(source=self.server_rank, tag=200)
+        
+        if action: action()
+            
+    def test_run(self):
+        
+        self.comm.Barrier()
+        
+        reply = self.comm_request('a message')
+
+        print 'success', reply
+        
+        
+    def EASGD_run(self, model):
+        
+        # after the barrier, run asynchronously
         self.comm.Barrier()
         
         exchange_freq = 1 # iterations
@@ -140,12 +179,14 @@ if __name__ == '__main__':
     
     import sys
     device = sys.argv[1]
-    sync_type = sys.argv[2]
-    exch_strategy = sys.argv[3]
-    modelfile = sys.argv[4]
-    modelclass = sys.argv[5]
+    modelfile = sys.argv[2]
+    modelclass = sys.argv[3]
     
-    worker = Worker(device, sync_type, exch_strategy)
+    worker = EASGD_Worker(device)
+    
+    worker.test_run()
+    
+    exit(0)
     
     config={}
     config['verbose'] = (worker.rank==0)
@@ -160,4 +201,4 @@ if __name__ == '__main__':
 
     worker.build(model, config)
     
-    worker.BSP_run(model)
+    worker.EASGD_run(model)
