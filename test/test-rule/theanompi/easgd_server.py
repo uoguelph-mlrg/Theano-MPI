@@ -10,10 +10,10 @@ class EASGD_Server(MPI_GPU_Process):
         MPI_GPU_Process.__init__(self, device)
         
         # self.worker_comm = {}
-        self.worker_rank = {}
+        self.worker_id = {}
         self.first_worker_id = None
         
-    def process_request(self, worker_id, message):
+    def process_request(self, worker_id, worker_rank, message):
 
         # override Server class method, for connection related request
         reply = None
@@ -26,7 +26,7 @@ class EASGD_Server(MPI_GPU_Process):
     
         return reply
     
-    def action_after(self, worker_id, message):
+    def action_after(self, worker_id,  worker_rank, message):
         
         if 'sync_register' in message: # Connecting synchronously started workers
         
@@ -34,13 +34,20 @@ class EASGD_Server(MPI_GPU_Process):
         
             self.worker_rank[str(worker_id)] = int(worker_rank)
         
-            print '[Server] registered worker', worker_id
+            print '[Server] registered worker %d' % worker_id
         
         elif message == 'disconnect':
 
             self.worker_comm.pop(str(worker_id))
         
-            print '[Server] disconnected with worker', worker_id
+            print '[Server] disconnected with worker %d' % worker_id
+            
+        elif message == 'stop':
+            
+            print '[Server] stopped by %d' % worker_id
+            
+            import sys
+            sys.exit(0)
         
                 
     def test_run(self):
@@ -59,7 +66,7 @@ class EASGD_Server(MPI_GPU_Process):
         while True:
             #  Wait for next request from client
             
-            request = self.comm.recv(MPI.ANY_SOURCE, tag=199)
+            request = self.comm.recv(source=MPI.ANY_SOURCE, tag=199)
                 
             #  Do some process work and formulate a reply
             reply = self.process_request(request['id'],request['rank'],\

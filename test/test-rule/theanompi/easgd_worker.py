@@ -66,11 +66,14 @@ class EASGD_Worker(MPI_GPU_Process):
         
         self.verbose = (self.rank==0)
         from theanompi.lib.recorder import Recorder
-        self.recorder = Recorder(self.comm, printFreq=40, modelname='alexnet', verbose=self.verbose)
+        self.recorder = Recorder(self.comm, printFreq=40, 
+                                 modelname=model.name, verbose=self.verbose)
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import EASGD_Exchanger
-        self.exchanger = EASGD_Exchanger(self.comm, self.gpucomm, self.exch_strategy, self.sync_type, self.ctx, model)
+        self.exchanger = EASGD_Exchanger(self.comm, self.gpucomm, 
+                                            self.exch_strategy, self.sync_type, 
+                                            self.ctx, model)
         
         
     def comm_request(self, message):
@@ -111,7 +114,7 @@ class EASGD_Worker(MPI_GPU_Process):
         
         self.comm.Barrier()
         
-        reply = self.comm_request('a message')
+        reply = self.comm_request('stop')
 
         print 'success', reply
         
