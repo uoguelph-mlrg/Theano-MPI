@@ -14,7 +14,7 @@ Theano-MPI is compatible for training models built in different framework librar
 
 ## Dependencies
 
-Theano-MPI depends on the following libraries and packages. [Here]() provides some guidance to the installing them.
+Theano-MPI depends on the following libraries and packages. We provide some guidance to the installing them in [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki/Guidance-to-installing-some-dependencies-of-Theano-MPI).
 * [OpenMPI 1.8.7](http://www.open-mpi.org/) or an MPI-2 standard equivalent that supports CUDA.
 * [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI 1.8.7
 * [numpy](http://www.numpy.org/)
@@ -67,7 +67,7 @@ Then your can choose the desired way of sharing params, e.g. BSP.
 * ASGD (Asynchronous Parallel)
 * EASGD (Elastic Averaging)
 
-Finally you can edit your launch_session.py and train your models. Below is an example launch script for trainig AlexNet on two GPUs:
+Finally you can edit your launch_session.py and train your models. Below is an example launch script for trainig a customized ModelClass on two GPUs. More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
 
 ```python
 
@@ -77,8 +77,8 @@ rule=BSP()
 # modelfile: the relative path to the model file
 # modelclass: the class name of the model to be imported from that file
 rule.init(devices=['cuda0', 'cuda1'] , 
-          modelfile = 'theanompi.models', 
-          modelclass = 'AlexNet') 
+          modelfile = 'models.modelname', 
+          modelclass = 'ModelClass') 
 rule.wait()
 ```
 
