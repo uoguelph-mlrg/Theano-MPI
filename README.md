@@ -82,8 +82,6 @@ rule.init(devices=['cuda0', 'cuda1'] ,
 rule.wait()
 ```
 
-To prepare the ImageNet data for this example, follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
-
 ## Example Performance
 
 ###BSP tested on up to eight Tesla K80 GPUs
