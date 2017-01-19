@@ -5,8 +5,6 @@ from theanompi.lib.base import MPI_GPU_Process
 from mpi4py import MPI
 
 server_alpha = 0.5
-alpha_step = [10, 30, 50] 
-alpha_minus = 0 # asymmetric alpha, every step server_alpha will minus this
 
 class EASGD_Server(MPI_GPU_Process):
     
@@ -25,10 +23,12 @@ class EASGD_Server(MPI_GPU_Process):
         self.uepoch = 0
         self.last_uepoch = 0
         
-    def process_request(self, worker_id, worker_rank, message):
+    def process_request(self, model, worker_id, worker_rank, message):
 
         
         reply = None
+        
+        import time
     
         # Connection related request
         
@@ -38,8 +38,8 @@ class EASGD_Server(MPI_GPU_Process):
                 self.first_worker_id = worker_id
                 print '[Server] recording worker is %s' % worker_id
                 reply = 'first'
-            
-            self.worker_id[str(worker_rank)] = int(worker_id) # rank -> id -> gpucomm
+            # rank -> id -> gpucomm
+            self.worker_id[str(worker_rank)] = int(worker_id) 
             
             print '[Server] registered worker %d' % worker_id
             
@@ -53,7 +53,8 @@ class EASGD_Server(MPI_GPU_Process):
             self.valid['%s' % worker_id] = False
             self.adj_lr['%s' % worker_id] = False
             self.uidx['%s' % worker_id] = 0
-            self.adj_lr = self.adj_lr.fromkeys(self.adj_lr, True) # when a new worker joins
+            # when a new worker joins
+            self.adj_lr = self.adj_lr.fromkeys(self.adj_lr, True) 
             
         # Training related requests
         
@@ -61,9 +62,10 @@ class EASGD_Server(MPI_GPU_Process):
             
             if self.start_time is None:
                 self.start_time = time.time()
-        
-            if sum(self.uidx.values()) >= self.max_mb: # stop when finish all epochs
-                print "[Server] Total training time %.2fh" % ((time.time() - self.start_time)/3600.0)
+            # stop when finish all epochs
+            if sum(self.uidx.values()) >= self.validFreq*model.n_epochs: 
+                print "[Server] Total training time %.2fh" % \
+                        ((time.time() - self.start_time)/3600.0)
                 reply = 'stop'
         
             elif self.valid['%s' % worker_id]:
@@ -72,7 +74,7 @@ class EASGD_Server(MPI_GPU_Process):
         
             elif self.adj_lr['%s' % worker_id]:
                 self.adj_lr['%s' % worker_id] = False
-                reply = 'adjust_lr'
+                reply = 'adjust_hyperp'
         
             else:
                 reply = 'train' 
@@ -93,25 +95,16 @@ class EASGD_Server(MPI_GPU_Process):
             if self.last_uepoch != self.uepoch:
                 #print "[Server] now global epoch %d" % self.uepoch
                 self.last_uepoch = self.uepoch 
-                self.adj_lr = self.adj_lr.fromkeys(self.adj_lr, True) # when a epoch is finished
+                # when a epoch is finished
+                self.adj_lr = self.adj_lr.fromkeys(self.adj_lr, True) 
                 #self.valid = self.valid.fromkeys(self.valid, True)
-                self.valid["%s" % self.first_worker_id] = True # only the first worker validates
-        
-                # tunning server alpha
-                a_step1, a_step2, a_step3 = alpha_step
-                if self.uepoch>a_step1 and self.uepoch< a_step2:
-                    step_idx = 1
-                elif self.uepoch>a_step2 and self.uepoch< a_step3:
-                    step_idx = 2
-                elif self.uepoch>a_step3:
-                    step_idx = 3
-                else:
-                    step_idx = 0
-                self.exchanger.alpha=server_alpha - alpha_minus*step_idx
+                # only the first worker validates
+                self.valid["%s" % self.first_worker_id] = True 
+                
         
         
             if self.last == None:
-                import time
+                
                 self.last = float(time.time())
         
             if now_uidx - self.last_uidx >= 40:
@@ -126,7 +119,7 @@ class EASGD_Server(MPI_GPU_Process):
     
         return reply
     
-    def action_after(self, worker_id,  worker_rank, message):
+    def action_after(self, model, worker_id,  worker_rank, message):
         
         if message == 'disconnect':
 
@@ -178,7 +171,7 @@ class EASGD_Server(MPI_GPU_Process):
                                         
         self.validFreq = model.data.n_batch_train
                 
-    def run(self):
+    def run(self, model):
         
         if self.comm == None:
             
@@ -194,15 +187,15 @@ class EASGD_Server(MPI_GPU_Process):
             request = self.comm.recv(source=MPI.ANY_SOURCE, tag=199)
                 
             #  Do some process work and formulate a reply
-            reply = self.process_request(request['id'],request['rank'],
-                                                    request['message'])
+            reply = self.process_request(model, request['id'],
+                                        request['rank'],request['message'])
 
             #  Send reply back to client
             self.comm.send(reply, dest=request['rank'], tag=200)
             
             # Do some action work after reply
-            self.action_after(request['id'],request['rank'], 
-                                                    request['message'])
+            self.action_after(model, request['id'],
+                                request['rank'], request['message'])
                                                     
                                                     
 if __name__ == '__main__':
@@ -226,4 +219,4 @@ if __name__ == '__main__':
     
     server.build(model)
     
-    server.run()
+    server.run(model)

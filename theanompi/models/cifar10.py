@@ -11,7 +11,7 @@ batch_size = 256
 learning_rate = 0.01
 
 lr_policy = 'step'
-lr_step = [30, 50, 65]
+lr_step = [50, 60, 65]
 
 use_momentum = True
 use_nesterov_momentum = False
@@ -462,6 +462,10 @@ class Cifar10_model(object): # c01b input
             
         else:
             raise NotImplementedError()
+            
+        if self.shared_lr.get_value() != np.float32(tuned_base_lr):
+            
+            print 'lr adjusted to %.6f' % np.float32(tuned_base_lr)
         
         self.shared_lr.set_value(np.float32(tuned_base_lr))
         

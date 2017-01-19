@@ -79,7 +79,7 @@ class EASGD_Worker(MPI_GPU_Process):
         self.comm_action(message = 'copy_to_local', 
                     action=self.exchanger.copy_to_local)
                     
-        if self.verbose: print '\nSynchronized param with server'
+        #if self.verbose: print '\nSynchronized param with server'
         
     def test_run(self, model):
         
@@ -117,19 +117,17 @@ class EASGD_Worker(MPI_GPU_Process):
         self.exchanger = EASGD_Exchanger(alpha=worker_alpha, 
                                          param_list=model.params, 
                                          etype='worker')
-                                         
-        #TODO reimplement EASGD using pygpu.bcast
                 
     def run(self, model):
         
-        exchange_freq = 1 # iterations
+        exchange_freq = 10 # iterations
         snapshot_freq = 2 # epochs
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
         epoch_start = False
         batch_i=0
-        self.uepoch=0
+        uepoch=0
         
         from theanompi.lib.helper_funcs import save_model
         
@@ -151,13 +149,14 @@ class EASGD_Worker(MPI_GPU_Process):
                     batch_i+=1
                     recorder.print_train_info(batch_i)
                     
-                self.comm_request(dict(done=self.train_len))
+                self.comm_request(dict(done=exchange_freq))
 
                 self.exchange()
                 
             elif mode == 'adjust_hyperp':
                 
-                model.adjust_hyperp(self.uepoch)
+                model.adjust_hyperp(uepoch)
+                
                 
             elif mode == 'val':
                 
@@ -167,7 +166,7 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                 for batch_j in range(model.data.n_batch_val):
         
-                    model.val_iter(self.uepoch, recorder)
+                    model.val_iter(uepoch, recorder)
                     
                 model.reset_iter('val')
                 
@@ -177,31 +176,39 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                 if self.verbose: recorder.save(batch_i, model.shared_lr.get_value())
     
-                self.uepoch, n_workers = self.comm_request('uepoch')
+                uepoch, n_workers = self.comm_request('uepoch')
                 
-                if self.verbose and self.uepoch % snapshot_freq == 0: 
+                model.epoch=uepoch
+                
+                if self.verbose and uepoch % snapshot_freq == 0: 
                     save_model(model, snapshot_path, verbose=self.verbose)
                     
                 self.copy_to_local()
                 
                 
                 if epoch_start == True:
-                    recorder.end_epoch(batch_i, self.uepoch)
+                    recorder.end_epoch(batch_i, uepoch)
                     epoch_start = False
                     
             elif mode=='stop':
                 
                 self.copy_to_local()
                 
+                for batch_j in range(model.data.n_batch_val):
+        
+                    model.val_iter(uepoch, recorder)
+                    
+                model.reset_iter('val')
+                
+                recorder.print_val_info(batch_i)
+                
                 if epoch_start == True:
-                    recorder.end_epoch(batch_i, self.uepoch)
+                    recorder.end_epoch(batch_i, uepoch)
                     epoch_start = False
                     
                 break
                             
         model.cleanup()
-            
-        
 
         
 if __name__ == '__main__':
@@ -226,7 +233,4 @@ if __name__ == '__main__':
 
     worker.build(model, config)
     
-    worker.test_run(model)
-    
-    exit(0)
     worker.run(model)

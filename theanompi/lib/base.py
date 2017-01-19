@@ -78,7 +78,7 @@ class MPI_GPU_Process(object):
             _string=string
             comm.send(_string, dest=0, tag=220)
             
-        print _string,  string,  _string==string
+        #print _string,  string,  _string==string
             
         # len_pid =len(str(pid))
         #
@@ -101,7 +101,7 @@ class MPI_GPU_Process(object):
      
         gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)
     
-        print 'on rank %d, pair %s generated' % (self.rank, pair)
+        #print 'on rank %d, pair %s generated' % (self.rank, pair)
         
         return gpucomm
         
