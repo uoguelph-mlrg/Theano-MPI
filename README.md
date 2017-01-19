@@ -61,13 +61,13 @@ Your ModelClass in `modelfile.py` should at least have the following attributes 
 * `self.adjust_hyperp` : a method, your way of adjusting hyperparameters, e.g., learning rate.
 * `self.cleanup` : a method, necessary model and data clean-up steps.
 
-Then your can choose the desired way of sharing params, e.g. BSP.
+After your model definition is complete, you can choose the desired way of sharing parameters among model instances:
 
 * BSP (Bulk Syncrhonous Parallel)
 * ASGD (Asynchronous Parallel)
 * EASGD (Elastic Averaging)
 
-Finally you can edit your launch_session.py and train your models. Below is an example launch script for trainig a customized ModelClass on two GPUs. More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
+Below is an example launch script for trainig a customized ModelClass on two GPUs. More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
 
 ```python
 
