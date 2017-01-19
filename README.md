@@ -1,5 +1,5 @@
 # Theano-MPI
-Theano-MPI is a framework for distributed training of deep learning models built in Theano. It implements data-parallelism is implemented in serveral ways, e.g., Bulk Synchronous Parallel, ASGD and [Elastic Averaging SGD](https://arxiv.org/abs/1412.6651). This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
+Theano-MPI is a framework for distributed training of deep learning models built in Theano. It implements data-parallelism in serveral ways, e.g., Bulk Synchronous Parallel, ASGD and [Elastic Averaging SGD](https://arxiv.org/abs/1412.6651). This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
 
 ```bibtex
 @article{ma2016theano,
@@ -10,7 +10,7 @@ Theano-MPI is a framework for distributed training of deep learning models built
 }
 ```
 
-Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build your own models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a tutorial on building customized neural networks. Also, check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
+Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build your own models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a quick guide on building customized neural networks based on them. Also, check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
 
 ## Dependencies
 
