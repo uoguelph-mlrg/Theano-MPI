@@ -36,10 +36,10 @@ Once all dependeices are ready, one can clone Theano-MPI and install it by the f
 
 ## Usage
 
-To accelerate your Theano model, Theano-MPI tries to identify two components from your model definition:
+To accelerate the training of Theano models in a distributed way, Theano-MPI tries to identify two components:
 
-* the iteratively updating function of your model
-* the parameter sharing rule between instances of this model
+* the iterative update function of the Theano model
+* the parameter sharing rule between instances of the Theano model
 
 
 It is recommended to organize your model and data definition in the following way.
@@ -51,10 +51,10 @@ It is recommended to organize your model and data definition in the following wa
     * `data/*.py`
       * `dataname.py` : defines your customized data class
 
-Your model class should provides the following attributes:
+Your model class in `modelfile.py` should provides the following attributes:
 
 * `self.params` : a list of Theano shared variables, i.e. trainable model parameters
-* `self.data` : an instance of your customized data class
+* `self.data` : an instance of your customized data class defined in `dataname.py`
 * `self.compile_iter_fns` : a method, your way of compiling train_iter_fn and val_iter_fn
 * `self.train_iter` : a method, your way of using your train_iter_fn
 * `self.val_iter` : a method, your way of using your val_iter_fn
