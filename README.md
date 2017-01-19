@@ -51,7 +51,7 @@ It is recommended to organize your model and data definition in the following wa
     * `data/*.py`
       * `dataname.py` : defines your customized data class
 
-Your model class in `modelfile.py` should provides the following attributes:
+Your ModelClass in `modelfile.py` should at least have the following attributes:
 
 * `self.params` : a list of Theano shared variables, i.e. trainable model parameters
 * `self.data` : an instance of your customized data class defined in `dataname.py`
