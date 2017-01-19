@@ -10,7 +10,7 @@ Theano-MPI is a framework for distributed training deep learning models built in
 }
 ```
 
-Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build your own models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a tutorial on building customized neural networks.
+Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build your own models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a tutorial on building customized neural networks. Also, check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
 
 ## Dependencies
 
@@ -83,8 +83,6 @@ rule.wait()
 ```
 
 To prepare the ImageNet data for this example, follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
-
-Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/lib/base/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
 
 ## Example Performance
 
