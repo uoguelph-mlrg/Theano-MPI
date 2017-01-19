@@ -47,9 +47,9 @@ It is recommended to organize your model and data definition in the following wa
 * `launch_session.py`
   * `models/*.py`
     * `__init__.py`
-    * `modelfile.py` : defines the your customized model class
+    * `modelfile.py` : defines your customized model class
     * `data/*.py`
-      * `dataname.py` : defines the your customized data class
+      * `dataname.py` : defines your customized data class
 
 Your model class should provides the following attributes:
 
