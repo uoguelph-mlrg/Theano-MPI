@@ -39,7 +39,7 @@ class EASGD_Worker(MPI_GPU_Process):
         
         if self.comm == None:
             
-            print 'MPIClient not initialized'
+            print 'Worker communicator not initialized'
             
             return
         
@@ -194,6 +194,8 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                 self.copy_to_local()
                 
+                model.reset_iter('val')
+                
                 for batch_j in range(model.data.n_batch_val):
         
                     model.val_iter(uepoch, recorder)
@@ -202,6 +204,14 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                 recorder.print_val_info(batch_i)
                 
+                model.current_info = recorder.get_latest_val_info()
+                
+                if self.verbose: recorder.save(batch_i, model.shared_lr.get_value())
+    
+                uepoch, n_workers = self.comm_request('uepoch')
+                
+                model.epoch=uepoch
+                
                 if epoch_start == True:
                     recorder.end_epoch(batch_i, uepoch)
                     epoch_start = False
@@ -209,6 +219,8 @@ class EASGD_Worker(MPI_GPU_Process):
                 break
                             
         model.cleanup()
+        
+        if self.verbose: self.comm_request('stop')
 
         
 if __name__ == '__main__':
