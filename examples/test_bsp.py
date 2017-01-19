@@ -1,4 +1,7 @@
-# what is the iteration process (defined in model itself) and what is the rule based on which to exchange (defined in theanompi): like how to exchange, when to excange
+'''
+Example for training AlexNet on 2GPUs by the rule of BSP
+
+'''
 
 from theanompi import BSP
 

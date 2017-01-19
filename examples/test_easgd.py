@@ -1,5 +1,6 @@
-# what is the iteration process (defined in model itself) and what is the rule based on which to exchange (defined in theanompi): like how to exchange, when to excange
-
+'''
+Example for training Cifar10_model on 2 worker GPUs by the rule of EASGD
+'''
 from theanompi import EASGD
 
 rule=EASGD()
