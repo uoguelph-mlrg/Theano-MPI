@@ -155,6 +155,10 @@ class EASGD_Worker(MPI_GPU_Process):
                 
             elif mode == 'adjust_hyperp':
                 
+                uepoch, n_workers = self.comm_request('uepoch')
+                
+                model.epoch=uepoch
+                
                 model.adjust_hyperp(uepoch)
                 
                 

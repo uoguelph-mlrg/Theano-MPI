@@ -463,7 +463,7 @@ class Cifar10_model(object): # c01b input
         else:
             raise NotImplementedError()
             
-        if self.shared_lr.get_value() != np.float32(tuned_base_lr):
+        if self.shared_lr.get_value() != np.float32(tuned_base_lr) and self.verbose:
             
             print 'lr adjusted to %.6f' % np.float32(tuned_base_lr)
         
