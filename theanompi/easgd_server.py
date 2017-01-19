@@ -4,20 +4,34 @@ from theanompi.lib.base import MPI_GPU_Process
 
 from mpi4py import MPI
 
+server_alpha = 0.5
+alpha_step = [10, 30, 50] 
+alpha_minus = 0 # asymmetric alpha, every step server_alpha will minus this
+
 class EASGD_Server(MPI_GPU_Process):
     
     def __init__(self, device):
-        MPI_GPU_Process.__init__(self, device)
+        MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
-        self.worker_gpucomm = {}
+        self.worker_gpucomm = {} # gpucomm to be setup through worker registration
         self.worker_id = {}
         self.first_worker_id = None
+        self.valid = {}
+        self.uidx = {}
+        self.adj_lr = {}
+        self.last = None
+        self.last_uidx = 0
+        self.start_time = None
+        self.uepoch = 0
+        self.last_uepoch = 0
         
     def process_request(self, worker_id, worker_rank, message):
 
-        # override Server class method, for connection related request
+        
         reply = None
     
+        # Connection related request
+        
         if message in ['sync_register']:
             
             if self.first_worker_id == None:
@@ -25,7 +39,7 @@ class EASGD_Server(MPI_GPU_Process):
                 print '[Server] recording worker is %s' % worker_id
                 reply = 'first'
             
-            self.worker_id[str(worker_rank)] = int(worker_id)
+            self.worker_id[str(worker_rank)] = int(worker_id) # rank -> id -> gpucomm
             
             print '[Server] registered worker %d' % worker_id
             
@@ -70,7 +84,7 @@ class EASGD_Server(MPI_GPU_Process):
 
         elif message == 'uepoch':
 
-            reply = [self.uepoch, len(self.worker_comm)]
+            reply = [self.uepoch, len(self.worker_gpucomm)]
         
         if message in ['next', 'uepoch'] or 'done' in message:       
     
@@ -84,7 +98,7 @@ class EASGD_Server(MPI_GPU_Process):
                 self.valid["%s" % self.first_worker_id] = True # only the first worker validates
         
                 # tunning server alpha
-                a_step1, a_step2, a_step3 = self.config['alpha_step']
+                a_step1, a_step2, a_step3 = alpha_step
                 if self.uepoch>a_step1 and self.uepoch< a_step2:
                     step_idx = 1
                 elif self.uepoch>a_step2 and self.uepoch< a_step3:
@@ -93,19 +107,19 @@ class EASGD_Server(MPI_GPU_Process):
                     step_idx = 3
                 else:
                     step_idx = 0
-                self.exchanger.alpha=self.config['server_alpha'] - self.config['alpha_minus']*step_idx
-                print 'server alpha changed to %f' % self.exchanger.alpha
+                self.exchanger.alpha=server_alpha - alpha_minus*step_idx
         
         
             if self.last == None:
+                import time
                 self.last = float(time.time())
         
-            if now_uidx - self.last_uidx >= 400:
+            if now_uidx - self.last_uidx >= 40:
         
                 now = float(time.time())
 
-                print '[Server] %d time per 5120 images: %.2f s' % \
-                        (self.uepoch, (now - self.last)/(now_uidx - self.last_uidx)*40.0)
+                print '[Server] %d time per 40 batches: %.2f s' % \
+                        (self.uepoch, (now - self.last))
 
                 self.last_uidx = now_uidx
                 self.last = now
@@ -116,7 +130,7 @@ class EASGD_Server(MPI_GPU_Process):
         
         if message == 'disconnect':
 
-            self.worker_comm.pop(str(worker_id))
+            self.worker_gpucomm.pop(str(worker_id))
         
             print '[Server] disconnected with worker %d' % worker_id
             
@@ -128,22 +142,22 @@ class EASGD_Server(MPI_GPU_Process):
             sys.exit(0)
             
             
-        if message in ['sync_register']:
+        if message == 'sync_register':
             
-            gpucomm = self.get_intranode_comm_pair(worker_rank)
+            gpucomm = self.get_intranode_pair_comm(pair=(0,worker_rank))
             
-            self.worker_comm[str(worker_id)]= gpucomm
+            self.worker_gpucomm[str(worker_id)]= gpucomm
             
         elif message == 'exchange':
     
-            self.exchanger.gpucomm = self.worker_comm[str(worker_id)]
+            self.exchanger.gpucomm = self.worker_gpucomm[str(worker_id)]
             # self.exchanger.dest = worker_rank
     
             self.exchanger.exchange()
     
         elif message == 'copy_to_local':
     
-            self.exchanger.gpucomm = self.worker_comm[str(worker_id)]
+            self.exchanger.gpucomm = self.worker_gpucomm[str(worker_id)]
             # self.exchanger.dest = worker_rank
     
             self.exchanger.copy_to_local()
@@ -158,12 +172,13 @@ class EASGD_Server(MPI_GPU_Process):
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import EASGD_Exchanger
-        self.exchanger = EASGD_Exchanger(self.config, 
-                                    self.drv, 
-                                    self.model.params, 
-                                    etype='server')
+        self.exchanger = EASGD_Exchanger(alpha=server_alpha, 
+                                        param_list=model.params, 
+                                        etype='server')
+                                        
+        self.validFreq = model.data.n_batch_train
                 
-    def EASGD_run(self):
+    def run(self):
         
         if self.comm == None:
             
@@ -172,9 +187,6 @@ class EASGD_Server(MPI_GPU_Process):
             return
             
         print 'server started'
-        
-        # after the barrier, run asynchronously
-        self.comm.Barrier()
 
         while True:
             #  Wait for next request from client
@@ -182,14 +194,14 @@ class EASGD_Server(MPI_GPU_Process):
             request = self.comm.recv(source=MPI.ANY_SOURCE, tag=199)
                 
             #  Do some process work and formulate a reply
-            reply = self.process_request(request['id'],request['rank'],\
+            reply = self.process_request(request['id'],request['rank'],
                                                     request['message'])
 
             #  Send reply back to client
             self.comm.send(reply, dest=request['rank'], tag=200)
             
             # Do some action work after reply
-            self.action_after(request['id'],request['rank'], \
+            self.action_after(request['id'],request['rank'], 
                                                     request['message'])
                                                     
                                                     
@@ -202,6 +214,11 @@ if __name__ == '__main__':
 
     server = EASGD_Server(device)
     
+    config={}
+    config['verbose'] = False #(server.rank==0)
+    config['rank'] = server.rank
+    config['size'] = 1
+    
     import importlib
     mod = importlib.import_module(modelfile)
     modcls = getattr(mod, modelclass)
@@ -209,4 +226,4 @@ if __name__ == '__main__':
     
     server.build(model)
     
-    server.EASGD_run(model)
+    server.run()

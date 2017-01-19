@@ -27,7 +27,7 @@ input_height = 227
 
 # apparently, training converges better with batch_crop_mirror=False. 
 # 1200 6.898191 vs 1320 6.892865
-batch_crop_mirror = False 
+batch_crop_mirror = True 
 rand_crop = True
 
 image_mean = 'img_mean'
@@ -37,6 +37,8 @@ dataname = 'imagenet'
 lib_conv='cudnn' # cudnn or corrmm
 
 monitor_grad = False
+
+seed_weight_on_pid = True
 
 class AlexNet(object):
 
@@ -140,6 +142,10 @@ class AlexNet(object):
 
         # start graph construction from scratch
         import theano.tensor as T
+        if seed_weight_on_pid:
+            import theanompi.models.layers2 as layers
+            import os
+            layers.rng = np.random.RandomState(os.getpid())
         from theanompi.models.layers2 import (ConvPoolLRN,Dropout,FC, 
                                                 Dimshuffle, Crop, Subtract,
                                                 Softmax,Flatten,LRN, Constant, Normal)

@@ -217,27 +217,30 @@ class BSP_Exchanger(object):
         
 class EASGD_Exchanger(object):
     '''
-    model parameter exchanger during EASGD weight exchanging (with sync rule intergrated)
+    model parameter exchanger during EASGD weight exchanging
     
     '''
-    def __init__(self, config, param_list, etype):
+    def __init__(self, alpha, param_list, etype, test=False):
         
         self.etype = etype
         self.param_list = param_list
 
-        self.dest = 0 # size is 1 on both side of this intercomm, so server_rank=0, worker_rank=0
-        # TODO not sure if alpha = 1.0/config['size'] is better
+        self.server_gpurank=0
+        self.worker_gpurank=1
         
+        # TODO not sure if alpha = 1.0/config['size'] is better
 
         if self.etype == 'server':
             self.prepare_server()
-            self.alpha = config['server_alpha']
+            self.alpha = alpha
         elif self.etype == 'worker':
             self.prepare_worker()
-            self.alpha = config['worker_alpha']
+            self.alpha = alpha
             
         self.update_func = self.mk_update_func()
-        self.comm = None
+        self.gpucomm = None
+        
+        self.test=test
             
         
     def prepare_server(self):
@@ -286,35 +289,79 @@ class EASGD_Exchanger(object):
         return theano.function([], updates=updates)
         
         
-    def exchange(self):
+    def exchange(self, recorder=None):
+        
         # server and worker send param to each other
 
-        # this function needs the worker to send an 'exchange' message after a call to its train()
-        # to the server through REQ-REP socket first.
-
-        assert self.comm != None
+        # this function needs the worker to send an 'exchange' message to server first
         
-        if self.etype == 'server':
+        assert self.gpucomm != None
+        
+        if self.test==True: 
+
+            print 'before exchange rank%d : %s' % (self.gpucomm.rank,
+                            get_1d_value(self.w_param_list[0].get_value()))
             
-            do_sendrecv(self.comm, self.g_param_list, self.w_param_list, self.dest)
-        elif self.etype == 'worker':
+
+        
+                    
+        
+        if recorder: recorder.start()
+        
+        
+        # if self.etype == 'server':
+            # do_sendrecv(self.comm, self.g_param_list, self.w_param_list, self.dest)
             
-            do_sendrecv(self.comm, self.w_param_list, self.g_param_list, self.dest)
+        # elif self.etype == 'worker':
+            # do_sendrecv(self.comm, self.w_param_list, self.g_param_list, self.dest)
+            
+        # server to worker,   g to g 
+        for g in self.g_param_list:
+            g.container.value.sync()
+            self.gpucomm.broadcast(g.container.value, root=self.server_gpurank)
+            
+        # worker to server,  w to w 
+        for w in self.w_param_list:
+            w.container.value.sync()
+            self.gpucomm.broadcast(w.container.value, root=self.worker_gpurank)
+        
+        if self.test==True:
+            
+            print 'after exchange rank%d : %s' % (self.gpucomm.rank,
+                            get_1d_value(self.w_param_list[0].get_value()))
+                            
+        
         self.update_func()
             
-        self.comm = None
+        if recorder: recorder.end('comm')
+                            
+                            
+        self.gpucomm = None
+        
         
     def copy_to_local(self):
         
-        assert self.comm != None
+        assert self.gpucomm != None
         
-        if self.etype == 'server':
-            do_send(self.comm, self.g_param_list, self.dest)
+        # if self.etype == 'server':
+#             do_send(self.comm, self.g_param_list, self.dest)
+#
+#         elif self.etype == 'worker':
+#             do_recv(self.comm, self.w_param_list, self.dest)
 
-        elif self.etype == 'worker':
-            do_recv(self.comm, self.w_param_list, self.dest)
+        # server to worker,  g to w
+        
+        if self.etype=='server':
+            for g in self.g_param_list:
+                g.container.value.sync()
+                self.gpucomm.broadcast(g.container.value, root=self.server_gpurank)
+            
+        else:
+            for w in self.w_param_list:
+                w.container.value.sync()
+                self.gpucomm.broadcast(w.container.value, root=self.server_gpurank)
 
-        self.comm = None
+        self.gpucomm = None
         
         
 class ASGD_Exchanger(object):
@@ -424,7 +471,20 @@ class ASGD_Exchanger(object):
                 
         
     
-
+def get_1d_value(ndarray):
+        
+    array = ndarray
+    dim_left =  array.ndim 
+    
+    while dim_left!=1:
+        
+        array = array[0]
+        
+        dim_left = array.ndim
+        
+        # print dim_left
+        
+    return array 
  
         
         

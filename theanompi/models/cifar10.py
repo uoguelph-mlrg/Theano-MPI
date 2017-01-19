@@ -19,13 +19,15 @@ use_nesterov_momentum = False
 #cropping hyperparams
 input_width = 28
 input_height = 28
-batch_crop_mirror = False
+batch_crop_mirror = True
 rand_crop = True
 
 image_mean = 'img_mean'
 dataname = 'cifar10'
 
 monitor_grad = False
+
+seed_weight_on_pid = True
 
 class Cifar10_model(object): # c01b input
     
@@ -120,6 +122,10 @@ class Cifar10_model(object): # c01b input
 
         # start graph construction from scratch
         import theano.tensor as T
+        if seed_weight_on_pid:
+            import theanompi.models.layers2 as layers
+            import os
+            layers.rng = np.random.RandomState(os.getpid())
         from theanompi.models.layers2 import Conv,Pool,Dropout,FC, Subtract, Crop, Dimshuffle,\
                             Softmax,Flatten,LRN, Constant, Normal
         

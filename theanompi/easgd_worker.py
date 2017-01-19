@@ -2,57 +2,20 @@ from __future__ import absolute_import
 
 from theanompi.lib.base import MPI_GPU_Process
 
+worker_alpha = 0.5
+
 class EASGD_Worker(MPI_GPU_Process):
     
     def __init__(self, device):
-        MPI_GPU_Process.__init__(self, device)
+        MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
         self.server_rank=0
         
         import os
         self.worker_id = os.getpid()
+        self.worker_rank = self.rank
         
-    def get_intranode_pair_comm(self, pair):
-    
-        from pygpu import collectives
-    
-        _local_id = collectives.GpuCommCliqueId(context=self.ctx)
-
-        string =  _local_id.comm_id.decode('utf-8')
-
-        pid = str(self.worker_id)
-        len_pid =len(pid)
-
-        # replace the process-unique id to be the universal id "0......" so that a intranode gpucomm can be created
-        
-        pair_index=0
-
-        replacement = ''.join(('%d' % pair_index) for i in range(len_pid))
-        _string = string.replace(pid, replacement)
-    
-        # if rank==0:
-        #     comm.send(_string, dest=1)
-        # else:
-        #     res = comm.recv(source=0)
-        #
-        #     print res == _string
-        #
-        # comm.Barrier()
-
-        _local_id.comm_id = bytearray(_string.encode('utf-8'))
-        _local_size = len(pair) # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
-    
-        if self.interrank==pair[0]:
-            _local_rank=0
-        else:
-            _local_rank=1
-        
-        _local_rank = _local_rank # assuming running within a node here 
-     
-        self.gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)
-    
-        print 'on rank %d, pair %s generated' % (self.interrank, pair)
-        
+        self.register_worker() # setup gpucomm between this worker and the server
         
     def comm_request(self, message):
         
@@ -86,7 +49,11 @@ class EASGD_Worker(MPI_GPU_Process):
         
         reply = self.comm.recv(source=self.server_rank, tag=200)
         
-        if action: action(action_args)
+        if action: 
+            if action_args:
+                action(action_args)
+            else:
+                action()
         
         
     def register_worker(self):
@@ -94,14 +61,41 @@ class EASGD_Worker(MPI_GPU_Process):
         first = self.comm_request('sync_register')
         
         self.verbose = (first == 'first')
-            
-    def test_run(self):
         
-        self.comm.Barrier()
+        self.gpucomm = self.get_intranode_pair_comm(pair=(0,self.worker_rank))
+    
+    def exchange(self):
         
-        reply = self.comm_request('stop')
+        self.exchanger.gpucomm = self.gpucomm
+        
+        self.comm_action(message = 'exchange', 
+                         action=self.exchanger.exchange, 
+                         action_args=self.recorder)
+        
+    def copy_to_local(self):
+        
+        self.exchanger.gpucomm = self.gpucomm
+        
+        self.comm_action(message = 'copy_to_local', 
+                    action=self.exchanger.copy_to_local)
+                    
+        if self.verbose: print '\nSynchronized param with server'
+        
+    def test_run(self, model):
+        
+        model.train_iter(0, self.recorder)
+        
+        model.train_iter(1, self.recorder)
+        
+        self.comm_request(dict(done=2))
+        
+        self.exchange()
+        
+        self.copy_to_local()
+        
+        if self.verbose: self.comm_request('stop')
 
-        print 'success', reply
+        print 'success'
         
         
     def build(self, model, config):
@@ -120,21 +114,13 @@ class EASGD_Worker(MPI_GPU_Process):
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import EASGD_Exchanger
-        self.exchanger = EASGD_Exchanger(self.comm, self.gpucomm,
-                                         self.ctx, model, etype='worker')
+        self.exchanger = EASGD_Exchanger(alpha=worker_alpha, 
+                                         param_list=model.params, 
+                                         etype='worker')
                                          
         #TODO reimplement EASGD using pygpu.bcast
-    
-    def copy_to_local(self):
-        
-        self.comm_action(message = 'copy_to_local', \
-                    action=self.exchanger.copy_to_local)
-        if self.verbose: print '\nSynchronized param with server'
                 
-    def EASGD_run(self, model):
-        
-        # after the barrier, run asynchronously
-        self.comm.Barrier()
+    def run(self, model):
         
         exchange_freq = 1 # iterations
         snapshot_freq = 2 # epochs
@@ -167,8 +153,7 @@ class EASGD_Worker(MPI_GPU_Process):
                     
                 self.comm_request(dict(done=self.train_len))
 
-                self.comm_action(message = 'exchange', \
-                            action=self.exchanger.exchange, action_args=recorder)
+                self.exchange()
                 
             elif mode == 'adjust_hyperp':
                 
@@ -204,7 +189,7 @@ class EASGD_Worker(MPI_GPU_Process):
                     recorder.end_epoch(batch_i, self.uepoch)
                     epoch_start = False
                     
-            elif mode='stop':
+            elif mode=='stop':
                 
                 self.copy_to_local()
                 
@@ -228,14 +213,10 @@ if __name__ == '__main__':
     
     worker = EASGD_Worker(device)
     
-    worker.test_run()
-    
-    exit(0)
-    
     config={}
-    config['verbose'] = (worker.rank==0)
+    config['verbose'] = worker.verbose
     config['rank'] = worker.rank
-    config['size'] = worker.size
+    config['size'] = 1
     
     import importlib
     mod = importlib.import_module(modelfile)
@@ -245,4 +226,7 @@ if __name__ == '__main__':
 
     worker.build(model, config)
     
-    worker.EASGD_run(model)
+    worker.test_run(model)
+    
+    exit(0)
+    worker.run(model)

@@ -5,38 +5,13 @@ from theanompi.lib.base import MPI_GPU_Process
 class BSP_Worker(MPI_GPU_Process):
     
     def __init__(self, device, sync_type, exch_strategy):
-        MPI_GPU_Process.__init__(self, device)
+        MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
-        self.get_intranode_comm()
+        self.get_intranode_comm() # setup gpucomm
         
         self.sync_type = sync_type
         
-        self.exch_strategy = exch_strategy
-        
-    def get_intranode_comm(self):
-        
-        from pygpu import collectives
-    
-        _local_id = collectives.GpuCommCliqueId(context=self.ctx)
-
-        string =  _local_id.comm_id.decode('utf-8')
-
-        comm=self.comm
-        rank=comm.rank
-        size=comm.size
-
-        if rank==0:
-            _string=string
-        else:
-            _string=None
-        
-        _string=comm.bcast(_string, root=0)
-
-        _local_id.comm_id = bytearray(_string.encode('utf-8'))
-        _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
-        _local_rank = rank # assuming running within a node here 
- 
-        self.gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)  
+        self.exch_strategy = exch_strategy 
         
     def build(self, model, config):
         
