@@ -14,15 +14,15 @@ Theano-MPI is compatible for training models built in different framework librar
 
 ## Dependencies
 
-Theano-MPI depends on the following libraries and packages. We provide some guidance to the installing them in [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki/Guidance-to-installing-some-dependencies-of-Theano-MPI).
-* [OpenMPI 1.8.7](http://www.open-mpi.org/) or an MPI-2 standard equivalent that supports CUDA.
+Theano-MPI depends on the following libraries and packages. We provide some guidance to the installing them in [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki/Installing-dependencies-of-Theano-MPI).
+* [OpenMPI](http://www.open-mpi.org/) 1.8 + or an MPI-2 standard equivalent that supports CUDA.
 * [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI 1.8.7
 * [numpy](http://www.numpy.org/)
-* [Theano](http://deeplearning.net/software/theano/) 0.8 or higher
+* [Theano](http://deeplearning.net/software/theano/) 0.9.4 +
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
-* [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 or higher
-* [cuDNN](https://developer.nvidia.com/cudnn)
+* [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 +
+* [cuDNN](https://developer.nvidia.com/cudnn) a version compatible with your CUDA Installation
 * [pygpu](http://deeplearning.net/software/libgpuarray/installation.html)
 * [NCCL](https://github.com/NVIDIA/nccl)
 
