@@ -47,7 +47,7 @@ It is recommended to organize your model and data definition in the following wa
 * `launch_session.py`
   * `models/*.py`
     * `__init__.py`
-    * 'modelname.py' : defines the your customized model class
+    * 'modelfile.py' : defines the your customized model class
     * `data/*.py`
       * `dataname.py` : defines the your customized data class
 
@@ -77,7 +77,7 @@ rule=BSP()
 # modelfile: the relative path to the model file
 # modelclass: the class name of the model to be imported from that file
 rule.init(devices=['cuda0', 'cuda1'] , 
-          modelfile = 'models.modelname', 
+          modelfile = 'models.modelfile', 
           modelclass = 'ModelClass') 
 rule.wait()
 ```
