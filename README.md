@@ -18,7 +18,7 @@ Theano-MPI depends on the following libraries and packages. We provide some guid
 * [OpenMPI](http://www.open-mpi.org/) 1.8 + or an MPI-2 standard equivalent that supports CUDA.
 * [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI.
 * [numpy](http://www.numpy.org/)
-* [Theano](http://deeplearning.net/software/theano/) 0.9.4 +
+* [Theano](http://deeplearning.net/software/theano/) 0.9 +
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
 * [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 +
