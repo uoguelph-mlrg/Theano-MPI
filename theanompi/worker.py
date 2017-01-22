@@ -36,8 +36,8 @@ class BSP_Worker(MPI_GPU_Process):
         
         self.comm.Barrier()
         
-        exchange_freq = 1 # iterations
-        snapshot_freq = 2 # epochs
+        exchange_freq = 5000 # iterations
+        snapshot_freq = 5 # epochs
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
@@ -56,10 +56,11 @@ class BSP_Worker(MPI_GPU_Process):
         
                 model.train_iter(batch_i, recorder)
                 
-                if batch_i % exchange_freq == 0: 
+                if batch_i % exchange_freq == 0 and batch_i!=0: 
                     exchanger.exchange(recorder)
+                    print '\nexchanged!!!!!!\n'
         
-                recorder.print_train_info(batch_i * self.size)
+                recorder.print_train_info(batch_i)
             
             model.reset_iter('train')
         

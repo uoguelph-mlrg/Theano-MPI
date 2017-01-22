@@ -159,7 +159,9 @@ class ImageNet_data(object):
             self.train_img = img
             self.train_labels = labels
         
-            if self.verbose: print 'training data shuffled'
+            if self.verbose: 
+                pass
+            print 'training data shuffled'
             self.shuffled=True
 
     

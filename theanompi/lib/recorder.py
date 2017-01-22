@@ -94,7 +94,8 @@ class Recorder(object):
 
             self.info_dict['train_info'].append([count, cost, error])
 
-            if self.verbose: print '%d %f %f'% (count, cost, error)
+            #if self.verbose: 
+            print '%d %f %f'% (count, cost, error)
 
             self.train_info['cost'][:] = []
             self.train_info['error'][:] = []

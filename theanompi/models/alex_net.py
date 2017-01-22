@@ -58,17 +58,17 @@ class AlexNet(object):
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
-        if self.size>1: # only use avg
-            self.batch_size = batch_size/self.size
-        else:
-            self.batch_size = batch_size # 'b
+        # if self.size>1: # only use avg
+#             self.batch_size = batch_size/self.size
+#         else:
+        self.batch_size = batch_size # 'b
         self.file_batch_size = file_batch_size
         self.n_softmax_out = self.data.n_class
         
         # mini batching
         self.data.batch_data(file_batch_size)
         #self.data.shuffle_data()
-        if self.size>1: self.data.shard_data(file_batch_size, self.rank, self.size)
+        #if self.size>1: self.data.shard_data(file_batch_size, self.rank, self.size)
         
         # training related
         self.n_epochs = n_epochs
@@ -358,12 +358,14 @@ class AlexNet(object):
         '''use the train_iter_fn compiled'''
         '''use parallel loading for large or remote data'''
         
-        if self.size>1: 
+        if False: #self.size>1: 
                 
             img= self.data.train_img_shard
             labels = self.data.train_labels_shard
         
         else:
+            
+            if self.current_t==0: self.data.shuffle_data()
             
             img= self.data.train_img
             labels = self.data.train_labels
@@ -450,7 +452,7 @@ class AlexNet(object):
         
         '''use the val_iter_fn compiled'''
         
-        if self.size>1: 
+        if False: #self.size>1: 
                 
             img= self.data.val_img_shard
             labels = self.data.val_labels_shard
