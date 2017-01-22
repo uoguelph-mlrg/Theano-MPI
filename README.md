@@ -18,7 +18,7 @@ Theano-MPI depends on the following libraries and packages. We provide some guid
 * [OpenMPI](http://www.open-mpi.org/) 1.8 + or an MPI-2 standard equivalent that supports CUDA.
 * [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI.
 * [numpy](http://www.numpy.org/)
-* [Theano](http://deeplearning.net/software/theano/) 0.9.4 +
+* [Theano](http://deeplearning.net/software/theano/) 0.9 +
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
 * [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 +
@@ -47,14 +47,14 @@ It is recommended to organize your model and data definition in the following wa
 * `launch_session.py`
   * `models/*.py`
     * `__init__.py`
-    * `modelfile.py` : defines your customized model class
+    * `modelfile.py` : defines your customized ModelClass
     * `data/*.py`
-      * `dataname.py` : defines your customized data class
+      * `dataname.py` : defines your customized DataClass
 
 Your ModelClass in `modelfile.py` should at least have the following attributes and methods:
 
 * `self.params` : a list of Theano shared variables, i.e. trainable model parameters
-* `self.data` : an instance of your customized data class defined in `dataname.py`
+* `self.data` : an instance of your customized DataClass defined in `dataname.py`
 * `self.compile_iter_fns` : a method, your way of compiling train_iter_fn and val_iter_fn
 * `self.train_iter` : a method, your way of using your train_iter_fn
 * `self.val_iter` : a method, your way of using your val_iter_fn
@@ -111,4 +111,4 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 ## License
 
-© Contributors, 2016-2017. Licensed under an [ECL-2.0](https://github.com/uoguelph-mlrg/Theano-MPI/blob/reorg/LICENSE) license.
+© Contributors, 2016-2017. Licensed under an [ECL-2.0](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/LICENSE) license.
