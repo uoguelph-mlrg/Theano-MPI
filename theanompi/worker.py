@@ -20,6 +20,10 @@ class BSP_Worker(MPI_GPU_Process):
         # check model has necessary attributes
         check_model(model)
         
+        if self.sync_type=='avg':
+            model.base_lr=model.base_lr*self.size
+            model.shared_lr.set_value(model.base_lr)
+        
         # construct model train function based on sync rule
         model.compile_iter_fns()
         
@@ -36,7 +40,7 @@ class BSP_Worker(MPI_GPU_Process):
         
         self.comm.Barrier()
         
-        exchange_freq = 5000 # iterations
+        exchange_freq = 1 # iterations
         snapshot_freq = 5 # epochs
         snapshot_path = './snapshots/'
         recorder=self.recorder
@@ -58,9 +62,9 @@ class BSP_Worker(MPI_GPU_Process):
                 
                 if batch_i % exchange_freq == 0 and batch_i!=0: 
                     exchanger.exchange(recorder)
-                    print '\nexchanged!!!!!!\n'
+                    # print '\nexchanged!!!!!!\n'
         
-                recorder.print_train_info(batch_i)
+                recorder.print_train_info(batch_i*self.size)
             
             model.reset_iter('train')
         

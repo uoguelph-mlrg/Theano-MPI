@@ -12,6 +12,8 @@ warnings.filterwarnings("ignore")
 # LRN=CrossChannelNormalization
 
 rng = np.random.RandomState(23455)
+import theano.sandbox.rng_mrg as RNG_MRG
+MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
 # set a fixed number for 2 purpose:
 #  1. repeatable experiments; 2. for multiple-GPU, the same initial weights
 
@@ -262,9 +264,6 @@ class Crop(Layer):
         
         
         if flag_batch:
-            
-            import theano.sandbox.rng_mrg as RNG_MRG
-            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
 
             rand = MRG.uniform(size=(3,), low=0.001, high=0.999)
             #rand = MRG.normal(size=(num_sam, self.dim_sample), avg=0., std=1.)
@@ -282,9 +281,6 @@ class Crop(Layer):
         else:
             
             # does not work when batch size changes, e.g. inference with a single image instead of with batch size of images
-            
-            import theano.sandbox.rng_mrg as RNG_MRG
-            MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
 
             rand = MRG.uniform(size=(3,self.input_shape[3]), low=0.001, high=0.999)
 

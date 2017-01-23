@@ -14,7 +14,7 @@ weight_decay = 0.0005
 batch_size = 128
 file_batch_size = 128
 learning_rate = 0.01
-
+# size=1 converge at 1320 6.897861; if avg and not scale lr by size, then size=2 will converge at: 2360 6.898975
 lr_policy = 'step'
 lr_step = [20, 40, 60]
 
@@ -38,7 +38,7 @@ lib_conv='cudnn' # cudnn or corrmm
 
 monitor_grad = False
 
-seed_weight_on_pid = True
+seed_weight_on_pid = False
 
 class AlexNet(object):
 
@@ -60,7 +60,7 @@ class AlexNet(object):
         self.input_height = input_height # '1' single scale training 224
         # if self.size>1: # only use avg
 #             self.batch_size = batch_size/self.size
-#         else:
+#         else: # TODO find out if this works better
         self.batch_size = batch_size # 'b
         self.file_batch_size = file_batch_size
         self.n_softmax_out = self.data.n_class
@@ -68,7 +68,6 @@ class AlexNet(object):
         # mini batching
         self.data.batch_data(file_batch_size)
         #self.data.shuffle_data()
-        #if self.size>1: self.data.shard_data(file_batch_size, self.rank, self.size)
         
         # training related
         self.n_epochs = n_epochs
@@ -84,8 +83,8 @@ class AlexNet(object):
         self.shared_lr = theano.shared(self.base_lr)
         self.shared_x = theano.shared(np.zeros((
                                                 3,
-                                                self.data.width, 
-                                                self.data.height,
+                                                self.input_width,#self.data.width, 
+                                                self.input_height,#self.data.height,
                                                 file_batch_size
                                                 ), 
                                                 dtype=theano.config.floatX),  
@@ -155,28 +154,29 @@ class AlexNet(object):
         self.y = T.lvector('y')
         self.lr = T.scalar('lr')
         
-        subtract_layer = Subtract(input=self.x,
-                                  input_shape=(self.channels, 
-                                               self.data.width,
-                                               self.data.height,
-                                               self.batch_size),
-                                  subtract_arr = self.data.rawdata[4],
-                                  printinfo = self.verbose)
-                                  
-        crop_layer = Crop(input=subtract_layer,
-                          output_shape=(self.channels, 
-                                        self.input_width,
-                                        self.input_height,
-                                        self.batch_size),
-                          flag_batch=batch_crop_mirror,
-                          printinfo = self.verbose
-                          )
+        # subtract_layer = Subtract(input=self.x,
+        #                           input_shape=(self.channels,
+        #                                        self.data.width,
+        #                                        self.data.height,
+        #                                        self.batch_size),
+        #                           subtract_arr = self.data.rawdata[4],
+        #                           printinfo = self.verbose
+        #                           )
+        #
+        # crop_layer = Crop(input=subtract_layer,
+        #                   output_shape=(self.channels,
+        #                                 self.input_width,
+        #                                 self.input_height,
+        #                                 self.batch_size),
+        #                   flag_batch=batch_crop_mirror,
+        #                   printinfo = self.verbose
+        #                   )
                          
-        convpool_layer1 = ConvPoolLRN(input=crop_layer,
-                                        # input_shape=(self.channels,
-#                                                      self.input_width,
-#                                                      self.input_height,
-#                                                      self.batch_size),
+        convpool_layer1 = ConvPoolLRN(input=self.x,  #crop_layer,
+                                      input_shape=(self.channels,
+                                                   self.input_width,
+                                                   self.input_height,
+                                                   self.batch_size),
                                                      
                                         filter_shape=(3, 11, 11, 96),
                                         convstride=4, padsize=0, group=1,
@@ -357,18 +357,12 @@ class AlexNet(object):
         
         '''use the train_iter_fn compiled'''
         '''use parallel loading for large or remote data'''
-        
-        if False: #self.size>1: 
-                
-            img= self.data.train_img_shard
-            labels = self.data.train_labels_shard
-        
-        else:
+
             
-            if self.current_t==0: self.data.shuffle_data()
-            
-            img= self.data.train_img
-            labels = self.data.train_labels
+        if self.current_t==0: self.data.shuffle_data()
+        
+        img= self.data.train_img
+        labels = self.data.train_labels
 
         mode = 'train'
         function = self.train_iter_fn
@@ -452,15 +446,10 @@ class AlexNet(object):
         
         '''use the val_iter_fn compiled'''
         
-        if False: #self.size>1: 
-                
-            img= self.data.val_img_shard
-            labels = self.data.val_labels_shard
+        if self.current_v==0: self.data.shard_data()
         
-        else:
-            
-            img= self.data.val_img
-            labels = self.data.val_labels
+        img= self.data.val_img_shard
+        labels = self.data.val_labels_shard
         
         mode='val'
         function=self.val_iter_fn

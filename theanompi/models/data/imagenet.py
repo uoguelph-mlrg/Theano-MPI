@@ -167,29 +167,28 @@ class ImageNet_data(object):
     
     def shard_data(self, file_batch_size, rank, size):
         
-        # usually after batch_data and each shuffle_data call
-        filenames_t, labels_t = self.train_img, self.train_labels
+        # after batch_data
         filenames_v, labels_v = self.val_img, self.val_labels
         
         if self.extended==False:
             # make divisible
             from theanompi.models.data.utils import extend_data
-            filenames_t, labels_t = extend_data(rank, size, filenames_t, labels_t)
             filenames_v, labels_v = extend_data(rank, size, filenames_v, labels_v)
             self.extended = True
         
         if self.sharded == False:
             # sharding
-            filenames_t = filenames_t[rank::size]
-            labels_t = labels_t[rank::size]
             filenames_v = filenames_v[rank::size]
             labels_v = labels_v[rank::size]
             
+            if self.verbose: 
+                pass
+            print 'validation data sharded'
+            
             self.sharded=True
         
-        self.train_img_shard, self.train_labels_shard = filenames_t, labels_t
         self.val_img_shard, self.val_labels_shard = filenames_v, labels_v
-        self.n_batch_train = len(self.train_img_shard)
+        
         self.n_batch_val = len(self.val_img_shard)
         
         

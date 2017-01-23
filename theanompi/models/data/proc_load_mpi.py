@@ -82,7 +82,11 @@ if __name__ == '__main__':
 
             data = hkl.load(str(filename)).astype('float32') 
             
-            #data = np.ascontiguousarray(data)
+            from theanompi.models.data.utils import crop_and_mirror
+            data = crop_and_mirror(data, mode, rand_crop=True,
+                                    flag_batch=True, 
+                                    cropsize = 227)
+            # data = np.ascontiguousarray(data)
 
             gpu_data.write(data)
 
