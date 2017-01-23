@@ -133,6 +133,7 @@ class EASGD_Worker(MPI_GPU_Process):
         epoch_start = False
         batch_i=0
         uepoch=0
+        lastmode=None
         
         from theanompi.lib.helper_funcs import save_model
         
@@ -146,6 +147,11 @@ class EASGD_Worker(MPI_GPU_Process):
                 if epoch_start == False:
                     recorder.start_epoch()
                     epoch_start = True
+                    
+                if lastmode='val':
+                    model.reset_iter()
+                    
+                lastmode='train'
                     
                     
                 for i in range(exchange_freq):
@@ -169,15 +175,18 @@ class EASGD_Worker(MPI_GPU_Process):
                 
             elif mode == 'val':
                 
-                self.copy_to_local()
+                if lastmode='train':
+                    
+                    model.reset_iter()
+                    
+                lastmode='val'
+                    
                 
-                model.reset_iter('val')
+                self.copy_to_local()
                 
                 for batch_j in range(model.data.n_batch_val):
         
                     model.val_iter(uepoch, recorder )
-                    
-                model.reset_iter('val')
                 
                 recorder.print_val_info(batch_i)
                 
@@ -205,13 +214,15 @@ class EASGD_Worker(MPI_GPU_Process):
                     # This is the test model after training
                     self.copy_to_local()
                 
-                    model.reset_iter('val')
+                    if lastmode='train':
+                    
+                        model.reset_iter()
+                    
+                    lastmode='val'
                 
                     for batch_j in range(model.data.n_batch_val):
         
                         model.val_iter(uepoch, recorder )
-                    
-                    model.reset_iter('val')
                 
                     recorder.print_val_info(batch_i)
                 

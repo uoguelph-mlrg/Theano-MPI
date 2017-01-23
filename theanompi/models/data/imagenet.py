@@ -277,9 +277,8 @@ class ImageNet_data(object):
         
         # to stop the paraloading process
         
-        self.icomm.isend('stop',dest=0,tag=40)
-
-        self.icomm.isend('stop',dest=0,tag=40)
+        self.icomm.send('stop',dest=0,tag=40)
+        self.icomm.send('stop',dest=0,tag=40)
         
                 
         
