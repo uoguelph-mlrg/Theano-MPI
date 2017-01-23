@@ -22,7 +22,6 @@ class Cifar10_data():
         
         self.batched=False
         self.shuffled=False
-        self.extended=False
         self.sharded=False
         
     def get_data(self):
@@ -150,32 +149,30 @@ class Cifar10_data():
         
         # usually after batch_data and each shuffle_data call
         
-        img_t, labels_t = self.train_img, self.train_labels
         img_v, labels_v = self.val_img, self.val_labels
         # make divisible
         
-        if self.extended==False:
+        if self.sharded == False:
         
             from theanompi.models.data.utils import extend_data
             
-            if len(img_t) % size != 0: img_t, labels_t = extend_data(rank, size, img_t, labels_t)
             if len(img_v) % size != 0: img_v, labels_v = extend_data(rank, size, img_v, labels_v)
             
-            self.extended = True
-        
-        if self.sharded == False:
             # sharding
-            img_t = img_t[rank::size]
+            
             img_v = img_v[rank::size]
-            labels_t = labels_t[rank::size]
+           
             labels_v = labels_v[rank::size]
             
+            self.val_img_shard, self.val_labels_shard = img_v, labels_v
+        
+            self.n_batch_val = len(self.val_img_shard)
+            
+            if self.verbose: print 'validation data sharded'
+            
             self.sharded=True
-    
-        self.train_img_shard, self.train_labels_shard = img_t, labels_t
-        self.val_img_shard, self.val_labels_shard = img_v, labels_v
-        self.n_batch_train = len(self.train_img_shard)
-        self.n_batch_val = len(self.val_img_shard)
+            
+            
         
         
         

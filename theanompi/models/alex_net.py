@@ -359,7 +359,9 @@ class AlexNet(object):
         '''use parallel loading for large or remote data'''
 
             
-        if self.current_t==0: self.data.shuffle_data()
+        if self.current_t==0: 
+            self.data.shuffled=False
+            self.data.shuffle_data()
         
         img= self.data.train_img
         labels = self.data.train_labels

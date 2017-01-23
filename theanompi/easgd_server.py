@@ -209,7 +209,7 @@ if __name__ == '__main__':
     
     config={}
     config['verbose'] = False #(server.rank==0)
-    config['rank'] = server.rank
+    config['rank'] = 0
     config['size'] = 1
     
     import importlib

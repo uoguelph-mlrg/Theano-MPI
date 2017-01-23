@@ -238,7 +238,7 @@ if __name__ == '__main__':
     
     config={}
     config['verbose'] = worker.verbose
-    config['rank'] = worker.rank
+    config['rank'] = 0
     config['size'] = 1
     
     import importlib

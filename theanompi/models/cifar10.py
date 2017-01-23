@@ -27,7 +27,7 @@ dataname = 'cifar10'
 
 monitor_grad = False
 
-seed_weight_on_pid = True
+seed_weight_on_pid = False
 
 class Cifar10_model(object): # c01b input
     
@@ -46,18 +46,15 @@ class Cifar10_model(object): # c01b input
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
-        if self.size>1: # only use avg
-            self.batch_size = batch_size/self.size
-        else:
-            self.batch_size = batch_size # 'b'
+        # if self.size>1: # only use avg
+        #     self.batch_size = batch_size/self.size
+        # else:
+        self.batch_size = batch_size # 'b'
         self.file_batch_size = file_batch_size
         self.n_softmax_out = self.data.n_class
         
         # mini batching
         self.data.batch_data(file_batch_size)
-        #self.data.shuffle_data()
-        if self.size>1: self.data.shard_data(file_batch_size, self.rank, self.size)
-        
         
         # preprocessing
         self.batch_crop_mirror = batch_crop_mirror
@@ -317,16 +314,13 @@ class Cifar10_model(object): # c01b input
     def train_iter(self,count,recorder):
         
         '''use the train_iter_fn compiled'''
-        
-        if self.size>1: 
-                
-            img= self.data.train_img_shard
-            labels = self.data.train_labels_shard
-        
-        else:
             
-            img= self.data.train_img
-            labels = self.data.train_labels
+        if self.current_t==0: 
+            self.data.shuffled=False
+            self.data.shuffle_data()
+        
+        img= self.data.train_img
+        labels = self.data.train_labels
             
         img_mean = self.data.rawdata[4]
         mode='train'
@@ -382,16 +376,11 @@ class Cifar10_model(object): # c01b input
     def val_iter(self, count, recorder):
         
         '''use the val_iter_fn compiled'''
-        
-        if self.size>1: 
-                
-            img= self.data.val_img_shard
-            labels = self.data.val_labels_shard
-        
-        else:
             
-            img= self.data.val_img
-            labels = self.data.val_labels
+        if self.current_v==0: self.data.shard_data(file_batch_size, self.rank, self.size)
+            
+        img= self.data.val_img_shard
+        labels = self.data.val_labels_shard
             
         img_mean = self.data.rawdata[4]
         mode='val'
