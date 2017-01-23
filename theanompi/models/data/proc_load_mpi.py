@@ -15,6 +15,13 @@ import pygpu
 
 if __name__ == '__main__':
     
+    
+    import theanompi.models.data.imagenet as imagenet
+    if not imagenet.sc:
+        data=imagenet.ImageNet(False)
+        img_mean=data.rawdata[4]
+        from theanompi.models.data.utils import crop_and_mirror
+    
     from mpi4py import MPI
 
     icomm = MPI.Comm.Get_parent()
@@ -80,12 +87,15 @@ if __name__ == '__main__':
         
         while True:
 
-            data = hkl.load(str(filename)).astype('float32') 
+            data = hkl.load(str(filename)).astype('float32')
             
-            from theanompi.models.data.utils import crop_and_mirror
-            data = crop_and_mirror(data, mode, rand_crop=True,
-                                    flag_batch=True, 
-                                    cropsize = 227)
+            if not imagenet.sc: 
+                
+                data = data-img_mean
+            
+                data = crop_and_mirror(data, mode, rand_crop=True,
+                                        flag_batch=True, 
+                                        cropsize = 227)
             # data = np.ascontiguousarray(data)
 
             gpu_data.write(data)

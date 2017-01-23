@@ -14,6 +14,8 @@ RGB_mean = False
 # parallel loading
 para_load = True
 sock_data = 5020
+
+sc=False # if the architecture already includes subtract mean and cropping
         
 class ImageNet_data(object):
     

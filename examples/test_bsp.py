@@ -1,5 +1,5 @@
 '''
-Example for training AlexNet on 2GPUs by the rule of BSP
+Example for training on 2GPUs by the rule of BSP
 
 '''
 
@@ -11,7 +11,7 @@ rule=BSP()
 # modelclass: the class name of the model to be imported
 rule.init(devices=['cuda1', 'cuda2'] , 
           modelfile = 'theanompi.models', 
-          modelclass = 'Cifar10_model') 
+          modelclass = 'AlexNet') 
 rule.wait()
 
 
