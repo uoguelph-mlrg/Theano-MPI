@@ -175,7 +175,7 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                 for batch_j in range(model.data.n_batch_val):
         
-                    model.val_iter(uepoch, recorder)
+                    model.val_iter(uepoch, recorder )
                     
                 model.reset_iter('val')
                 
@@ -209,7 +209,7 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                     for batch_j in range(model.data.n_batch_val):
         
-                        model.val_iter(uepoch, recorder, self.comm.rank)
+                        model.val_iter(uepoch, recorder )
                     
                     model.reset_iter('val')
                 
