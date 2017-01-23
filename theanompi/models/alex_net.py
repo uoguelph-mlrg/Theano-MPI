@@ -474,7 +474,7 @@ class AlexNet(object):
                 if self.current_v == self.data.n_batch_train - 1:
                     self.last_one_v = True
                     # Only to get the last copy_finished signal from load
-                    icomm.isend(img[self.current_v+1],dest=0,tag=40) 
+                    icomm.isend(img[self.current_v],dest=0,tag=40) 
                 else:
                     self.last_one_v = False
                     # 4. give preload signal to load next file
