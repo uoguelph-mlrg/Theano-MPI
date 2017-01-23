@@ -448,7 +448,7 @@ class AlexNet(object):
         
         '''use the val_iter_fn compiled'''
         
-        if self.current_v==0: self.data.shard_data()
+        if self.current_v==0: self.data.shard_data(file_batch_size, self.rank, self.size)
         
         img= self.data.val_img_shard
         labels = self.data.val_labels_shard
