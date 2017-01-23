@@ -72,7 +72,7 @@ After your model definition is complete, you can choose the desired way of shari
 * ASGD (Asynchronous Parallel)
 * EASGD (Elastic Averaging)
 
-Below is an example launch script for trainig a customized ModelClass on two GPUs. More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
+Below is an example launch script for training a customized ModelClass on two GPUs. More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
 
 ```python
 
