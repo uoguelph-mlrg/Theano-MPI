@@ -125,7 +125,7 @@ class ImageNet_data(object):
 
             raw_labels = self.rawdata[3]
 
-            for index in range(self.n_batch_train):
+            for index in range(self.n_batch_val):
            
                 batch_label = raw_labels[(index) \
                                 * file_batch_size: \

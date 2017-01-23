@@ -1,5 +1,5 @@
 '''
-Example for training Cifar10_model on 2 worker GPUs by the rule of EASGD
+Example for training on 2 worker GPUs by the rule of EASGD
 '''
 from theanompi import EASGD
 

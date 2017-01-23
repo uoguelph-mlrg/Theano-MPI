@@ -6,6 +6,11 @@ worker_alpha = 0.5
 
 class EASGD_Worker(MPI_GPU_Process):
     
+    '''
+    An implementation of a worker process in the Elastic Averaging SGD rule
+    https://arxiv.org/abs/1412.6651
+    '''
+    
     def __init__(self, device):
         MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
@@ -178,13 +183,13 @@ class EASGD_Worker(MPI_GPU_Process):
                 
                 model.current_info = recorder.get_latest_val_info()
                 
-                if self.verbose: recorder.save(batch_i, model.shared_lr.get_value())
+                recorder.save(batch_i, model.shared_lr.get_value())
     
                 uepoch, n_workers = self.comm_request('uepoch')
                 
                 model.epoch=uepoch
                 
-                if self.verbose and uepoch % snapshot_freq == 0: 
+                if uepoch % snapshot_freq == 0: 
                     save_model(model, snapshot_path, verbose=self.verbose)
                     
                 self.copy_to_local()
@@ -196,25 +201,27 @@ class EASGD_Worker(MPI_GPU_Process):
                     
             elif mode=='stop':
                 
-                self.copy_to_local()
+                if self.verbose:
+                    # This is the test model after training
+                    self.copy_to_local()
                 
-                model.reset_iter('val')
+                    model.reset_iter('val')
                 
-                for batch_j in range(model.data.n_batch_val):
+                    for batch_j in range(model.data.n_batch_val):
         
-                    model.val_iter(uepoch, recorder)
+                        model.val_iter(uepoch, recorder, self.comm.rank)
                     
-                model.reset_iter('val')
+                    model.reset_iter('val')
                 
-                recorder.print_val_info(batch_i)
+                    recorder.print_val_info(batch_i)
                 
-                model.current_info = recorder.get_latest_val_info()
+                    model.current_info = recorder.get_latest_val_info()
                 
-                if self.verbose: recorder.save(batch_i, model.shared_lr.get_value())
+                    recorder.save(batch_i, model.shared_lr.get_value())
     
-                uepoch, n_workers = self.comm_request('uepoch')
+                    uepoch, n_workers = self.comm_request('uepoch')
                 
-                model.epoch=uepoch
+                    model.epoch=uepoch
                 
                 if epoch_start == True:
                     recorder.end_epoch(batch_i, uepoch)
