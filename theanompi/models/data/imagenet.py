@@ -161,7 +161,7 @@ class ImageNet_data(object):
         
             if self.verbose: 
                 pass
-            print 'training data shuffled'
+            print 'training data shuffled', indices
             self.shuffled=True
 
     

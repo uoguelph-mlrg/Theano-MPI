@@ -12,8 +12,9 @@ warnings.filterwarnings("ignore")
 # LRN=CrossChannelNormalization
 
 rng = np.random.RandomState(23455)
+seed_this = rng.randint(0, 2**31-1)
 import theano.sandbox.rng_mrg as RNG_MRG
-MRG = RNG_MRG.MRG_RandomStreams(rng.randint(23455))
+MRG = RNG_MRG.MRG_RandomStreams(seed_this)
 # set a fixed number for 2 purpose:
 #  1. repeatable experiments; 2. for multiple-GPU, the same initial weights
 
@@ -788,7 +789,7 @@ class Dropout(Layer):
         self.flag_on = theano.shared(np.cast[theano.config.floatX](1.0))
         self.flag_off = 1.0 - self.flag_on
 
-        seed_this = rng.randint(0, 2**31-1)
+        
         mask_rng = theano.tensor.shared_randomstreams.RandomStreams(seed_this)
         self.mask = mask_rng.binomial(n=1, p=self.prob_keep, size=self.input.shape)
 
