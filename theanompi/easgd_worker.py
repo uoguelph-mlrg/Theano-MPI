@@ -148,8 +148,8 @@ class EASGD_Worker(MPI_GPU_Process):
                     recorder.start_epoch()
                     epoch_start = True
                     
-                if lastmode='val':
-                    model.reset_iter()
+                if lastmode=='val':
+                    model.reset_iter('train')
                     
                 lastmode='train'
                     
@@ -175,9 +175,9 @@ class EASGD_Worker(MPI_GPU_Process):
                 
             elif mode == 'val':
                 
-                if lastmode='train':
+                if lastmode=='train':
                     
-                    model.reset_iter()
+                    model.reset_iter('val')
                     
                 lastmode='val'
                     
@@ -214,9 +214,9 @@ class EASGD_Worker(MPI_GPU_Process):
                     # This is the test model after training
                     self.copy_to_local()
                 
-                    if lastmode='train':
+                    if lastmode=='train':
                     
-                        model.reset_iter()
+                        model.reset_iter('val')
                     
                     lastmode='val'
                 

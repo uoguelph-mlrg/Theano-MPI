@@ -22,5 +22,5 @@ setup(name='Theano-MPI',
           packages=['theanompi', 'theanompi.lib', 'theanompi.models', 'theanompi.models.data'],
           # package_dir={'theanompi':'theanompi'},
           package_data={'theanompi': [ '*.yaml']}
-          # install_requires=['theano>=0.9.4','libgpuarray>=0.6.0'],
+          # install_requires=['theano>=0.9.0','libgpuarray>=0.6.0'],
           )

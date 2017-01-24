@@ -336,25 +336,24 @@ class AlexNet(object):
         
         if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
     
-    def reset_iter(self, mode=None):
+    def reset_iter(self, mode):
+        
+        '''used at the begininig of another mode'''
         
         if mode=='train':
-            
+
             self.current_t = 0
             self.subb_t=0
             self.last_one_t = False
-            
-        elif mode=='val':
-            
+        else:
+
             self.current_v = 0
             self.subb_v=0
             self.last_one_v = False
-        else:
-            pass
         
         if self.data.para_load:
             
-            self.data.icomm.isend('stop',dest=0,tag=40)
+            self.data.icomm.isend(mode,dest=0,tag=40)
         
     def train_iter(self, count,recorder):
         
