@@ -40,14 +40,19 @@ monitor_grad = False
 
 seed_weight_on_pid = False
 
-class AlexNet(object):
+class AlexNet_sc(object):
 
     def __init__(self, config):
 
         self.verbose = config['verbose']
         self.rank = config['rank'] # will be used in sharding and distinguish rng
         self.size = config['size']
-        
+        self.no_paraload=False
+        try: 
+            self.no_paraload = config['no_paraload']
+        except:
+            pass
+         
         import theano
         theano.config.on_unused_input = 'warn'
         self.name = 'AlexNet'
@@ -131,7 +136,7 @@ class AlexNet(object):
         self.batch_crop_mirror = batch_crop_mirror
         self.input_width = input_width
         
-        if self.data.para_load:
+        if self.data.para_load and not self.no_paraload:
             
             self.data.spawn_load()
             self.data.para_load_init(self.shared_x)
@@ -353,7 +358,7 @@ class AlexNet(object):
         
         if self.data.para_load:
             
-            self.data.icomm.isend('stop',dest=0,tag=40)
+            self.data.icomm.isend(mode,dest=0,tag=40)
         
     def train_iter(self, count,recorder):
         

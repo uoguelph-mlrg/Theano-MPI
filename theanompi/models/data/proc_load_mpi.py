@@ -4,7 +4,7 @@
 # All rights reserved.
 
 '''
-Load data in parallel with train.py
+Load data in parallel for imagenet
 '''
 
 
