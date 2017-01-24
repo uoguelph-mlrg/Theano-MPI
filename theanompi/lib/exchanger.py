@@ -486,7 +486,167 @@ def get_1d_value(ndarray):
         
     return array 
  
+ 
+class GOSGD_Exchanger(object):
+    '''
+    model parameter exchanger in GOSGD
+    
+    '''
+    def __init__(self, comm, Dict_gpucomm, model, alpha, test=False):
         
+        self.comm = comm
+        self.rank=comm.rank
+        self.size=comm.size
+        
+        self.Dict_gpucomm = Dict_gpucomm
+        self.gpucomm=None # to be choosen from Dict_gpucomm when exchanging
+
+        self.param_list = model.params
+        self.alpha=theano.shared(numpy.asarray(alpha, dtype=theano.config.floatX))
+        self.src_alpha=theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
+        
+        self.prepare()
+        
+        self.test=test
+            
+    def prepare(self):
+
+        self.b_param_list = [] # for receiving params from other process
+
+        for param in self.param_list:
+            np_param = param.get_value()
+            b_param = theano.shared(np_param)
+            self.b_param_list.append(b_param)
+            
+        self.merge_fn = self.mk_merge_func()
+            
+            
+    def mk_merge_func(self):
+                 
+        updates = [] # update on the merging side
+    
+        for param, b_param in zip(self.param_list, self.b_param_list):
+             updates.append((self.alpha * param + 
+                             self.src_alpha * b_param)/
+                             (self.alpha+self.src_alpha)
+                             )
+                         
+        updates = zip(self.param_list, updates)
+            
+        return theano.function([], updates=updates)
+        
+        
+    def get_gpucomm_with(self, rank_other):
+        
+        if rank_other<self.rank:
+            key = '%d%d' % (rank_other, self.rank)
+            other_gpurank = 0
+            self_gpurank = 1
+            
+        else:
+            key = '%d%d' % (self.rank, rank_other)
+            other_gpurank = 1
+            self_gpurank = 0
+            
+        gpucomm=self.Dict_gpucomm[key]
+        
+        return gpucomm, other_gpurank, self_gpurank
+        
+        
+    def process_messages(self, recorder=None):
+        
+        if recorder: recorder.start()
+        
+        s = MPI.Status()
+        
+        self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=s)
+        
+        while s!=None:
+            
+            src_rank=s.source
+            
+            request=self.comm.recv(source=src_rank, tag=700)
+            
+            self.gpucomm, src_gpurank, self_gpurank = self.get_gpucomm_with(src_rank)
+            
+            self._merge_params_from(src_gpurank)
+            
+            self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=s)
+            
+        if recorder: recorder.end('comm')
+
+            
+    def _merge_params_from(self, src_gpurank):
+        
+        assert self.gpucomm!=None
+        
+        for b in self.b_param_list:
+            b.container.value.sync()
+            self.gpucomm.broadcast(b.container.value, root=src_gpurank)
+            
+        
+        src_alpha = self.comm.recv(source=src_gpurank, tag=701)
+        
+        self.src_alpha.set_value(src_alpha)
+        
+        self.merge_fn() # merge self.b_param_list with self.param_list
+        
+        self.alpha.set_value(src_alpha+self.alpha.get_value())
+            
+        self.gpucomm=None
+        
+        
+    def push_message(self, dest_rank, recorder=None):
+        
+        '''
+        push message:
+        push params_i and alpha_i to the choosen rank
+        '''
+        if recorder: recorder.start()
+        
+        # 0. blocking request
+        
+        self.comm.send(obj='request' ,dest=dest_rank, tag=700)  
+        
+        # 1. push
+        
+        self.gpucomm, dest_gpurank, self_gpurank = self.get_gpucomm_with(dest_rank)
+        
+        self._push_params(self_gpurank, dest_rank)
+        
+        if recorder: recorder.end('comm')
+        
+
+    def _push_params(self, self_gpurank, dest_rank):
+        
+        assert self.gpucomm!=None
+        
+        for p in self.param_list:
+            p.container.value.sync()
+            self.gpucomm.broadcast(p.container.value, root=self_gpurank)
+        
+        self.comm.send(obj=self.alpha.get_value(), dest=dest_rank,tag=701)
+        
+        self.gpucomm=None
+        
+    def draw(self):
+        
+        '''
+        draw from Bernoulli distribution
+        
+        '''
+        
+        pass
+        
+    
+    def choose(self):
+        
+        '''
+        choose a dest_rank from range(size) to push to
+        
+        '''
+        
+        pass
         
 
 

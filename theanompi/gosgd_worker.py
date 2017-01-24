@@ -13,7 +13,7 @@ class GOSGD_Worker(MPI_GPU_Process):
     def __init__(self, device):
         MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
-        self.get_intranode_comm_matrix() # setup M_gpucomm synchronously
+        self.get_intranode_comm_dict() # setup D_gpucomm synchronously
         
     def build(self, model, config):
         
@@ -31,7 +31,7 @@ class GOSGD_Worker(MPI_GPU_Process):
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import GOSGD_Exchanger
-        self.exchanger = GOSGD_Exchanger(self.comm, self.M_gpucomm, self.exch_strategy, self.sync_type, self.ctx, model)
+        self.exchanger = GOSGD_Exchanger(self.comm, self.D_gpucomm, self.ctx, model)
             
             
     def run(self, model):
@@ -56,13 +56,15 @@ class GOSGD_Worker(MPI_GPU_Process):
     
             for batch_i in range(model.data.n_batch_train):
                 
-                exchanger.process(recorder) # process those params and alpha's from other workers (use comm first and then gpucomm )
+                exchanger.process_messages(recorder) # process those params and alpha's from other workers (use comm first and then gpucomm )
         
                 model.train_iter(batch_i, recorder)
                 
-                if exchanger.draw()=True: # drawing a Success Bernoulli variable
-                    exchanger.choose() # Choosing another worker from M-1 workers
-                    exchanger.push(recorder) # push self.params and self.alpha (use comm first and then use gpucomm)
+                if exchanger.draw()==True: # drawing a Success Bernoulli variable
+                    # Choosing another worker from M-1 workers
+                    dest_rank = exchanger.choose() 
+                    # push self.params and self.alpha
+                    exchanger.push_message(dest_rank, recorder)
         
                 recorder.print_train_info(batch_i*self.size)
             
