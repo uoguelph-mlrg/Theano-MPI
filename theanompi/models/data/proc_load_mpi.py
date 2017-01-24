@@ -17,8 +17,9 @@ if __name__ == '__main__':
     
     
     import theanompi.models.data.imagenet as imagenet
+    from theanompi.models.data import ImageNet_data
     if not imagenet.sc:
-        data=imagenet.ImageNet(False)
+        data=ImageNet_data(False)
         img_mean=data.rawdata[4]
         from theanompi.models.data.utils import crop_and_mirror
     
@@ -95,7 +96,7 @@ if __name__ == '__main__':
             
                 data = crop_and_mirror(data, mode, rand_crop=True,
                                         flag_batch=True, 
-                                        cropsize = 227)
+                                        cropsize = 227) # TODO decide if need to do this here, cropsize needs to be customizable in the model, and not dealt with here
             # data = np.ascontiguousarray(data)
 
             gpu_data.write(data)
