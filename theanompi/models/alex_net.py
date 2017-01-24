@@ -47,6 +47,11 @@ class AlexNet(object):
         self.verbose = config['verbose']
         self.rank = config['rank'] # will be used in sharding and distinguish rng
         self.size = config['size']
+        self.no_paraload=False
+        try: 
+            self.no_paraload = config['no_paraload']
+        except:
+            pass
         
         import theano
         theano.config.on_unused_input = 'warn'
@@ -129,7 +134,7 @@ class AlexNet(object):
         self.batch_crop_mirror = batch_crop_mirror
         self.input_width = input_width
         
-        if self.data.para_load:
+        if self.data.para_load and not self.no_paraload:
             
             self.data.spawn_load()
             self.data.para_load_init(self.shared_x)

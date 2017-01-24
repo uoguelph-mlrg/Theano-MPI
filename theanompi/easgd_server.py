@@ -211,6 +211,7 @@ if __name__ == '__main__':
     config['verbose'] = False #(server.rank==0)
     config['rank'] = 0
     config['size'] = 1
+    config['no_paraload'] = True
     
     import importlib
     mod = importlib.import_module(modelfile)
