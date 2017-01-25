@@ -9,6 +9,14 @@ START_INFO = "Theano-MPI started %d workers for \n 1.updating %s params through 
 
 class Rule(object):
     
+    '''
+    base launcher of various synchronization rules
+    
+    implementation idea from platoon:
+    https://github.com/mila-udem/platoon/blob/master/scripts/platoon-launcher
+ 
+    '''
+    
     def __init__(self):
         
         self.pid = None
@@ -52,13 +60,14 @@ class Rule(object):
 
 class BSP(Rule):
     
-    sync_type = 'avg' # or 'cdd'
-    exch_strategy = 'nccl32' # asa32, asa16, copper, copper16, nccl16, nccl32 or ar
+    '''Bulk Synchronous Parallel
     
-    # Bulk Synchronous Parallel rule
+    When to exchange: workers run iterations synchronously and exchange after each iteration
     
-    # When to exchange: workers run iterations synchronously and exchange after each iteration
+    '''
     
+    sync_type = 'avg' # 'avg' or 'cdd'
+    exch_strategy = 'nccl32' # nccl16 or nccl32
     
     def __init__(self):
         Rule.__init__(self)
@@ -107,6 +116,10 @@ class EASGD(Rule):
     
     '''Elastic Averaging SGD
     
+    When to exchange: workers run iterations asynchronously and exchange only with the server
+    
+    See: 
+        https://arxiv.org/abs/1412.6651
     '''
     def __init__(self):
         Rule.__init__(self)
@@ -170,16 +183,57 @@ class ASGD(Rule):
         pass
 
         
-class GoSGD(Rule):
+class GOSGD(Rule):
     
     '''Gossip SGD
     
-    https://arxiv.org/abs/1611.09726
+    When to exchange: workers run iterations asynchronously and exchange when drawing a success
+    
+    See: 
+        https://arxiv.org/abs/1611.09726
     '''
     
     def __init__(self):
         Rule.__init__(self)
-        pass
+        
+        self.rulename = 'GOSGD'
+        
+    def init(self, devices, modelfile, modelclass):
+        
+        N_WORKERS = len(devices)
+        
+        env = dict(os.environ)
+
+        command = ["mpirun"]
+        
+        for index, device in enumerate(devices):
+            
+            # command += ["--output-filename", "%s" % 'out']
+            command += ["--mca", "mpi_warn_on_fork", "0"]
+            command += ["--mca", "btl_smcuda_use_cuda_ipc", "1"]
+            command += ["--mca", "mpi_common_cuda_cumemcpy_async", "1"]
+            command += ["--mca", "mpi_max_info_val", "10240"]
+            #command += ["-np", str(len(hosts))]
+            #command += ["-H", ','.join(hosts)]
+            #command += ["--map-by", "ppr:4:node"]
+            command += shlex.split("-x " + " -x ".join(env.keys()))
+            command += ["-n", "%d" % 1]
+            command += ["--bind-to", "none"]
+            # command += ["--report-bindings"]
+ 
+            worker_file_dir = os.path.dirname(os.path.realpath(__file__))
+            command += [sys.executable, "-u", worker_file_dir+"/gosgd_worker.py"] 
+        
+            command += [device, modelfile,  modelclass]
+            
+            if index!= N_WORKERS-1:
+                command += [":"]
+                
+        p = subprocess.Popen(command)
+        
+        print(START_INFO % ( N_WORKERS, modelclass, self.rulename))
+        
+        self.pid=p.pid
     
     
         

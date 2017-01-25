@@ -48,7 +48,7 @@ class MPI_GPU_Process(object):
     
     def get_intranode_pair_comm(self, pair):
         
-        '''a gpucomm between the server and a worker'''
+        '''a gpucomm between the two processes in the pair'''
         # pair is the a size-two tuple of the MPI ranks of the server (rank=0) and a worker 
     
         from pygpu import collectives
@@ -69,14 +69,14 @@ class MPI_GPU_Process(object):
         #     _string = comm.recv(source=0)
             
             
-        if rank==0:
+        if rank==pair[0]:
             
-            _string = comm.recv(source=MPI.ANY_SOURCE, tag=220)
+            _string = comm.recv(source=pair[1], tag=220)
             
         else:
 
             _string=string
-            comm.send(_string, dest=0, tag=220)
+            comm.send(_string, dest=pair[0], tag=220)
             
         #print _string,  string,  _string==string
             
@@ -104,6 +104,34 @@ class MPI_GPU_Process(object):
         #print 'on rank %d, pair %s generated' % (self.rank, pair)
         
         return gpucomm
+        
+    def get_intranode_pair_comm_dict(self):
+        
+        '''a dict of gpucomm's between each pair of Gossip workers'''
+    
+        D_gpucomm={}
+
+        comm=self.comm
+        rank=comm.rank
+        size=comm.size
+        
+        S=set(range(size))
+        
+        import itertools
+        
+        subs = set(itertools.combinations(S,2))
+        
+        for sub in subs:
+            
+            if rank in sub:
+                
+                key='%d%d' % (sub[0],sub[1])
+                
+                # only add those pairs with self rank
+                D_gpucomm[key] = self.get_intranode_pair_comm(sub)
+                
+        
+        return D_gpucomm
         
     def init_device(self):
         import os

@@ -9,6 +9,9 @@ class EASGD_Worker(MPI_GPU_Process):
     '''
     An implementation of a worker process in the Elastic Averaging SGD rule
     https://arxiv.org/abs/1412.6651
+    
+    implementation idea from platoon:
+    https://github.com/mila-udem/platoon/tree/master/platoon/channel
     '''
     
     def __init__(self, device):

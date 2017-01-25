@@ -13,6 +13,8 @@ class BSP_Worker(MPI_GPU_Process):
         
         self.exch_strategy = exch_strategy 
         
+        self.verbose = (self.rank==0)
+        
     def build(self, model, config):
         
         from theanompi.lib.helper_funcs import check_model
@@ -27,7 +29,6 @@ class BSP_Worker(MPI_GPU_Process):
         # construct model train function based on sync rule
         model.compile_iter_fns()
         
-        self.verbose = (self.rank==0)
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=model.name, verbose=self.verbose)
         

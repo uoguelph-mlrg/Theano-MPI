@@ -13,7 +13,9 @@ class GOSGD_Worker(MPI_GPU_Process):
     def __init__(self, device):
         MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
-        self.get_intranode_comm_dict() # setup D_gpucomm synchronously
+        self.D_gpucomm = self.get_intranode_pair_comm_dict() # setup D_gpucomm synchronously
+        
+        self.verbose = (self.rank==0)
         
     def build(self, model, config):
         
@@ -25,7 +27,6 @@ class GOSGD_Worker(MPI_GPU_Process):
         # construct model train function based on sync rule
         model.compile_iter_fns()
         
-        self.verbose = (self.rank==0)
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=model.name, verbose=self.verbose)
         
@@ -101,10 +102,8 @@ if __name__ == '__main__':
     
     import sys
     device = sys.argv[1]
-    sync_type = sys.argv[2]
-    exch_strategy = sys.argv[3]
-    modelfile = sys.argv[4]
-    modelclass = sys.argv[5]
+    modelfile = sys.argv[2]
+    modelclass = sys.argv[3]
     
     worker = GOSGD_Worker(device)
     

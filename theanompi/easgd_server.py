@@ -8,6 +8,14 @@ server_alpha = 0.5
 
 class EASGD_Server(MPI_GPU_Process):
     
+    '''
+    An implementation of the server process in the Elastic Averaging SGD rule
+    https://arxiv.org/abs/1412.6651
+    
+    implementation idea from platoon:
+    https://github.com/mila-udem/platoon/tree/master/platoon/channel
+    '''
+    
     def __init__(self, device):
         MPI_GPU_Process.__init__(self, device) # setup ctx, comm
         
