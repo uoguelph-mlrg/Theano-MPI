@@ -10,7 +10,7 @@ START_INFO = "Theano-MPI started %d workers for \n 1.updating %s params through 
 class Rule(object):
     
     '''
-    base launcher of various synchronization rules
+    base launcher of various synchronization rules and communication patterns
     
     implementation idea from platoon:
     https://github.com/mila-udem/platoon/blob/master/scripts/platoon-launcher

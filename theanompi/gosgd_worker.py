@@ -6,7 +6,9 @@ class GOSGD_Worker(MPI_GPU_Process):
     
     '''
     An implementation of a worker process in the Gossip SGD rule
-    https://arxiv.org/abs/1611.09726
+    
+    See: 
+        https://arxiv.org/abs/1611.09726
 
     '''
     
@@ -32,7 +34,7 @@ class GOSGD_Worker(MPI_GPU_Process):
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import GOSGD_Exchanger
-        self.exchanger = GOSGD_Exchanger(self.comm, self.D_gpucomm, self.ctx, model)
+        self.exchanger = GOSGD_Exchanger(self.comm, self.D_gpucomm, model, p=0.01)
             
             
     def run(self, model):
@@ -67,7 +69,7 @@ class GOSGD_Worker(MPI_GPU_Process):
                     # push self.params and self.alpha
                     exchanger.push_message(dest_rank, recorder)
         
-                recorder.print_train_info(batch_i*self.size)
+                recorder.print_train_info(batch_i)
             
             model.reset_iter('train')
         
@@ -108,7 +110,7 @@ if __name__ == '__main__':
     worker = GOSGD_Worker(device)
     
     config={}
-    config['verbose'] = True
+    config['verbose'] = worker.verbose
     config['rank'] = 0
     config['size'] = 1
     

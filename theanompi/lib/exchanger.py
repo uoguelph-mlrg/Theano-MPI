@@ -219,6 +219,9 @@ class EASGD_Exchanger(object):
     '''
     model parameter exchanger during EASGD weight exchanging
     
+    See: 
+        https://arxiv.org/abs/1412.6651
+    
     '''
     def __init__(self, alpha, param_list, etype, test=False):
         
@@ -491,8 +494,11 @@ class GOSGD_Exchanger(object):
     '''
     model parameter exchanger in GOSGD
     
+    See: 
+        https://arxiv.org/abs/1611.09726
+    
     '''
-    def __init__(self, comm, Dict_gpucomm, model, alpha, test=False):
+    def __init__(self, comm, Dict_gpucomm, model, p, test=False):
         
         self.comm = comm
         self.rank=comm.rank
@@ -502,8 +508,9 @@ class GOSGD_Exchanger(object):
         self.gpucomm=None # to be choosen from Dict_gpucomm when exchanging
 
         self.param_list = model.params
-        self.alpha=theano.shared(numpy.asarray(alpha, dtype=theano.config.floatX))
-        self.src_alpha=theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
+        self.alpha=theano.shared(np.asarray(1.0/self.size, dtype=theano.config.floatX))
+        self.src_alpha=theano.shared(np.asarray(0., dtype=theano.config.floatX))
+        self.p=p
         
         self.prepare()
         
@@ -543,10 +550,12 @@ class GOSGD_Exchanger(object):
             other_gpurank = 0
             self_gpurank = 1
             
-        else:
+        elif rank_other>self.rank:
             key = '%d%d' % (self.rank, rank_other)
             other_gpurank = 1
             self_gpurank = 0
+        else:
+            raise RuntimeError("self.rank should be different from rank_other")
             
         gpucomm=self.Dict_gpucomm[key]
         
@@ -557,35 +566,46 @@ class GOSGD_Exchanger(object):
         
         if recorder: recorder.start()
         
-        s = MPI.Status()
+        status = MPI.Status()
         
-        self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=s)
+        s = self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=status)
         
-        while s!=None:
+        # if self.test: print '%d probed, got %s' % (self.rank,s)
+        
+        while s:
             
-            src_rank=s.source
+            src_rank=status.source
             
-            request=self.comm.recv(source=src_rank, tag=700)
+            print '%d receiving from %d' % (self.rank, src_rank)
+            
+            request=self.comm.recv(source=src_rank, tag=700, status=status)
+            
+            print '%d getting gpucomm pair with %d' % (self.rank, src_rank)
             
             self.gpucomm, src_gpurank, self_gpurank = self.get_gpucomm_with(src_rank)
             
-            self._merge_params_from(src_gpurank)
+            print '%d merging with %d' % (self.rank, src_rank)
             
-            self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=s)
+            self._merge_params_from(src_gpurank, src_rank)
+            
+            print '%d probing again' % self.rank
+            
+            s = self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=status)
+            
+            if self.test: print '%d probed again, got %s' % (self.rank,s)
             
         if recorder: recorder.end('comm')
 
             
-    def _merge_params_from(self, src_gpurank):
+    def _merge_params_from(self, src_gpurank, src_rank):
         
         assert self.gpucomm!=None
         
         for b in self.b_param_list:
             b.container.value.sync()
             self.gpucomm.broadcast(b.container.value, root=src_gpurank)
-            
         
-        src_alpha = self.comm.recv(source=src_gpurank, tag=701)
+        src_alpha = self.comm.recv(source=src_rank, tag=701)
         
         self.src_alpha.set_value(src_alpha)
         
@@ -606,6 +626,8 @@ class GOSGD_Exchanger(object):
         
         # 0. blocking request
         
+        if self.test: print '%d pushing msg to %d'  % (self.rank,dest_rank)
+        
         self.comm.send(obj='request' ,dest=dest_rank, tag=700)  
         
         # 1. push
@@ -613,6 +635,8 @@ class GOSGD_Exchanger(object):
         self.gpucomm, dest_gpurank, self_gpurank = self.get_gpucomm_with(dest_rank)
         
         self._push_params(self_gpurank, dest_rank)
+        
+        if self.test: print '%d msg pushed'  % self.rank
         
         if recorder: recorder.end('comm')
         
@@ -625,7 +649,10 @@ class GOSGD_Exchanger(object):
             p.container.value.sync()
             self.gpucomm.broadcast(p.container.value, root=self_gpurank)
         
-        self.comm.send(obj=self.alpha.get_value(), dest=dest_rank,tag=701)
+        alpha_new = self.alpha.get_value() / np.asarray(2.0, dtype=theano.config.floatX)
+        self.alpha.set_value(alpha_new)
+        
+        self.comm.send(obj=alpha_new, dest=dest_rank,tag=701)
         
         self.gpucomm=None
         
@@ -635,8 +662,14 @@ class GOSGD_Exchanger(object):
         draw from Bernoulli distribution
         
         '''
+        # Bernoulli distribution is a special case of binomial distribution with n=1
+        a_draw = np.random.binomial(n=1, p=self.p, size=None)
         
-        pass
+        success = (a_draw==1)
+        
+        # if self.test: print '%d draw=%s' % (self.rank, success)
+        
+        return success
         
     
     def choose(self):
@@ -646,7 +679,15 @@ class GOSGD_Exchanger(object):
         
         '''
         
-        pass
+        dest_rank = self.rank
+        
+        while dest_rank==self.rank:
+            
+            dest_rank = np.random.randint(low=0,high=self.size)
+            
+        # if self.test: print '%d choose=%d' % (self.rank, dest_rank)
+        
+        return dest_rank
         
 
 
