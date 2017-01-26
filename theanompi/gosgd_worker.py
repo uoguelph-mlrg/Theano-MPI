@@ -46,47 +46,58 @@ class GOSGD_Worker(MPI_GPU_Process):
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
+        epoch=0
+        import numpy as np
+        count_arr=np.zeros(self.size)
         
         from theanompi.lib.helper_funcs import save_model
 
-        for epoch in range(model.n_epochs):
+        while epoch < model.n_epochs:
             
             model.epoch=epoch
             
             recorder.start_epoch()
             
             # train
+            
+            print model.data.n_batch_train
     
             for batch_i in range(model.data.n_batch_train):
-                
-                exchanger.process_messages(recorder) # process those params and alpha's from other workers (use comm first and then gpucomm )
         
                 model.train_iter(batch_i, recorder)
+                count_arr[self.rank]=count_arr[self.rank]+1
+                #print '%d batch %s' % (self.rank, count_arr)
+                count_bk=count_arr[self.rank]
+                
+                # process merge params and alpha's from other workers
+                exchanger.process_messages(count_arr, recorder)
+                count_arr[self.rank] = count_bk
                 
                 if exchanger.draw()==True: # drawing a Success Bernoulli variable
                     # Choosing another worker from M-1 workers
                     dest_rank = exchanger.choose() 
                     # push self.params and self.alpha
-                    exchanger.push_message(dest_rank, recorder)
+                    exchanger.push_message(dest_rank, count_arr, recorder)
+                    count_arr[self.rank] = count_bk
         
                 recorder.print_train_info(batch_i)
             
             model.reset_iter('train')
+            
+            # get_epoch  
+            
+            epoch=sum(count_arr)/model.data.n_batch_train
         
             # val
-            
-            self.comm.Barrier()
     
             for batch_j in range(model.data.n_batch_val):
         
-                model.val_iter(batch_i, recorder)
+                model.val_iter(sum(count_arr), recorder)
 
                 
             model.reset_iter('val')
-            
-            #recorder.gather_val_info()
         
-            recorder.print_val_info(batch_i)
+            recorder.print_val_info(sum(count_arr))
             model.current_info = recorder.get_latest_val_info()
             
             if self.rank==0: recorder.save(batch_i, model.shared_lr.get_value())
@@ -95,7 +106,7 @@ class GOSGD_Worker(MPI_GPU_Process):
             
             model.adjust_hyperp(epoch)
             
-            recorder.end_epoch(batch_i, epoch)
+            recorder.end_epoch(sum(count_arr), epoch)
             
         model.cleanup()
 

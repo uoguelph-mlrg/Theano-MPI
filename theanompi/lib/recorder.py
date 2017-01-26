@@ -131,7 +131,7 @@ class Recorder(object):
                                      self.val_info['error_top5'])
                                      ).flatten().tolist()
 
-    def print_val_info(self, count):
+    def print_val_info(self, count, comment=None):
     
         cost = sum(self.val_info['cost'])/len(self.val_info['cost'])
         error = sum(self.val_info['error'])/len(self.val_info['error'])
@@ -141,6 +141,8 @@ class Recorder(object):
         self.info_dict['val_info'].append([count, cost, error, error_top5])
     
         if self.verbose:
+            if comment !=None :
+                print comment
             print '\nvalidation cost:%.4f' % cost
             print 'validation error:%.4f' % error
             print 'validation top_5_error:%.4f' % error_top5
