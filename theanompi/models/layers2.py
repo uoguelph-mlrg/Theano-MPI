@@ -443,6 +443,11 @@ class ConvPoolLRN(Layer):
                  
         if W == None and filter_shape == None:
             raise AttributeError('need to specify at least one of W and filtershape')
+        elif W!=None and b!=None:
+            assert group ==1
+            filter_shape = W.val.shape.get_value()
+            self.W=W
+            self.b = Constant(self.filter_shape[3], val=b)
         
         self.get_input_shape(input,input_shape)
         
@@ -464,8 +469,10 @@ class ConvPoolLRN(Layer):
         
         if group == 1:
             
-            self.W = Normal(self.filter_shape, mean=0, std=0.01)
-            self.b = Constant(self.filter_shape[3], val=b)
+            if W == None and b==None:
+            
+                self.W = Normal(self.filter_shape, mean=0, std=0.01)
+                self.b = Constant(self.filter_shape[3], val=b)
         
         else:
             
