@@ -1,5 +1,5 @@
 '''
-Example for training on 2 worker GPUs by the rule of Gossip SGD
+Example for training on 3 worker GPUs by the rule of Gossip SGD
 '''
 from theanompi import GOSGD
 
