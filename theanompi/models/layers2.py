@@ -348,6 +348,10 @@ class Crop(Layer):
 
 class Conv(Layer):
     
+    '''
+    expect input image and filter in the shape of 'bc01'
+    '''
+    
     def __init__(self, input, convstride, padsize, 
                  b, W = None, filter_shape = None, 
                  lib_conv='cudnn', printinfo=True, 
@@ -445,9 +449,9 @@ class ConvPoolLRN(Layer):
             raise AttributeError('need to specify at least one of W and filtershape')
         elif W!=None and b!=None:
             assert group ==1
-            filter_shape = W.val.shape.get_value()
+            filter_shape = W.val.shape.eval()
             self.W=W
-            self.b = Constant(self.filter_shape[3], val=b)
+            self.b = Constant(filter_shape[3], val=b)
         
         self.get_input_shape(input,input_shape)
         
@@ -852,7 +856,7 @@ class FC(Layer):
 
 class Softmax(Layer):
 
-    def __init__(self, input, n_out, W, b,
+    def __init__(self, input, n_out, W=None, b=None,
                  printinfo=True, input_shape=None):
         
         self.get_input_shape(input,input_shape)
