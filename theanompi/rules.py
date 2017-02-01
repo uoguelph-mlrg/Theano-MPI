@@ -94,7 +94,7 @@ class BSP(Rule):
             #command += ["--map-by", "ppr:4:node"]
             command += shlex.split("-x " + " -x ".join(env.keys()))
             command += ["-n", "%d" % 1]
-            command += ["--bind-to", "none"]
+            #command += ["--bind-to", "none"]
             # command += ["--report-bindings"]
  
             worker_file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -218,7 +218,7 @@ class GOSGD(Rule):
             #command += ["--map-by", "ppr:4:node"]
             command += shlex.split("-x " + " -x ".join(env.keys()))
             command += ["-n", "%d" % 1]
-            command += ["--bind-to", "none"]
+            #command += ["--bind-to", "none"]
             # command += ["--report-bindings"]
  
             worker_file_dir = os.path.dirname(os.path.realpath(__file__))
