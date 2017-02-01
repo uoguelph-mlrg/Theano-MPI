@@ -50,19 +50,19 @@ class ImageNet_data(object):
         ext_data='.hkl'
         ext_label='.npy'
         
-        if file_batch_size==128:
-            
-            self.train_folder = 'train_hkl_b256_b_128'
-            self.val_folder = 'val_hkl_b256_b_128'
-            
-        elif file_batch_size==256:
-            
-            self.train_folder = 'train_hkl_b256_b_256'
-            self.val_folder = 'val_hkl_b256_b_256'
-            
-        else:
-            
-            raise ValueError('Wrong file_batch_size')
+        # if file_batch_size==128:
+        #
+        #     self.train_folder = 'train_hkl_b256_b_128'
+        #     self.val_folder = 'val_hkl_b256_b_128'
+        #
+        # elif file_batch_size==256:
+        #
+        #     self.train_folder = 'train_hkl_b256_b_256'
+        #     self.val_folder = 'val_hkl_b256_b_256'
+        #
+        # else:
+        #
+        #     raise ValueError('Wrong file_batch_size')
         
          
         train_folder_path = dir_head + self.train_folder
@@ -235,7 +235,8 @@ class ImageNet_data(object):
                 info = mpiinfo, maxprocs = num_spawn)
                 
                 
-    def para_load_init(self, shared_x):
+    def para_load_init(self, shared_x, input_width, input_height, 
+                                    rand_crop, batch_crop_mirror):
         
         # 0. send config dict (can't carry any special objects) to loading process
         if not self.para_load:
@@ -253,6 +254,12 @@ class ImageNet_data(object):
 
         config['gpuid'] = ctx.dev
         config['verbose'] = self.verbose
+        config['input_width'] = input_width
+        config['input_height'] = input_height
+        config['rand_crop'] = rand_crop
+        config['batch_crop_mirror'] = batch_crop_mirror
+        config['img_mean'] = self.rawdata[4]
+        
         import os
         _sock_data = ((sock_data + int(os.getpid())) % 64511)+1024
         config['sock_data'] = _sock_data

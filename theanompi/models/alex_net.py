@@ -137,7 +137,8 @@ class AlexNet(object):
         if self.data.para_load and not self.no_paraload:
             
             self.data.spawn_load()
-            self.data.para_load_init(self.shared_x)
+            self.data.para_load_init(self.shared_x, input_width, input_height, 
+                                    rand_crop, batch_crop_mirror)
         
     
     def build_model(self):

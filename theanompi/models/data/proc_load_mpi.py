@@ -15,13 +15,7 @@ import pygpu
 
 if __name__ == '__main__':
     
-    
-    import theanompi.models.data.imagenet as imagenet
-    from theanompi.models.data import ImageNet_data
-    if not imagenet.sc:
-        data=ImageNet_data(False)
-        img_mean=data.rawdata[4]
-        from theanompi.models.data.utils import crop_and_mirror
+    from theanompi.models.data.utils import crop_and_mirror
     
     from mpi4py import MPI
 
@@ -33,6 +27,12 @@ if __name__ == '__main__':
     gpuid = config['gpuid']
     verbose = config['verbose']
     sock_data = config['sock_data']
+    
+    input_width  =    config['input_width']      
+    input_height  =    config['input_height']     
+    rand_crop  =    config['rand_crop']        
+    batch_crop_mirror  =    config['batch_crop_mirror']
+    img_mean = config['img_mean']
     
 
     ctx = pygpu.init(gpuid)
@@ -88,18 +88,17 @@ if __name__ == '__main__':
         
         while True:
 
-            data = hkl.load(str(filename)).astype('float32')
+            arr = hkl.load(str(filename)).astype('float32')
             
-            if not imagenet.sc: 
-                
-                data = data-img_mean
+            arr = arr - img_mean
             
-                data = crop_and_mirror(data, mode, rand_crop=True,
-                                        flag_batch=True, 
-                                        cropsize = 227) # TODO decide if need to do this here, cropsize needs to be customizable in the model, and not dealt with here
+            arr = crop_and_mirror(arr, mode, 
+                                rand_crop, 
+                                batch_crop_mirror, 
+                                input_width)
             # data = np.ascontiguousarray(data)
 
-            gpu_data.write(data)
+            gpu_data.write(arr)
 
             # 4. wait for computation on last minibatch to
             # finish and get the next filename
