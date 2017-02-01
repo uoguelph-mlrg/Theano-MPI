@@ -676,6 +676,75 @@ class ConvPoolLRN(Layer):
         if printinfo: self.print_shape()                           
                                                          
 
+
+class ConvPoolLRN_bc01(Layer):
+
+    def __init__(self, input, convstride, padsize, poolsize, poolstride,
+                 b, W = None, filter_shape = None, 
+                 poolpad=0, mode = 'max', 
+                 lrn=False, lib_conv='cudnn', printinfo=True,
+                 input_shape=None, output_shape=None
+                 ):
+                 
+        if W == None and filter_shape == None:
+            raise AttributeError('need to specify at least one of W and filtershape')
+        
+        self.get_input_shape(input,input_shape)
+         
+        self.filter_shape = filter_shape
+        self.convstride = convstride
+        self.padsize = padsize
+        self.lib_conv = lib_conv
+
+        if W:
+            self.W = W #Weight(self.filter_shape,)
+        else:
+            self.W = Normal(filter_shape, mean = 0.0, std=0.1)
+            
+        self.b = b #Weight(self.filter_shape[3])
+
+        self.channel = self.input_shape[1]
+        self.lrn = lrn
+
+        conv_out = dnn.dnn_conv(img=self.input,
+                                kerns=self.W.val,
+                                subsample=(convstride, convstride),
+                                border_mode=padsize,
+                                )
+        conv_out = conv_out + self.b.val.dimshuffle('x', 0, 'x', 'x')
+
+        # ReLu
+        self.output = T.maximum(conv_out, 0)
+
+        # Pool
+        self.poolsize = poolsize
+        self.poolstride = poolstride
+        self.poolpad = poolpad
+
+        if self.poolsize != 1:
+            self.output = dnn.dnn_pool(self.output,
+                                       ws=(poolsize, poolsize),
+                                       stride=(poolstride, poolstride),
+                                       mode='max', pad=(poolpad, poolpad))
+
+        # LRN
+        if self.lrn:
+            self.lrn_func = CrossChannelNormalization()
+            # lrn_input = gpu_contiguous(self.output)
+            self.output = self.lrn_func(self.output)
+
+        self.params = [self.W.val, self.b.val]
+        self.weight_type = ['W', 'b']
+
+        if output_shape:
+            self.output_shape = output_shape 
+        else:
+            self.output_shape = self.get_output_shape(self.input_shape)
+        
+        self.name = 'ConvPoolLRN(%s)' % lib_conv
+        if printinfo: self.print_shape()
+
+
 class BatchNormal(object): #TODO
 
     def __init__(self):

@@ -38,70 +38,9 @@ monitor_grad = False
 
 seed_weight_on_pid = False
 
-from theanompi.models.layers2 import (Normal, Constant, Layer, Conv, Pool, LRN, 
-                                      ConvPoolLRN, Dimshuffle, Flatten,
+from layers2 import (Normal, Constant, Layer, Conv, Pool, LRN, 
+                                      ConvPoolLRN_bc01, Dimshuffle, Flatten,
                                       Dropout, FC, Softmax, get_params, get_layers, count_params)
-# class ConvPool_LRN(object):
-#
-#     def __init__(self, input, image_shape, filter_shape, convstride, padsize,
-#                  poolsize, poolstride,poolpad, W, b, lrn=False,
-#                  lib_conv='cudnn',
-#                  ):
-#         self.filter_size = filter_shape
-#         self.convstride = convstride
-#         self.padsize = padsize
-#
-#
-#         self.channel = image_shape[0]
-#         self.lrn = lrn
-#         self.lib_conv = lib_conv
-#
-#         self.filter_shape = np.asarray(filter_shape)
-#         self.image_shape = np.asarray(image_shape)
-#
-#
-#         self.W = W#Weight(self.filter_shape)
-#         self.b = b#Weight(self.filter_shape[3])#, bias_init, std=0)
-#
-#         input_shuffled = input.dimshuffle(3, 0, 1, 2)  # c01b to bc01
-#             # in01out to outin01
-#             # print image_shape_shuffled
-#             # print filter_shape_shuffled
-#
-#         W_shuffled = self.W.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
-#         conv_out = dnn.dnn_conv(img=input_shuffled,
-#                                 kerns=W_shuffled,
-#                                 subsample=(convstride, convstride),
-#                                 border_mode=padsize,
-#                                 )
-#         conv_out = conv_out + self.b.val.dimshuffle('x', 0, 'x', 'x')
-#
-#         # ReLu
-#         self.output = T.maximum(conv_out, 0)
-#
-#         # Pool
-#         self.poolsize = poolsize
-#         self.poolstride = poolstride
-#         self.poolpad = poolpad
-#
-#         if self.poolsize != 1:
-#             self.output = dnn.dnn_pool(self.output,
-#                                        ws=(poolsize, poolsize),
-#                                        stride=(poolstride, poolstride),
-#                                        mode='max', pad=(poolpad, poolpad))
-#
-#         self.output = self.output.dimshuffle(1, 2, 3, 0)  # bc01 to c01b
-#
-#         # LRN
-#         if self.lrn:
-#             self.lrn_func = CrossChannelNormalization()
-#             # lrn_input = gpu_contiguous(self.output)
-#             self.output = self.lrn_func(self.output)
-#
-#         self.params = [self.W.val, self.b.val]
-#         self.weight_type = ['W', 'b']
-#         print "conv ({}) layer with shape_in: {}".format(lib_conv,
-#                                                          str(image_shape))
                                                                  
             
 class Incept(Layer):
@@ -264,7 +203,7 @@ class Aux_tower(Layer):
         # input shape = (14x14x512or528)
         pool =           Pool(input=input, 
                               poolsize=5, 
-                              poolstride=2, 
+                              poolstride=3, 
                               poolpad=0,
                               mode = 'average',
                               printinfo=self.verbose
@@ -447,9 +386,10 @@ class GoogLeNet(object):
         self.input_width = input_width
         
         if self.data.para_load and not self.no_paraload:
-            
+
             self.data.spawn_load()
-            self.data.para_load_init(self.shared_x)
+            self.data.para_load_init(self.shared_x, input_width, input_height,
+                                    rand_crop, batch_crop_mirror)
             
         
     def build_model(self):
@@ -466,30 +406,31 @@ class GoogLeNet(object):
         self.y = T.lvector('y')
         self.lr = T.scalar('lr')    
         
-
-        conv_7x7 = ConvPoolLRN(input=self.x,
+        input_shuffle = Dimshuffle(self.x,
                                 input_shape=(self.channels,
                                              self.input_width,
                                              self.input_height,
                                              self.batch_size),
-                                convstride=2, padsize=4,
+                                new_axis_order=(3,0,1,2), 
+                                printinfo=True,
+        
+                                )
+        
+        conv_7x7 = ConvPoolLRN_bc01(input=input_shuffle,
+                                
+                                convstride=2, padsize=3,
                                 poolsize=3, poolstride=2, poolpad=1,
-                                W = Normal((3, 7, 7, 64), mean = 0.0, std=0.1),
-                                b = 0.2, 
+                                W = Normal((64, 3, 7, 7), mean = 0.0, std=0.1),
+                                b = Constant((64,), val = 0.2),
                                 lrn=True,
-                                group=1,
                                 lib_conv='cudnn',
                                 printinfo=self.verbose
                                 )                 
         # output shape = (112x112x64)
         # output shape = (56x56x64)
         
-        shuffle =    Dimshuffle(input=conv_7x7,
-                                new_axis_order=(3,0,1,2), # c01b -> bc01
-                                printinfo=self.verbose
-                                )
                                      
-        conv_r3x3  =        Conv(input=shuffle,
+        conv_r3x3  =        Conv(input=conv_7x7,
                                 #image_shape=(batch_size, 64,56,56),
                                 convstride=1, padsize=0,
                                 W = Normal((64, 64, 1, 1),mean = 0.0,std=0.1),
@@ -499,34 +440,23 @@ class GoogLeNet(object):
                                 )                                           
  
         # output shape = (56x56x64)
-        
-        shuffle =    Dimshuffle(input=conv_r3x3,
-                                new_axis_order=(1,2,3,0), # bc01 -> c01b
-                                printinfo=self.verbose
-                                )
                                            
-        conv_3x3 = ConvPoolLRN(input=shuffle,
-                                #image_shape=(64,56,56, batch_size),
-                                convstride=1, padsize=2,
+        conv_3x3 = ConvPoolLRN_bc01(input=conv_r3x3,
+                                #image_shape=(batch_size, 64,56,56),
+                                convstride=1, padsize=1,
                                 poolsize=3, poolstride=2, poolpad=1,
-                                W = Normal((64, 3, 3, 192),mean = 0.0,std=0.03),
-                                b = 0.2, 
+                                W = Normal((192, 64, 3, 3),mean = 0.0,std=0.03),
+                                b = Constant((192,), val = 0.2), 
                                 lrn=True,
-                                group=1,
                                 lib_conv='cudnn',
                                 printinfo=self.verbose
                                 )                                           
 
         # output shape = (56x56x192) 
         # output shape = (28x28x192)
-        
-        shuffle =    Dimshuffle(input=conv_3x3,
-                                new_axis_order=(3,0,1,2), # c01b -> bc01
-                                printinfo=self.verbose
-                                )
                      
 
-        incep3a =         Incept(input=shuffle,
+        incep3a =         Incept(input=conv_3x3,
                                 #input_shape = (batch_size, 192,28,28)
                                 n1x1=64, nr3x3=96, n3x3=128, 
                                 nr5x5=16, n5x5=32, npj=32,
@@ -660,15 +590,9 @@ class GoogLeNet(object):
                                mode = 'average' ,
                                printinfo = self.verbose)
         # output shape = (1x1x1024)
-        
-        
 
-        shuffle  =  Dimshuffle(input=poolx,
-                               new_axis_order=(3, 0, 1, 2),
-                               printinfo=self.verbose
-                               )
                                
-        l_flatten =    Flatten(input = shuffle,
+        l_flatten =    Flatten(input = poolx,
                                axis = 2,
                                printinfo=self.verbose
                                )
@@ -771,21 +695,28 @@ class GoogLeNet(object):
             
     def reset_iter(self, mode):
         
+        '''used at the begininig of another mode'''
+        
         if mode=='train':
-            
+
             self.current_t = 0
             self.subb_t=0
             self.last_one_t = False
         else:
-            
+
             self.current_v = 0
             self.subb_v=0
             self.last_one_v = False
-            
         
-    def train_iter(self,count,recorder):
+        if self.data.para_load:
+            
+            self.data.icomm.isend(mode,dest=0,tag=40)
+        
+    def train_iter(self, count,recorder):
         
         '''use the train_iter_fn compiled'''
+        '''use parallel loading for large or remote data'''
+
             
         if self.current_t==0: 
             self.data.shuffled=False
@@ -793,27 +724,56 @@ class GoogLeNet(object):
         
         img= self.data.train_img
         labels = self.data.train_labels
+
+        mode = 'train'
+        function = self.train_iter_fn
             
-        img_mean = self.data.rawdata[4]
-        mode='train'
-        function=self.train_iter_fn
-         
+            
         if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
         
             recorder.start()
-        
-            arr = img[self.current_t] #- img_mean
             
-            arr = np.rollaxis(arr,0,4)
-                                    
-            self.shared_x.set_value(arr)
-            self.shared_y.set_value(labels[self.current_t])
+            # parallel loading of shared_x
+            if self.data.para_load:
+                
+                icomm = self.data.icomm
+                
+                if self.current_t == 0:
+                    
+                    # 3.0 give mode signal to adjust loading mode between train and val
+                    icomm.isend('train',dest=0,tag=40)
+                    # 3.1 give load signal to load the very first file
+                    icomm.isend(img[self.current_t],dest=0,tag=40)
+                    
+                    
+                if self.current_t == self.data.n_batch_train - 1:
+                    self.last_one_t = True
+                    # Only to get the last copy_finished signal from load
+                    icomm.isend(img[self.current_t],dest=0,tag=40) 
+                else:
+                    self.last_one_t = False
+                    # 4. give preload signal to load next file
+                    icomm.isend(img[self.current_t+1],dest=0,tag=40)
+                    
+                # 5. wait for the batch to be loaded into shared_x
+                msg = icomm.recv(source=0,tag=55) #
+                assert msg == 'copy_finished'
+                    
             
-            
-            if self.current_t == self.data.n_batch_train - 1:
-                self.last_one_t = True
             else:
-                self.last_one_t = False
+            
+                arr = hkl.load(img[self.current_t]) #- img_mean
+             
+                self.shared_x.set_value(arr)
+                
+                if self.current_t == self.data.n_batch_train - 1:
+                    self.last_one_t = True
+                else:
+                    self.last_one_t = False
+                    
+                
+            # direct loading of shared_y
+            self.shared_y.set_value(labels[self.current_t])
                 
         
             recorder.end('wait')
@@ -823,8 +783,6 @@ class GoogLeNet(object):
         cost,error= function(self.subb_t)
         
         if self.verbose: 
-            #print count+self.config['rank'], cost, error
-            #if count+self.config['rank']>45: exit(0)
             if self.monitor_grad: 
                 print np.array(self.get_norm(self.subb_t))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
@@ -845,26 +803,62 @@ class GoogLeNet(object):
         else:
             self.subb_t+=1
         
-    def val_iter(self, count, recorder):
+    def val_iter(self, count,recorder):
         
         '''use the val_iter_fn compiled'''
-            
+        
         if self.current_v==0: self.data.shard_data(file_batch_size, self.rank, self.size)
-            
+        
         img= self.data.val_img_shard
         labels = self.data.val_labels_shard
-            
-        img_mean = self.data.rawdata[4]
+        
         mode='val'
         function=self.val_iter_fn
         
         if self.subb_v == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
         
-            arr = img[self.current_v] #- img_mean
+            # parallel loading of shared_x
+            if self.data.para_load:
+                
+                icomm = self.data.icomm
+            
+                if self.current_v == 0:
+                
+                    # 3.0 give mode signal to adjust loading mode between train and val
+                    icomm.isend('val',dest=0,tag=40)
+                    # 3.1 give load signal to load the very first file
+                    icomm.isend(img[self.current_v],dest=0,tag=40)
+                
+                
+                if self.current_v == self.data.n_batch_val - 1:
+                    
+                    self.last_one_v = True
+                    # Only to get the last copy_finished signal from load
+                    icomm.isend(img[self.current_v],dest=0,tag=40) 
+                    
+                else:
+                    
+                    self.last_one_v = False
+                    # 4. give preload signal to load next file
+                    icomm.isend(img[self.current_v+1],dest=0,tag=40)
+                    
+                
+                # 5. wait for the batch to be loaded into shared_x
+                msg = icomm.recv(source=0,tag=55) #
+                assert msg == 'copy_finished'
+                
         
-            arr = np.rollaxis(arr,0,4)
+            else:
+        
+    
+                arr = hkl.load(img[self.current_v]) #- img_mean
+        
+                # arr = np.rollaxis(arr,0,4)
                                 
-            self.shared_x.set_value(arr)
+                self.shared_x.set_value(arr)
+                
+                
+            # direct loading of shared_y    
             self.shared_y.set_value(labels[self.current_v])
         
         
