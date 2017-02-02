@@ -159,7 +159,10 @@ class EASGD_Worker(MPI_GPU_Process):
                     
                 for i in range(exchange_freq):
                     
-                    model.train_iter(batch_i, recorder)
+                    for subb_i in range(model.n_subb):
+                    
+                        model.train_iter(batch_i, recorder)
+                    
                     batch_i+=1
                     recorder.print_train_info(batch_i)
                     
@@ -188,8 +191,10 @@ class EASGD_Worker(MPI_GPU_Process):
                 self.copy_to_local()
                 
                 for batch_j in range(model.data.n_batch_val):
-        
-                    model.val_iter(uepoch, recorder )
+                    
+                    for subb_i in range(model.n_subb):
+                        
+                        model.val_iter(uepoch, recorder )
                 
                 recorder.print_val_info(batch_i)
                 

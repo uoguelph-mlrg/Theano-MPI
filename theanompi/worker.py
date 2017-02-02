@@ -46,6 +46,7 @@ class BSP_Worker(MPI_GPU_Process):
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
+        count=0
         
         from theanompi.lib.helper_funcs import save_model
 
@@ -58,14 +59,17 @@ class BSP_Worker(MPI_GPU_Process):
             # train
     
             for batch_i in range(model.data.n_batch_train):
-        
-                model.train_iter(batch_i, recorder)
                 
-                if batch_i % exchange_freq == 0 and batch_i!=0: 
-                    exchanger.exchange(recorder)
-                    # print '\nexchanged!!!!!!\n'
+                for subb_i in range(model.n_subb):
         
-                recorder.print_train_info(batch_i*self.size)
+                    model.train_iter(batch_i, recorder)
+                    
+                    if count % exchange_freq == 0 and batch_i!=0: 
+                        exchanger.exchange(recorder)
+                    # print '\nexchanged!!!!!!\n'
+                    
+                count+=self.size
+                recorder.print_train_info(count)
             
             model.reset_iter('train')
         
@@ -74,8 +78,10 @@ class BSP_Worker(MPI_GPU_Process):
             self.comm.Barrier()
     
             for batch_j in range(model.data.n_batch_val):
-        
-                model.val_iter(batch_i, recorder)
+                
+                for subb_i in range(model.n_subb):
+                    
+                    model.val_iter(batch_i, recorder)
 
                 
             model.reset_iter('val')

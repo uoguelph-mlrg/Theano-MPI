@@ -1,4 +1,4 @@
 cd ..
 ./reinstall.sh
 cd examples
-python test_bsp.py
+python -u test_bsp.py

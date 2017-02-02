@@ -63,8 +63,11 @@ class GOSGD_Worker(MPI_GPU_Process):
             print model.data.n_batch_train
     
             for batch_i in range(model.data.n_batch_train):
-        
-                model.train_iter(batch_i, recorder)
+                
+                for subb_i in range(model.n_subb):
+                    
+                    model.train_iter(batch_i, recorder)
+                
                 count_arr[self.rank]=count_arr[self.rank]+1
                 #print '%d batch %s' % (self.rank, count_arr)
                 count_bk=count_arr[self.rank]
@@ -91,8 +94,10 @@ class GOSGD_Worker(MPI_GPU_Process):
             # val
     
             for batch_j in range(model.data.n_batch_val):
-        
-                model.val_iter(sum(count_arr), recorder)
+                
+                for subb_i in range(model.n_subb):
+                    
+                    model.val_iter(sum(count_arr), recorder)
 
                 
             model.reset_iter('val')
