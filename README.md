@@ -10,7 +10,7 @@ Theano-MPI is a python framework for distributed training of deep learning model
 }
 ```
 
-Theano-MPI is compatible for training models built in different framework libraries, e.g., [Lasagne](https://github.com/Lasagne/Lasagne), [Keras](https://github.com/fchollet/keras), [Blocks](https://github.com/mila-udem/blocks), as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build customized models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a quick guide on building customized neural networks based on them. Check out the examples of building [Lasagne VGGNet](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/vgg.py) and [Keras Wide-ResNet](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/theanompi/models/keras_model_zoo).
+Theano-MPI is compatible for training models built in different framework libraries, e.g., [Lasagne](https://github.com/Lasagne/Lasagne), [Keras](https://github.com/fchollet/keras), [Blocks](https://github.com/mila-udem/blocks), as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build customized models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a quick guide on building customized neural networks based on them. Check out the examples of building [Lasagne VGGNet](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/vgg.py) and [Keras Wide-ResNet](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/theanompi/models/keras_model_zoo/wresnet.py).
 
 ## Dependencies
 
