@@ -55,7 +55,7 @@ class BSP_Worker(MPI_GPU_Process):
             
             # train
             iteration=0
-            while iteration*self.size < model.data.n_batch_train:
+            while iteration*model.n_subb*self.size < model.data.n_batch_train:
                 
                 for subb_i in range(model.n_subb):
         
@@ -67,6 +67,8 @@ class BSP_Worker(MPI_GPU_Process):
                     iteration+=1
                     
                 recorder.print_train_info(iteration*self.size)
+            
+            recorder.clear_train_info()
             
             model.reset_iter('train')
             

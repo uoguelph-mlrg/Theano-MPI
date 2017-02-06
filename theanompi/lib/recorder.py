@@ -116,6 +116,16 @@ class Recorder(object):
             self.all_time['comm'][:] = []
             self.all_time['wait'][:] = []
             
+    def clear_train_info(self):
+        
+        self.train_info['cost'][:] = []
+        self.train_info['error'][:] = []
+        
+        self.all_time['calc'][:] = []
+        self.all_time['comm'][:] = []
+        self.all_time['wait'][:] = []
+        
+        
     def gather_val_info(self):
         
         self.val_info['cost'] = np.array(
