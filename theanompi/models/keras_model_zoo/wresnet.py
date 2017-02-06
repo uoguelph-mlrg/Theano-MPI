@@ -23,6 +23,7 @@ k = 4  # widen factor
 img_rows, img_cols = 32, 32
 img_channels = 3
 learninig_rate=0.001
+step_ids = [100, 160, 180]
 
 def bottleneck(incoming, count, nb_in_filters, nb_out_filters, dropout=None, subsample=(2, 2)):
     outgoing = wide_basic(incoming, nb_in_filters, nb_out_filters, dropout, subsample)
@@ -165,8 +166,7 @@ class Wide_ResNet(object):
         
         
         if self.current_t ==0:
-            # shuffle data
-            pass
+            self.data.shuffle_data()
         
         recorder.start()
         cost, acc = self.model.train_function(self.data.train_batches[self.current_t])
@@ -215,13 +215,18 @@ class Wide_ResNet(object):
             self.subb_v=0
             self.last_one_v = False
     
-    def adjust_hyperp(self):
+    def adjust_hyperp(self, epoch):
         
         '''
         customized lr adjust schedule
         '''
-        new_lr = self.model.optimizer.lr.get_value()
-        self.model.optimizer.lr.set_value(new_lr/10.)
+        
+        if epoch in step_ids:
+        
+            new_lr = self.model.optimizer.lr.get_value()
+            self.model.optimizer.lr.set_value(new_lr/10.)
+            
+            print('lr adjusted to %.5f' % new_lr)
         
     def scale_lr(self, size):
         

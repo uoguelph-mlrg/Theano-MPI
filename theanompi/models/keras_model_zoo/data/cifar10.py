@@ -128,7 +128,29 @@ class Cifar10_data():
         '''
         shuffle training data
         '''
-        pass
+        
+        if self.shuffled == False:
+            
+            import time, os
+            time_seed = int(time.time())*int(os.getpid())%1000
+            np.random.seed(time_seed)
+
+            indices = np.random.permutation(self.n_batch_train)
+
+            # 2. shuffle batches based on indices
+            batches = []
+
+            for index in indices:
+                batches.append(self.train_batches[index])
+
+            self.train_batches = batches
+
+            if self.verbose: print 'training data shuffled'
+
+            self.shuffled=True
+        
+        
+        
     def shard_data(self, file_batch_size, rank, size):
         
         '''

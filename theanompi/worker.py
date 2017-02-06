@@ -43,7 +43,7 @@ class BSP_Worker(MPI_GPU_Process):
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
-        iteration=0
+        count=0
         
         from theanompi.lib.helper_funcs import save_model
 
@@ -54,22 +54,23 @@ class BSP_Worker(MPI_GPU_Process):
             recorder.start_epoch()
             
             # train
-            count=0
-            while count < model.data.n_batch_train:
+            iteration=0
+            while iteration*self.size < model.data.n_batch_train:
                 
                 for subb_i in range(model.n_subb):
         
                     model.train_iter(iteration, recorder)
                     
-                    if count % exchange_freq == 0 and count!=0: 
+                    if iteration % exchange_freq == 0: 
                         exchanger.exchange(recorder)
                     # print '\nexchanged!!!!!!\n'
                     iteration+=1
                     
-                count=iteration*self.size
-                recorder.print_train_info(count)
+                recorder.print_train_info(iteration*self.size)
             
             model.reset_iter('train')
+            
+            count = iteration
         
             # val
             
@@ -79,23 +80,23 @@ class BSP_Worker(MPI_GPU_Process):
                 
                 for subb_i in range(model.n_subb):
                     
-                    model.val_iter(iteration, recorder)
+                    model.val_iter(count, recorder)
 
                 
             model.reset_iter('val')
             
             recorder.gather_val_info()
         
-            recorder.print_val_info(iteration)
+            recorder.print_val_info(count)
             model.current_info = recorder.get_latest_val_info()
             
-            if self.rank==0: recorder.save(iteration, model.shared_lr.get_value())
+            if self.rank==0: recorder.save(count, model.shared_lr.get_value())
             
             if epoch % snapshot_freq == 0 and self.rank==0: save_model(model, snapshot_path, verbose=self.verbose)
             
             model.adjust_hyperp(epoch)
             
-            recorder.end_epoch(iteration, epoch)
+            recorder.end_epoch(count, epoch)
             
         model.cleanup()
 

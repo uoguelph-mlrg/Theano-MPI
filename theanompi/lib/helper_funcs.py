@@ -201,7 +201,8 @@ def save_model(model, path, verbose):
         layers = model.layers
         save_weights(layers, path, model.epoch)
     except AttributeError:
-        with open(path+model.name+"params", 'wb') as f:
+        import pickle
+        with open(path+model.name+"params_%d.pkl" % model.epoch, 'wb') as f:
             pickle.dump(model.params, f, protocol=pickle.HIGHEST_PROTOCOL)
         
     np.save(path + 'lr_' + str(model.epoch) + \
