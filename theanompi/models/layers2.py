@@ -445,50 +445,50 @@ class ConvPoolLRN(Layer):
         
         '''
                  
-        if W == None and filter_shape == None:
-            raise AttributeError('need to specify at least one of W and filtershape')
-        elif W!=None and b!=None:
-            assert group ==1
-            filter_shape = W.val.shape.eval()
-            self.W=W
-            self.b = Constant(filter_shape[3], val=b)
         
         self.get_input_shape(input,input_shape)
-        
-        self.filter_shape = np.asarray(filter_shape)
         self.convstride = convstride
         self.padsize = padsize
         self.lib_conv = lib_conv
-        
         self.poolsize = poolsize
         self.poolstride = poolstride
         self.poolpad = poolpad
         self.lrn = lrn
         if self.lrn:
             self.lrn_func = CrossChannelNormalization()
-        
-        
-        assert group in [1, 2]
-        
-        
-        if group == 1:
+                 
+        if W == None and filter_shape!=None:
             
-            if W == None and b==None:
+            assert group in [1, 2]
             
+            self.filter_shape = np.asarray(filter_shape)
+            
+            if group == 1:
+                    
                 self.W = Normal(self.filter_shape, mean=0, std=0.01)
                 self.b = Constant(self.filter_shape[3], val=b)
-        
-        else:
+                
+            else:
             
-            self.filter_shape[0] = self.filter_shape[0] / 2
-            self.filter_shape[3] = self.filter_shape[3] / 2
-            # self.input_shape[0] = self.input_shape[0] / 2
-            # self.input_shape[3] = self.input_shape[3] / 2
-            channel = self.input_shape[0]
-            self.W0 = Normal(self.filter_shape, mean=0, std=0.01)
-            self.W1 = Normal(self.filter_shape, mean=0, std=0.01)
-            self.b0 = Constant(self.filter_shape[3], val=b)
-            self.b1 = Constant(self.filter_shape[3], val=b)                             
+                self.filter_shape[0] = self.filter_shape[0] / 2
+                self.filter_shape[3] = self.filter_shape[3] / 2
+                # self.input_shape[0] = self.input_shape[0] / 2
+                # self.input_shape[3] = self.input_shape[3] / 2
+                channel = self.input_shape[0]
+                self.W0 = Normal(self.filter_shape, mean=0, std=0.01)
+                self.W1 = Normal(self.filter_shape, mean=0, std=0.01)
+                self.b0 = Constant(self.filter_shape[3], val=b)
+                self.b1 = Constant(self.filter_shape[3], val=b)
+            
+            
+        elif W!=None and filter_shape==None:
+            assert group ==1
+            self.filter_shape = W.val.shape.eval()
+            self.W=W
+            self.b = Constant(self.filter_shape[3], val=b)
+            
+        else:
+            raise AttributeError('need to specify exactly one of W and filtershape')                 
                                                 
 
         if lib_conv == 'cudnn':
