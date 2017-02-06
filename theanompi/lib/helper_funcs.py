@@ -196,18 +196,22 @@ def check_model(model):
 
 
 def save_model(model, path, verbose): 
-      
-        layers = model.layers
-        vels = model.vels  
 
+    try:
+        layers = model.layers
         save_weights(layers, path, model.epoch)
-        np.save(path + 'lr_' + str(model.epoch) + \
-                        '.npy', model.shared_lr.get_value())
-        #save_momentums(vels, self.config['weights_dir'], self.epoch)
+    except AttributeError:
+        with open(path+model.name+"params", 'wb') as f:
+            pickle.dump(model.params, f, protocol=pickle.HIGHEST_PROTOCOL)
         
-        if verbose:
-            print '\nweights and momentums saved at epoch %d' % model.epoch
-        
-        with open(path+"val_info.txt", "a") as f:
-            f.write("\nepoch: {} val_info {}:".format(model.epoch, \
-                                                    model.current_info))
+    np.save(path + 'lr_' + str(model.epoch) + \
+                    '.npy', model.shared_lr.get_value())
+    #vels = model.vels 
+    #save_momentums(vels, self.config['weights_dir'], self.epoch)
+
+    if verbose:
+        print '\nweights saved at epoch %d' % model.epoch
+
+    with open(path+"val_info.txt", "a") as f:
+        f.write("\nepoch: {} val_info {}:".format(model.epoch, \
+                                                model.current_info))

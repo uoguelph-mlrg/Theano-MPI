@@ -1,0 +1,1 @@
+from wresnet import Wide_ResNet
