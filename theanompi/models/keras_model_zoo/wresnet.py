@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import numpy as np
 from keras.datasets import cifar10
 from keras import backend as K
 K.set_image_dim_ordering('th')
@@ -10,7 +11,6 @@ from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
-from keras.engine.training import slice_X, make_batches
 
 batch_size = 128
 nb_classes = 10
@@ -22,7 +22,7 @@ k = 4  # widen factor
 # the CIFAR10 images are 32x32 RGB with 10 labels
 img_rows, img_cols = 32, 32
 img_channels = 3
-
+learninig_rate=0.001
 
 def bottleneck(incoming, count, nb_in_filters, nb_out_filters, dropout=None, subsample=(2, 2)):
     outgoing = wide_basic(incoming, nb_in_filters, nb_out_filters, dropout, subsample)
@@ -87,27 +87,21 @@ class Wide_ResNet(object):
     https://gist.github.com/kashif/0ba0270279a0f38280423754cea2ee1e
     '''
     
-    def __init__(self):
+    def __init__(self, config):
         
-        self.verbose = True #config['verbose']
+        self.verbose = config['verbose']
+        self.size = config['size']
+        self.rank = config['rank']
         
-        # the data, shuffled and split between train and test sets
-        (X_train, y_train), (X_test, y_test) = cifar10.load_data()
-        print('X_train shape:', X_train.shape)
-        print(X_train.shape[0], 'train samples')
-        print(X_test.shape[0], 'test samples')
+        self.name = 'Wide_ResNet'
+        
+        
+        # data
+        from data.cifar10 import Cifar10_data
+        self.data = Cifar10_data(verbose=False)
 
-        # convert class vectors to binary class matrices
-        self.Y_train = np_utils.to_categorical(y_train, nb_classes)
-        self.Y_test = np_utils.to_categorical(y_test, nb_classes)
-        
         self.build_model()
-        
-        self.X_train = X_train.astype('float32')
-        self.X_test = X_test.astype('float32')
-        self.X_train /= 255
-        self.X_test /= 255
-        
+
         # iter related
         
         self.current_t = 0
@@ -116,65 +110,8 @@ class Wide_ResNet(object):
         self.last_one_v=False
         
         self.n_subb = 1
-        
-    def batch_data(self):
-        
-        x, y, sample_weights = self.model._standardize_user_data(
-                    self.X_train, self.Y_train,
-                    sample_weight=None,
-                    class_weight=None,
-                    check_batch_axis=False,
-                    batch_size=batch_size)
-        
-        val_x, val_y, val_sample_weights = self.model._standardize_user_data(
-                        self.X_test, self.Y_test,
-                        sample_weight=None,
-                        check_batch_axis=False,
-                        batch_size=batch_size)
-        
-               
-        
-        ins = x + y + sample_weights
-        val_ins = val_x + val_y + val_sample_weights
-        
-        if self.model.uses_learning_phase and not isinstance(K.learning_phase(), int):
-            ins+=[1.]
-            val_ins+=[0.]
-        
-        self.n_batch_train = ins[0].shape[0]/batch_size
-        self.train_batches = []
-        index_arr = range(ins[0].shape[0])
-        for batch_index in range(self.n_batch_train):
-            
-            batch_ids = index_arr[batch_index * batch_size:
-                                (batch_index+1)*batch_size]
-                                        
-            if isinstance(ins[-1], float):
-                # do not slice the training phase flag
-                ins_batch = slice_X(ins[:-1], batch_ids) + [ins[-1]]
-            else:
-                ins_batch = slice_X(ins, batch_ids)
-                                        
-            self.train_batches.append(ins_batch)
-            
-            
-        self.n_batch_val = val_ins[0].shape[0]/batch_size
-        self.val_batches = []
-        index_arr = range(val_ins[0].shape[0])
-        for batch_index in range(self.n_batch_val):
-            
-            batch_ids = index_arr[batch_index * batch_size:
-                                (batch_index+1)*batch_size]
-                                        
-            if isinstance(val_ins[-1], float):
-                # do not slice the training phase flag
-                ins_batch = slice_X(val_ins[:-1], batch_ids) + [val_ins[-1]]
-            else:
-                ins_batch = slice_X(val_ins, batch_ids)
-                                        
-            self.val_batches.append(ins_batch)
-            
-        
+        self.n_epochs = nb_epoch
+        self.epoch=0
     
     
     def build_model(self):
@@ -201,6 +138,8 @@ class Wide_ResNet(object):
 
         self.model = Model(input=img_input, output=preds)
         
+        self.keras_get_params()
+        
     def compile_iter_fns(self):
         
         import time
@@ -210,21 +149,31 @@ class Wide_ResNet(object):
         self.model.compile(optimizer='adam', loss='categorical_crossentropy',
                       metrics=['accuracy'])
         
+        self.shared_lr = self.model.optimizer.lr
+        self.base_lr = self.shared_lr.get_value()
+        
         if self.verbose: print('Compiling......')
         self.model._make_train_function()
         self.model._make_test_function()
                       
         if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
+        
+        self.data.batch_data(self.model, batch_size)
                       
     
     def train_iter(self, count, recorder):
         
+        
+        if self.current_t ==0:
+            # shuffle data
+            pass
+        
         recorder.start()
-        cost, acc = self.model.train_function(self.train_batches[self.current_t])
+        cost, acc = self.model.train_function(self.data.train_batches[self.current_t])
         recorder.train_error(count, cost, 1.0-acc)
         recorder.end('calc')
         
-        if self.current_t == self.n_batch_train - 1:
+        if self.current_t == self.data.n_batch_train - 1:
             self.last_one_t = True
         else:
             self.last_one_t = False
@@ -237,11 +186,11 @@ class Wide_ResNet(object):
     def val_iter(self, count, recorder):
         
         
-        cost, acc = self.model.test_function(self.val_batches[self.current_v])
+        cost, acc = self.model.test_function(self.data.val_batches[self.current_v])
         
         recorder.val_error(count, cost, 1.0-acc, 0)
         
-        if self.current_v == self.n_batch_val - 1:
+        if self.current_v == self.data.n_batch_val - 1:
             self.last_one_v = True
         else:
             self.last_one_v = False
@@ -250,17 +199,62 @@ class Wide_ResNet(object):
             self.current_v+=1
         else:
             self.current_v=0
+            
+    def reset_iter(self, mode):
+        
+        '''used at the begininig of another mode'''
+        
+        if mode=='train':
+
+            self.current_t = 0
+            self.subb_t=0
+            self.last_one_t = False
+        else:
+
+            self.current_v = 0
+            self.subb_v=0
+            self.last_one_v = False
+    
+    def adjust_hyperp(self):
+        
+        '''
+        customized lr adjust schedule
+        '''
+        new_lr = self.model.optimizer.lr.get_value()
+        self.model.optimizer.lr.set_value(new_lr/10.)
+        
+    def scale_lr(self, size):
+        
+        self.shared_lr.set_value(np.array(self.base_lr*size, dtype='float32'))
+        
+        
+    def cleanup(self):
+        
+        pass
+        
+    def keras_get_params(self):
+        
+        self.params=[]
+        
+        for l in self.model.layers:
+        
+            self.params.extend(l.trainable_weights)
+        
+        
         
         
 
 
 if __name__=='__main__':
     
-    model = Wide_ResNet()
+    
+    config={}
+    config['verbose'] = True
+
+        
+    model = Wide_ResNet(config)
     
     model.compile_iter_fns()
-    
-    model.batch_data()
     
     # get recorder
     from theanompi.lib.recorder import Recorder
@@ -276,7 +270,7 @@ if __name__=='__main__':
           
     # train
 
-    for batch_i in range(model.n_batch_train):
+    for batch_i in range(model.data.n_batch_train):
 
         for subb_i in range(model.n_subb):
 
@@ -285,7 +279,7 @@ if __name__=='__main__':
         recorder.print_train_info(batch_i)
 
     # val
-    for batch_j in range(model.n_batch_val):
+    for batch_j in range(model.data.n_batch_val):
     
         for subb_j in range(model.n_subb):
     

@@ -19,7 +19,9 @@ setup(name='Theano-MPI',
           # url=URL,
           license='ECL-2.0',
           platforms=['Linux'],
-          packages=['theanompi', 'theanompi.lib', 'theanompi.models', 'theanompi.models.data'],
+          packages=['theanompi', 'theanompi.lib', 'theanompi.models', 'theanompi.models.data', \
+                    'theanompi.models.keras_model_zoo','theanompi.models.keras_model_zoo.data', \
+                    'theanompi.models.lasagne_model_zoo', 'theanompi.models.lasagne_model_zoo.data' ],
           # package_dir={'theanompi':'theanompi'},
           package_data={'theanompi': [ '*.yaml']}
           # install_requires=['theano>=0.9.0','libgpuarray>=0.6.0'],

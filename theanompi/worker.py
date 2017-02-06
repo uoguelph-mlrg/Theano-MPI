@@ -21,16 +21,13 @@ class BSP_Worker(MPI_GPU_Process):
         
         # check model has necessary attributes
         check_model(model)
-        
-        if self.sync_type=='avg':
-            model.base_lr=model.base_lr*self.size
-            model.shared_lr.set_value(model.base_lr)
-        
         # construct model train function based on sync rule
         model.compile_iter_fns()
         
+        if self.sync_type=='avg': model.scale_lr(self.size)
+        
         from theanompi.lib.recorder import Recorder
-        self.recorder = Recorder(self.comm, printFreq=40, modelname=model.name, verbose=self.verbose)
+        self.recorder = Recorder(self.comm, printFreq=40, modelname=config['mname'], verbose=self.verbose)
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import BSP_Exchanger
@@ -46,7 +43,7 @@ class BSP_Worker(MPI_GPU_Process):
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
-        count=0
+        iteration=0
         
         from theanompi.lib.helper_funcs import save_model
 
@@ -57,18 +54,19 @@ class BSP_Worker(MPI_GPU_Process):
             recorder.start_epoch()
             
             # train
-    
-            for batch_i in range(model.data.n_batch_train):
+            count=0
+            while count < model.data.n_batch_train:
                 
                 for subb_i in range(model.n_subb):
         
-                    model.train_iter(batch_i, recorder)
+                    model.train_iter(iteration, recorder)
                     
-                    if count % exchange_freq == 0 and batch_i!=0: 
+                    if count % exchange_freq == 0 and count!=0: 
                         exchanger.exchange(recorder)
                     # print '\nexchanged!!!!!!\n'
+                    iteration+=1
                     
-                count+=self.size
+                count=iteration*self.size
                 recorder.print_train_info(count)
             
             model.reset_iter('train')
@@ -81,23 +79,23 @@ class BSP_Worker(MPI_GPU_Process):
                 
                 for subb_i in range(model.n_subb):
                     
-                    model.val_iter(batch_i, recorder)
+                    model.val_iter(iteration, recorder)
 
                 
             model.reset_iter('val')
             
             recorder.gather_val_info()
         
-            recorder.print_val_info(batch_i)
+            recorder.print_val_info(iteration)
             model.current_info = recorder.get_latest_val_info()
             
-            if self.rank==0: recorder.save(batch_i, model.shared_lr.get_value())
+            if self.rank==0: recorder.save(iteration, model.shared_lr.get_value())
             
             if epoch % snapshot_freq == 0 and self.rank==0: save_model(model, snapshot_path, verbose=self.verbose)
             
             model.adjust_hyperp(epoch)
             
-            recorder.end_epoch(batch_i, epoch)
+            recorder.end_epoch(iteration, epoch)
             
         model.cleanup()
 
@@ -117,6 +115,7 @@ if __name__ == '__main__':
     config['verbose'] = (worker.rank==0)
     config['rank'] = worker.rank
     config['size'] = worker.size
+    config['mname'] = modelclass
     
     import importlib
     mod = importlib.import_module(modelfile)
