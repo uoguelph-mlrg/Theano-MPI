@@ -14,7 +14,7 @@ from keras.utils import np_utils
 
 batch_size = 128
 nb_classes = 10
-nb_epoch = 200
+nb_epoch = 90
 data_augmentation = False
 n = 4  # depth = 6*n + 4
 k = 4  # widen factor
@@ -23,7 +23,7 @@ k = 4  # widen factor
 img_rows, img_cols = 32, 32
 img_channels = 3
 learninig_rate=0.001
-step_ids = [100, 160, 180]
+step_ids = [50, 70, 90]
 
 def bottleneck(incoming, count, nb_in_filters, nb_out_filters, dropout=None, subsample=(2, 2)):
     outgoing = wide_basic(incoming, nb_in_filters, nb_out_filters, dropout, subsample)
@@ -224,7 +224,7 @@ class Wide_ResNet(object):
         if epoch in step_ids:
         
             new_lr = self.model.optimizer.lr.get_value()
-            self.model.optimizer.lr.set_value(new_lr/10.)
+            self.model.optimizer.lr.set_value(np.array(new_lr/10.,dtype='float32'))
             
             print('lr adjusted to %.5f' % new_lr)
         
