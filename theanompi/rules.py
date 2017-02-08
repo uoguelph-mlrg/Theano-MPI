@@ -84,6 +84,12 @@ class BSP(Rule):
         
         for index, device in enumerate(devices):
             
+            #TODO: 
+            #1. detect which host and socket the device belongs to
+            #2. detect what are the core numbers in that socket in that host
+            #3. use -cpu-set to bind this process to the cores of that socket / or use numactl -N [socketID]
+            #TODO:
+            #1. add nodes:device syntax to support multinodes
             # command += ["--output-filename", "%s" % 'out']
             command += ["--mca", "mpi_warn_on_fork", "0"]
             command += ["--mca", "btl_smcuda_use_cuda_ipc", "1"]
