@@ -55,7 +55,7 @@ class BSP_Worker(MPI_GPU_Process):
             
             # train
             iteration=0
-            while iteration*model.n_subb*self.size < model.data.n_batch_train:
+            while (iteration/model.n_subb)*self.size < model.data.n_batch_train:
                 
                 for subb_i in range(model.n_subb):
         
