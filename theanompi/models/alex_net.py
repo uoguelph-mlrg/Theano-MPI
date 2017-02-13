@@ -569,6 +569,10 @@ class AlexNet(object):
         
         self.shared_lr.set_value(np.float32(tuned_base_lr))
         
+    def scale_lr(self, size):
+        
+        self.shared_lr.set_value(np.array(self.shared_lr.get_value()*size, dtype='float32'))
+        
     def cleanup(self):
         
         if self.data.para_load:
