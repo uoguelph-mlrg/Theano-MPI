@@ -256,9 +256,10 @@ class WGAN(object):
             
     def save(self, path='./'):
         
+        import os
         if not os.path.exists(path):
+            print('Creating folder: %s' % path)
             os.makedirs(path)
-            print 'Creating folder: %s' % path
         
         np.savez(path+'%d_wgan_mnist_gen.npz' % self.epoch, *lasagne.layers.get_all_param_values(self.generator))
         np.savez(path+'%d_wgan_mnist_crit.npz' % self.epoch, *lasagne.layers.get_all_param_values(self.critic))

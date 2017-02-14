@@ -77,7 +77,7 @@ if __name__ == '__main__':
             
         if epoch % snapshot_freq == 0: 
             from theanompi.lib.helper_funcs import save_model
-            save_model(model, snapshot_path, verbose=self.verbose)
+            save_model(model, snapshot_path, verbose=True)
                     
         model.epoch+=1
 

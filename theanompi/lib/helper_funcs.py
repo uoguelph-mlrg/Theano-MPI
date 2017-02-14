@@ -218,6 +218,9 @@ def save_model(model, path, verbose):
     if verbose:
         print '\nweights saved at epoch %d' % model.epoch
 
-    with open(path+"val_info.txt", "a") as f:
-        f.write("\nepoch: {} val_info {}:".format(model.epoch, \
+    try:
+        with open(path+"val_info.txt", "a") as f:
+            f.write("\nepoch: {} val_info {}:".format(model.epoch, \
                                                 model.current_info))
+    except:
+        pass
