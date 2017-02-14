@@ -170,19 +170,22 @@ class Recorder(object):
             
         return latest
     
-    def save(self, count, lr, filepath = './inforec/inforec.pkl'):
+    def save(self, count, lr, filepath = './inforec/'):
         
         '''
         save dictionaries to file inforec.pkl (from epoch=1 to current epoch)
                 
         '''
+        import os
+        if not os.path.exists(filepath):
+            os.makedirs(filepath)
         
         self.info_dict['lr'].append([count,lr])
         
         import pickle
-        
-        with open(filepath, 'wb') as f:
+        with open(filepath+'inforec.pkl', 'wb') as f:
             pickle.dump(self.info_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+        
           
 
         #np.save('../run/inforec/inforec.npy' , self.info_dict.items())

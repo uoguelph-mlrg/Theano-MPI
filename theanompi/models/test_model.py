@@ -40,31 +40,49 @@ if __name__ == '__main__':
     
     model.compile_iter_fns()
     
+    snapshot_freq= 5
+    snapshot_path= './snapshots/'
+    count=0
     
-    # train
+    for epoch in range(model.n_epochs):
+            
+        model.epoch=epoch
+        
+        recorder.start_epoch()
+        # train
     
-    for batch_i in range(model.data.n_batch_train):
+        for batch_i in range(model.data.n_batch_train):
         
-        for subb_i in range(model.n_subb):
+            for subb_i in range(model.n_subb):
         
-            model.train_iter(batch_i, recorder)
+                model.train_iter(batch_i, recorder)
+                
+                count+=1
         
-        recorder.print_train_info(batch_i)
+            recorder.print_train_info(batch_i)
         
-    # val
-    for batch_j in range(model.data.n_batch_val):
+        # val
+        for batch_j in range(model.data.n_batch_val):
         
-        for subb_j in range(model.n_subb):
+            for subb_j in range(model.n_subb):
         
-            model.val_iter(batch_i, recorder)
+                model.val_iter(batch_i, recorder)
 
-    #recorder.gather_val_info()
-    recorder.print_val_info(batch_i)
+        #recorder.gather_val_info()
+        recorder.print_val_info(batch_i)
+        
+        model.adjust_hyperp(epoch=epoch)
+        
+        recorder.save(count, model.shared_lr.get_value())
+            
+        if epoch % snapshot_freq == 0: 
+            from theanompi.lib.helper_funcs import save_model
+            save_model(model, snapshot_path, verbose=self.verbose)
+                    
+        model.epoch+=1
+
     
-    model.epoch+=1
-    print 'finish one epoch'
     
-    model.adjust_hyperp(epoch=40)
     
     model.cleanup()
     
