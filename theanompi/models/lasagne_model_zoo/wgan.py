@@ -32,13 +32,13 @@ def build_generator(input_var=None):
     # input: 100dim
     layer = InputLayer(shape=(None, 100), input_var=input_var)
     # fully-connected layer
-    layer = batch_norm(DenseLayer(layer, 1024))
+    layer = DenseLayer(layer, 1024)
     # project and reshape
-    layer = batch_norm(DenseLayer(layer, 128*7*7))
+    layer = DenseLayer(layer, 128*7*7)
     layer = ReshapeLayer(layer, ([0], 128, 7, 7))
     # two fractional-stride convolutions
-    layer = batch_norm(Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
-                                     output_size=14))
+    layer = Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
+                                     output_size=14)
     layer = Deconv2DLayer(layer, 1, 5, stride=2, crop='same', output_size=28,
                           nonlinearity=sigmoid)
     print ("Generator output:", layer.output_shape)
@@ -56,12 +56,12 @@ def build_critic(input_var=None):
     # input: (None, 1, 28, 28)
     layer = InputLayer(shape=(None, 1, 28, 28), input_var=input_var)
     # two convolutions
-    layer = batch_norm(Conv2DLayer(layer, 64, 5, stride=2, pad='same',
-                                   nonlinearity=lrelu))
-    layer = batch_norm(Conv2DLayer(layer, 128, 5, stride=2, pad='same',
-                                   nonlinearity=lrelu))
+    layer = Conv2DLayer(layer, 64, 5, stride=2, pad='same',
+                                   nonlinearity=lrelu)
+    layer = Conv2DLayer(layer, 128, 5, stride=2, pad='same',
+                                   nonlinearity=lrelu)
     # fully-connected layer
-    layer = batch_norm(DenseLayer(layer, 1024, nonlinearity=lrelu))
+    layer = DenseLayer(layer, 1024, nonlinearity=lrelu)
     # output layer (linear and without bias)
     layer = DenseLayer(layer, 1, nonlinearity=None, b=None)
     print ("critic output:", layer.output_shape)
@@ -289,4 +289,8 @@ class WGAN(object):
         with np.load(path_cri) as f:
             param_values = [f['arr_%d' % i] for i in range(len(f.files))]
         lasagne.layers.set_all_param_values(self.critic, param_values)
+        
+if __name__ == '__main__':
+    
+    raise RuntimeError('to be tested using test_model.py:\n$ python test_model.py lasagne_model_zoo.wgan WGAN')
         
