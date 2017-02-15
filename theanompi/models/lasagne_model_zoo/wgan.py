@@ -104,6 +104,7 @@ class WGAN(object):
         self.generator_updates = 0
         self.critic_scores = []
         self.generator_scores = []
+        self.current_info=None
         
         
     def build_model(self):
@@ -117,14 +118,10 @@ class WGAN(object):
         critic = build_critic(self.input_var)
         
         # Create expression for passing real data through the critic
-        real_out = lasagne.layers.get_output(critic)
+        self.real_out = lasagne.layers.get_output(critic)
         # Create expression for passing fake data through the critic
-        fake_out = lasagne.layers.get_output(critic,
+        self.fake_out = lasagne.layers.get_output(critic,
                 lasagne.layers.get_output(generator))
-    
-        # Create score expressions to be maximized (i.e., negative losses)
-        self.generator_score = fake_out.mean()
-        self.critic_score = real_out.mean() - fake_out.mean()
         
         
         # Create update expressions for training
@@ -140,16 +137,22 @@ class WGAN(object):
         self.eta=eta
         self.shared_lr=eta
         
-        generator_updates = lasagne.updates.rmsprop(
-                -self.generator_score, self.generator_params, learning_rate=eta)
+        
+        loss_critic = self.real_out.mean() - self.fake_out.mean()
         critic_updates = lasagne.updates.rmsprop(
-                -self.critic_score, self.critic_params, learning_rate=eta)
+                -1*loss_critic, self.critic_params, learning_rate=eta)
+                
+        loss_gen = -1*self.fake_out.mean()
+        generator_updates = lasagne.updates.rmsprop(
+                loss_gen, self.generator_params, learning_rate=eta)
                 
                 
         # Clip critic parameters in a limited range around zero (except biases)
+        critic_clip_updates=[]
         for param in lasagne.layers.get_all_params(self.critic, trainable=True,
                                                    regularizable=True):
-            critic_updates[param] = T.clip(critic_updates[param], -clip, clip)
+                                                   
+            critic_clip_updates.append([param, T.clip(param, -clip, clip)])
             
             
         # Instantiate a symbolic noise generator to use for training
@@ -165,12 +168,13 @@ class WGAN(object):
         
         start = time.time()
         
-        self.generator_train_fn = theano.function([], self.generator_score,
+        self.generator_train_fn = theano.function([], loss_gen,
                                              givens={self.noise_var: noise},
                                              updates=generator_updates)
-        self.critic_train_fn = theano.function([self.input_var], self.critic_score,
+        self.critic_train_fn = theano.function([self.input_var],loss_critic,
                                           givens={self.noise_var: noise},
                                           updates=critic_updates)
+        self.critic_clip_fn = theano.function([],updates=critic_clip_updates)
 
         # Compile another function generating some data
         self.gen_fn = theano.function([self.noise_var],
@@ -178,7 +182,7 @@ class WGAN(object):
                                                            deterministic=True))
                                                            
         self.val_fn = theano.function([self.input_var], 
-                                        outputs=[self.critic_score, self.generator_score],
+                                        outputs=[loss_critic, loss_gen],
                                         givens={self.noise_var: noise})
                                                            
         if self.verbose: print ('Compile time: %.3f s' % (time.time()-start))
@@ -193,13 +197,17 @@ class WGAN(object):
             critic_runs = 5
         
         c_score_list = []
-        
         recorder.start()
         for _ in range(critic_runs):
             batch = next(batches_train)
             inputs, targets = batch
             c_score = self.critic_train_fn(inputs)
             c_score_list.append(c_score)
+            self.critic_clip_fn()
+            
+            count+=1
+            
+            
         self.critic_scores.extend(c_score_list)
         g_score = self.generator_train_fn()
         self.generator_scores.append(g_score)
@@ -207,6 +215,8 @@ class WGAN(object):
         
         recorder.train_error(count, sum(c_score_list)/len(c_score_list), g_score)
         recorder.end('calc')
+        
+        return count
         
     def val_iter(self, count, recorder):
         
@@ -238,7 +248,13 @@ class WGAN(object):
         except ImportError:
             pass
         else:
-            plt.imsave('wgan_mnist_samples.png',
+            sample_path='./samples/'
+            import os
+            if not os.path.exists(sample_path):
+                print('Creating folder: %s' % sample_path)
+                os.makedirs(sample_path)
+                
+            plt.imsave(sample_path+'%dwgan_mnist_samples.png' % epoch,
                        (samples.reshape(6, 7, 28, 28)
                                .transpose(0, 2, 1, 3)
                                .reshape(6*28, 7*28)),

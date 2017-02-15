@@ -50,12 +50,16 @@ if __name__ == '__main__':
         
         recorder.start_epoch()
         # train
-    
-        for batch_i in range(model.data.n_batch_train):
+        
+        batch_i=0
+        
+        while batch_i <model.data.n_batch_train:
         
             for subb_i in range(model.n_subb):
         
-                model.train_iter(batch_i, recorder)
+                out = model.train_iter(batch_i, recorder)
+                
+                if out!=None: batch_i = out
                 
                 count+=1
         
@@ -70,6 +74,7 @@ if __name__ == '__main__':
 
         #recorder.gather_val_info()
         recorder.print_val_info(batch_i)
+        model.current_info = recorder.get_latest_val_info()
         
         model.adjust_hyperp(epoch=epoch)
         
