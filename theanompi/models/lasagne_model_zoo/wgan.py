@@ -15,6 +15,48 @@ import lasagne
 # We create two models: The generator and the critic network.
 # The models are the same as in the Lasagne DCGAN example, except that the
 # discriminator is now a critic with linear output instead of sigmoid output.
+def rmsprop(cost, params, learning_rate, momentum=0.5, rescale=5.):
+    
+    grads = T.grad(cost=cost, wrt=params)
+    
+    running_square_ = [theano.shared(np.zeros_like(p.get_value(),dtype=p.dtype), broadcastable=p.broadcastable)
+                      for p in params]
+    running_avg_ = [theano.shared(np.zeros_like(p.get_value(),dtype=p.dtype), broadcastable=p.broadcastable)
+                   for p in params]
+    memory_ = [theano.shared(np.zeros_like(p.get_value(),dtype=p.dtype), broadcastable=p.broadcastable)
+                       for p in params]
+    
+    grad_norm = T.sqrt(sum(map(lambda x: T.sqr(x).sum(), grads)))
+    not_finite = T.or_(T.isnan(grad_norm), T.isinf(grad_norm))
+    grad_norm = T.sqrt(grad_norm)
+    scaling_num = rescale
+    scaling_den = T.maximum(rescale, grad_norm)
+    # Magic constants
+    combination_coeff = 0.9
+    minimum_grad = 1E-4
+    updates = []
+    for n, (param, grad) in enumerate(zip(params, grads)):
+       grad = T.switch(not_finite, 0.1 * param,
+                       grad * (scaling_num / scaling_den))
+       old_square = running_square_[n]
+       new_square = combination_coeff * old_square + (
+           1. - combination_coeff) * T.sqr(grad)
+       old_avg = running_avg_[n]
+       new_avg = combination_coeff * old_avg + (
+           1. - combination_coeff) * grad
+       rms_grad = T.sqrt(new_square - new_avg ** 2)
+       rms_grad = T.maximum(rms_grad, minimum_grad)
+       memory = memory_[n]
+       update = momentum * memory - learning_rate * grad / rms_grad
+
+       update2 = momentum * momentum * memory - (
+           1 + momentum) * learning_rate * grad / rms_grad
+           
+       updates.append((old_square, new_square))
+       updates.append((old_avg, new_avg))
+       updates.append((memory, update))
+       updates.append((param, param + update2))
+    return updates
 
 def build_generator(input_var=None):
     from lasagne.layers import InputLayer, ReshapeLayer, DenseLayer
@@ -32,12 +74,12 @@ def build_generator(input_var=None):
     # input: 100dim
     layer = InputLayer(shape=(None, 100), input_var=input_var)
     # fully-connected layer
-    layer = DenseLayer(layer, 1024)
+    layer = batch_norm(DenseLayer(layer, 1024))
     # project and reshape
-    layer = DenseLayer(layer, 128*7*7)
+    layer = batch_norm(DenseLayer(layer, 128*7*7))
     layer = ReshapeLayer(layer, ([0], 128, 7, 7))
     # two fractional-stride convolutions
-    layer = batch_norm(Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
+    layer = batch_norm(Deconv2DLayer(layer, 128, 5, stride=2, crop='same',
                                      output_size=14))
     layer = Deconv2DLayer(layer, 1, 5, stride=2, crop='same', output_size=28,
                           nonlinearity=sigmoid)
@@ -139,11 +181,11 @@ class WGAN(object):
         
         
         loss_critic = self.real_out.mean() - self.fake_out.mean()
-        critic_updates = lasagne.updates.rmsprop(
+        critic_updates = rmsprop(
                 -1*loss_critic, self.critic_params, learning_rate=eta)
                 
         loss_gen = -1*self.fake_out.mean()
-        generator_updates = lasagne.updates.rmsprop(
+        generator_updates = rmsprop(
                 loss_gen, self.generator_params, learning_rate=eta)
                 
                 
@@ -263,7 +305,7 @@ class WGAN(object):
         # After half the epochs, we start decaying the learn rate towards zero
         if epoch >= num_epochs // 2:
             progress = float(epoch) / num_epochs
-            self.eta.set_value(lasagne.utils.floatX(self.initial_eta*2*(1 - progress)))
+            self.eta.set_value(lasagne.utils.floatX(initial_eta*2*(1 - progress)))
             
     def cleanup(self):
         
