@@ -37,8 +37,8 @@ def build_generator(input_var=None):
     layer = DenseLayer(layer, 128*7*7)
     layer = ReshapeLayer(layer, ([0], 128, 7, 7))
     # two fractional-stride convolutions
-    layer = Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
-                                     output_size=14)
+    layer = batch_norm(Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
+                                     output_size=14))
     layer = Deconv2DLayer(layer, 1, 5, stride=2, crop='same', output_size=28,
                           nonlinearity=sigmoid)
     print ("Generator output:", layer.output_shape)
