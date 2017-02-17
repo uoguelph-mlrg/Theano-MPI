@@ -110,7 +110,7 @@ def build_critic(input_var=None):
     return layer
     
 
-num_epochs=1000
+num_epochs=100
 epochsize=100
 batchsize=64
 initial_eta=5e-5
@@ -146,10 +146,35 @@ class WGAN(object):
         self.generator_updates = 0
         self.critic_scores = []
         self.generator_scores = []
+        self.c_list=[]
+        self.g_list=[]
         self.current_info=None
+        
+        self.init_view()
+        
+    def init_view(self):
+        
+        import matplotlib.pyplot as plt
+        
+        from matplotlib.font_manager import FontProperties
+        
+        fontP = FontProperties()
+        fontP.set_size('small')
+        self.colors = ['-r','-b','-m','-g']
+                
+        fig = plt.figure(1, figsize=(8,4))
+        fig.subplots_adjust(left = 0.15, bottom = 0.07,
+        	                    right = 0.94, top = 0.94,
+        	                    hspace = 0.14, wspace=0.20)
+                                
+        self.a=fig.add_subplot(1,2,1)
+        self.b=fig.add_subplot(1,2,2)
         
         
     def build_model(self):
+        
+        rng=np.random.RandomState(1234)
+        lasagne.random.set_rng(rng)
         
         # Prepare Theano variables for inputs and targets
         self.noise_var = T.matrix('noise')
@@ -273,24 +298,38 @@ class WGAN(object):
         
         recorder.val_error(count, c_score, g_score, 0)  # print loss_critic, loss_gen and a 0 instead of cost, error and error_top_5 
         
-        
     def adjust_hyperp(self, epoch):
         
         import time
-
-        print("  generator score:\t\t{}".format(np.mean(self.generator_scores)))
-        print("  Wasserstein distance:\t\t{}".format(np.mean(self.critic_scores)))
+        print('\nEpoch %d' % epoch)
+        g_=np.mean(self.generator_scores)
+        c_=np.mean(self.critic_scores)
+        self.g_list.extend([g_])
+        self.c_list.extend([c_])
+        print("  generator score:\t\t{}".format(g_))
+        print("  Wasserstein distance:\t\t{}".format(c_))
         
         self.critic_scores[:] = []
         self.generator_scores[:] = []
         
         # And finally, we plot some generated data
         samples = self.gen_fn(lasagne.utils.floatX(np.random.rand(42, 100)))
+        
+        self.view= self.a.imshow(samples.reshape(6, 7, 28, 28)
+                               .transpose(0, 2, 1, 3)
+                               .reshape(6*28, 7*28), cmap='gray')
+                               
+        self.view_loss, = self.b.plot(range(len(self.c_list)), self.c_list,self.colors[0], lw=2)
+        self.view_error, = self.b.plot(range(len(self.g_list)),self.g_list,self.colors[1], lw=2)
+        
+        
         try:
             import matplotlib.pyplot as plt
         except ImportError:
             pass
         else:
+            
+            plt.pause(0.3)
             sample_path='./samples/'
             import os
             if not os.path.exists(sample_path):
