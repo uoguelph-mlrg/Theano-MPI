@@ -53,6 +53,7 @@ if __name__ == '__main__':
         
         batch_i=0
         
+        print 'train on %d batches' % model.data.n_batch_train
         while batch_i <model.data.n_batch_train:
         
             for subb_i in range(model.n_subb):

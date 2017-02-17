@@ -79,7 +79,7 @@ def build_generator(input_var=None):
     layer = batch_norm(DenseLayer(layer, 128*7*7))
     layer = ReshapeLayer(layer, ([0], 128, 7, 7))
     # two fractional-stride convolutions
-    layer = batch_norm(Deconv2DLayer(layer, 128, 5, stride=2, crop='same',
+    layer = batch_norm(Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
                                      output_size=14))
     layer = Deconv2DLayer(layer, 1, 5, stride=2, crop='same', output_size=28,
                           nonlinearity=sigmoid)
@@ -98,12 +98,12 @@ def build_critic(input_var=None):
     # input: (None, 1, 28, 28)
     layer = InputLayer(shape=(None, 1, 28, 28), input_var=input_var)
     # two convolutions
-    layer = Conv2DLayer(layer, 64, 5, stride=2, pad='same',
-                                   nonlinearity=lrelu)
-    layer = Conv2DLayer(layer, 128, 5, stride=2, pad='same',
-                                   nonlinearity=lrelu)
+    layer = batch_norm(Conv2DLayer(layer, 64, 5, stride=2, pad='same',
+                                   nonlinearity=lrelu))
+    layer = batch_norm(Conv2DLayer(layer, 128, 5, stride=2, pad='same',
+                                   nonlinearity=lrelu))
     # fully-connected layer
-    layer = DenseLayer(layer, 1024, nonlinearity=lrelu)
+    layer = batch_norm(DenseLayer(layer, 1024, nonlinearity=lrelu))
     # output layer (linear and without bias)
     layer = DenseLayer(layer, 1, nonlinearity=None, b=None)
     print ("critic output:", layer.output_shape)
@@ -233,10 +233,11 @@ class WGAN(object):
         
         batches_train = self.data.batches_train
 
-        if (self.generator_updates < 25) or (self.generator_updates % 500 == 0):
-            critic_runs = 100
+        if (self.generator_updates < 5) or (self.generator_updates % 100 == 0):
+            critic_runs = 50
+            print('update critic 50 times')
         else:
-            critic_runs = 5
+            critic_runs = 2
         
         c_score_list = []
         recorder.start()
@@ -270,7 +271,7 @@ class WGAN(object):
         
         c_score, g_score = self.val_fn(inputs)
         
-        recorder.val_error(count, c_score, g_score, 0)
+        recorder.val_error(count, c_score, g_score, 0)  # print loss_critic, loss_gen and a 0 instead of cost, error and error_top_5 
         
         
     def adjust_hyperp(self, epoch):
