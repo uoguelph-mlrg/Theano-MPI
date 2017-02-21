@@ -1,4 +1,4 @@
-source /opt/sharcnet/testing/set4theano-new.sh
+# source /opt/sharcnet/testing/set4theano-new.sh
 
 ### BSP rule####
 if [[ -z $1 ]]; then
@@ -8,12 +8,12 @@ else
 	size=$1
 fi
 
-echo "Theano-MPI started $size BSP workers"
-
-BSP_sync_type='avg'
+BSP_sync_type='cdd'
 BSP_exch_strategy='nccl32'
 modelfile='theanompi.models.alex_net'
 modelclass='AlexNet'
+
+echo "Theano-MPI started $size BSP($BSP_sync_type,$BSP_exch_strategy) workers"
 
 args="$BSP_sync_type $BSP_exch_strategy $modelfile $modelclass"
 

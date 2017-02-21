@@ -193,6 +193,28 @@ def check_model(model):
         
         print 'Model def lacks some attributes and/or methods'
         raise
+        
+def check_model_cdd(model):
+    
+    try:
+
+        assert hasattr(model, 'vels') == True
+
+        assert isinstance(model.vels, list)
+
+        assert hasattr(model, 'vels2') == True
+
+        assert isinstance(model.vels2, list)
+
+    except AssertionError:
+        
+        import theano
+        
+        model.vels= [theano.shared(param_i.get_value() * 0.)
+        for param_i in model.params]
+        
+        model.vels2= [theano.shared(param_i.get_value() * 0.)
+        for param_i in model.params]
 
 
 def save_model(model, path, verbose): 

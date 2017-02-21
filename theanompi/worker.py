@@ -17,14 +17,15 @@ class BSP_Worker(MPI_GPU_Process):
         
     def build(self, model, config):
         
-        from theanompi.lib.helper_funcs import check_model
+        from theanompi.lib.helper_funcs import check_model, check_model_cdd
         
         # check model has necessary attributes
         check_model(model)
         # construct model train function based on sync rule
-        model.compile_iter_fns()
+        model.compile_iter_fns(self.sync_type)
         
-        if self.sync_type=='avg': model.scale_lr(self.size)
+        if self.sync_type=='avg': 
+            model.scale_lr(self.size)
         
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=config['mname'], verbose=self.verbose)

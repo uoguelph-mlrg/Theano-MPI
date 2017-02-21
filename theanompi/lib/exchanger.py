@@ -92,77 +92,21 @@ class BSP_Exchanger(object):
             from theanompi.lib.exchanger_strategy import Exch_nccl16
             self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm)
             self.exch.prepare(self.ctx, self.param_list)
-                
+            
+        elif self.exch_strategy == 'swap':
+            
+            from theanompi.lib.exchanger_strategy import Exch_swap
+            self.exch = Exch_swap(intercomm=self.comm)
+            self.exch.prepare(self.ctx, self.param_list)
 
     def exchange(self, recorder):
         
         recorder.start()
         
         # average w
-        if self.sync_type == 'avg' and self.size > 1:
-            
-            if self.exch_strategy == 'ar':
-                
-                self.exch.exchange()
+        if self.size > 1:
 
-            elif self.exch_strategy == 'copper':
-                
-                self.exch.exchange()
-                    
-            elif self.exch_strategy == 'asa32': 
-
-                self.exch.exchange()          
-
-            elif self.exch_strategy == 'asa16':
-                
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'copper16':
-            
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'nccl32':
-                
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'nccl16':
-                
-                self.exch.exchange()
-
-        # sum delta w
-        elif self.sync_type == 'cdd' and self.size > 1:
-            
-            if self.exch_strategy == 'ar':
-                
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'copper':
-                
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'asa32':
-
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'asa16':
-                
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'copper16':
-            
-                self.exch.exchange()
-                
-            elif self.exch_strategy == 'nccl32':
-                
-                self.exch.exchange()
-            
-            elif self.exch_strategy == 'nccl16':
-                
-                self.exch.exchange()
-                
-        elif self.size>1:
-            
-            raise NotImplementedError('wrong sync type')
+            self.exch.exchange()
             
         recorder.end('comm')
                 

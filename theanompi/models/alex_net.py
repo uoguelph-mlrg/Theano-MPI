@@ -330,7 +330,7 @@ class AlexNet(object):
                                                   (self.y, self.shared_y_slice)]
                                                                 )
     
-    def compile_iter_fns(self):
+    def compile_iter_fns(self, sync_type='avg'):
         
         import time
         
@@ -338,7 +338,7 @@ class AlexNet(object):
         
         from theanompi.lib.opt import pre_model_iter_fn
 
-        pre_model_iter_fn(self, sync_type='avg')
+        pre_model_iter_fn(self, sync_type=sync_type)
         
         if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
     
