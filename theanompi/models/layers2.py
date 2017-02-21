@@ -1029,7 +1029,20 @@ def count_params(params, verbose):
         
     if verbose: print 'model size %.3f M floats' % (float(model_size)/(1024*1024))
     
+def extract_weight_types(params):
     
+    weight_types = []
+    for param in params:
+    
+        if len(param.shape.eval())>1:
+        
+            weight_type= 'W'
+        else:
+            weight_type= 'b'
+        
+        weight_types.append(weight_type)
+        
+    return weight_types
             
         
 

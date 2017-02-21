@@ -5,11 +5,6 @@ if __name__ == '__main__':
     modelfile = sys.argv[1]
     modelclass = sys.argv[2]
         
-    
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    
     # setting up device
     import os
     if 'THEANO_FLAGS' in os.environ:
@@ -23,8 +18,8 @@ if __name__ == '__main__':
     config={}
     config['verbose'] = True
     # config['device'] = 'cuda0'
-    config['rank'] = comm.rank
-    config['size'] = comm.size
+    config['rank'] = 0
+    config['size'] = 1
     
     
     import importlib
@@ -35,7 +30,7 @@ if __name__ == '__main__':
     
     # get recorder
     from theanompi.lib.recorder import Recorder
-    recorder = Recorder(comm, printFreq=5120/model.file_batch_size, modelname=modelclass, verbose=True)
+    recorder = Recorder(comm=None, printFreq=5120/model.file_batch_size, modelname=modelclass, verbose=True)
     
     
     model.compile_iter_fns()
@@ -60,9 +55,10 @@ if __name__ == '__main__':
         
                 out = model.train_iter(batch_i, recorder)
                 
-                if out!=None: batch_i = out
-                
-                count+=1
+                if out!=None: 
+                    batch_i = out
+                else:
+                    batch_i+=1
         
             recorder.print_train_info(batch_i)
         

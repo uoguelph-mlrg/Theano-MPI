@@ -124,6 +124,8 @@ class WGAN(object):
         self.rank = config['rank']
         self.size = config['size']
         
+        self.name = 'Wasserstein_GAN'
+        
         # data
         from theanompi.models.data.mnist import MNIST_data
 
