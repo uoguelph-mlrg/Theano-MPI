@@ -14,7 +14,7 @@ Theano-MPI is compatible for training models built in different framework librar
 
 ## Dependencies
 
-Theano-MPI depends on the following libraries and packages. We provide some guidance to the installing them in [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki/Installing-dependencies-of-Theano-MPI).
+Theano-MPI depends on the following libraries and packages. We provide some guidance to the installing them in [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki/Install-dependencies-of-Theano-MPI).
 * [OpenMPI](http://www.open-mpi.org/) 1.8 + or an MPI-2 standard equivalent that supports CUDA.
 * [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI.
 * [numpy](http://www.numpy.org/)

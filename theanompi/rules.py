@@ -72,7 +72,7 @@ class BSP(Rule):
     def __init__(self):
         Rule.__init__(self)
         
-        self.rulename = 'BSP(%s)' % BSP.sync_type
+        self.rulename = 'BSP(%s,%s)' % (BSP.sync_type,BSP.exch_strategy)
         
     def init(self, devices, modelfile, modelclass):
         
