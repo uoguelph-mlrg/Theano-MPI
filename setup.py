@@ -23,6 +23,7 @@ setup(name='Theano-MPI',
                     'theanompi.models.keras_model_zoo','theanompi.models.keras_model_zoo.data', \
                     'theanompi.models.lasagne_model_zoo', 'theanompi.models.lasagne_model_zoo.data' ],
           # package_dir={'theanompi':'theanompi'},
-          package_data={'theanompi': [ '*.yaml']}
+          package_data={'theanompi': [ '*.yaml']},
+          scripts=['theanompi/bin/tmlauncher']
           # install_requires=['theano>=0.9.0','libgpuarray>=0.6.0'],
           )

@@ -140,11 +140,6 @@ class EASGD(Rule):
 
         command = ["mpirun"]
         
-        try:
-            os.remove("./ompi-server.txt")
-        except OSError:
-            pass
-        
         for index, device in enumerate(devices):
             
             # command += ["--output-filename", "%s" % 'out']

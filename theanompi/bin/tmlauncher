@@ -1,0 +1,265 @@
+#!/bin/bash
+
+##################
+#################
+# parsing configs
+#################
+##################
+
+RED='\e[1;31m'
+NC='\e[0m' # No Color
+
+python -c "import theanompi"
+if [[ $? ]]
+then
+	echo 'Found Theano-MPI in:'
+	theanompipath=$(python -c "import theanompi;print theanompi.__path__[0]")
+	echo $theanompipath
+else
+	echo -e "${RED}Error${NC}: Theano-MPI not found"
+	exit 1
+fi
+
+
+for i in "$@"
+do
+case $i in
+    -cfg=*|--config=*)
+	    CONFIG="${i#*=}"
+    ;;
+    -file=*|--modelfile=*)
+	    MODELFILE="${i#*=}"
+    ;;
+    -class=*|--modelclass=*)
+	    MODELCLASS="${i#*=}"
+    ;;
+	-r=*|--rule=*)
+		RULE="${i#*=}"
+	;;
+	-s=*|--size=*)
+		SIZE="${i#*=}"
+	;;
+	-bsp_sync_type=*)
+		BSP_SYNC_TYPE="${i#*=}"
+	;;
+	-bsp_exch_strategy=*)
+		BSP_EXCH_STRATEGY=="${i#*=}"
+	;;
+    *)
+        # unknown option
+		echo -e "${RED}Error${NC}: unknown option ${i}"
+		exit 1
+    ;;
+esac
+done
+
+CONFIG=${CONFIG}
+MODELFILE=${MODELFILE}
+MODELCLASS=${MODELCLASS}
+RULE=${RULE}
+
+if [[ (-z $CONFIG) && (-z $MODELFILE) && (-z $MODELCLASS) && (-z $RULE) ]]
+then
+	echo -e "${RED}Error${NC}: Neither config nor run options provided"
+	exit 1
+elif [[ ! -z $CONFIG ]]
+then
+	# if config file provided, RULE, MODELFILE and MODELCLASS will be overwritten
+	echo
+	echo 'config file provided:'
+	source $CONFIG
+	echo "RULE = $RULE"
+	echo "MODELFILE = $MODELFILE"
+	echo "MODELCLASS = $MODELCLASS"
+	echo "SIZE = $SIZE"
+fi
+
+if [[ -z $MODELFILE ]]; then
+	echo -e "${RED}Error${NC}: NO modelfile provided"
+	exit 1
+fi
+
+if [[ -z $MODELCLASS ]]; then
+	echo -e "${RED}Error${NC}: NO modelclass provided"
+	exit 1
+fi
+
+if [[ -z $RULE ]]; then
+	echo -e "${RED}Error${NC}: NO rule provided"
+	exit 1
+fi
+
+if [[ -z $SIZE ]]; then
+	echo -e "${RED}Error${NC}: NO size provided"
+	exit 1
+fi
+
+##################
+##################
+# launching a rule
+##################
+##################
+function get_array
+{
+	set -f
+	devarray=(${DEVICES//,/ }) # a comma delimited string of device names
+	echo 
+	for i in "${!devarray[@]}"
+	do
+	    echo "rank$i=>${devarray[i]}"
+	done
+	
+	if [[ ${#devarray[@]} -ne ${SIZE} ]]
+	then
+		echo -e "${RED}Error${NC}: the length of device list (${#devarray[@]}) does not match the specified size (${SIZE})"
+		exit 1
+	fi		
+}
+
+function BSP
+{
+	BSP_sync_type=$BSP_SYNC_TYPE
+	if [[-z $BSP_sync_type ]]
+	then
+	BSP_sync_type='cdd'
+	fi
+	
+	BSP_exch_strategy=$BSP_EXCH_STRATEGY
+	if [[-z $BSP_exch_strategy ]]
+	then
+	BSP_exch_strategy='nccl32'
+	fi
+	
+	echo
+	echo "Theano-MPI started $SIZE BSP($BSP_sync_type,$BSP_exch_strategy) workers"
+
+	args="$BSP_sync_type $BSP_exch_strategy $MODELFILE $MODELCLASS"
+
+	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none"
+
+	case $SIZE in
+		1)
+			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args
+			;;
+		2)
+			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/worker.py ${devarray[1]} $args
+			;;
+		4)
+			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/worker.py ${devarray[1]} $args : \
+		   		   $env python -u $theanompipath/worker.py ${devarray[2]} $args : \
+		   		   $env python -u $theanompipath/worker.py ${devarray[3]} $args
+			;;
+		8)
+			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/worker.py ${devarray[1]} $args : \
+		   		   $env python -u $theanompipath/worker.py ${devarray[2]} $args : \
+		   		   $env python -u $theanompipath/worker.py ${devarray[3]} $args : \
+		   	 	   $env python -u $theanompipath/worker.py ${devarray[4]} $args : \
+		   		   $env python -u $theanompipath/worker.py ${devarray[5]} $args : \
+		   	   	   $env python -u $theanompipath/worker.py ${devarray[6]} $args : \
+		   	   	   $env python -u $theanompipath/worker.py ${devarray[7]} $args
+			;;
+		*)
+			echo -e "${RED}Error${NC}: Not implemented with this size"
+			exit 1
+	esac
+}
+
+function EASGD
+{
+	echo
+	echo "Theano-MPI started $SIZE EASGD workers"
+	
+	args="$MODELFILE $MODELCLASS"
+
+	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none"
+	
+	
+	case $SIZE in
+		2)
+			mpirun $env python -u $theanompipath/easgd_server.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/easgd_worker.py ${devarray[1]} $args : \
+				   $env python -u $theanompipath/easgd_worker.py ${devarray[2]} $args
+			;;
+		3)
+			mpirun $env python -u $theanompipath/easgd_server.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/easgd_worker.py ${devarray[1]} $args : \
+				   $env python -u $theanompipath/easgd_worker.py ${devarray[2]} $args : \
+		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[3]} $args : \
+			;;
+		7)
+			mpirun $env python -u $theanompipath/easgd_server.py ${devarray[0]} $args : \
+			       $env python -u $theanompipath/easgd_worker.py ${devarray[1]} $args : \
+				   $env python -u $theanompipath/easgd_worker.py ${devarray[2]} $args : \
+		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[3]} $args : \
+		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[4]} $args : \
+		   	 	   $env python -u $theanompipath/easgd_worker.py ${devarray[5]} $args : \
+		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[6]} $args : \
+		   	   	   $env python -u $theanompipath/easgd_worker.py ${devarray[7]} $args
+			;;
+		*)
+			echo -e "${RED}Error${NC}: Not implemented with this size"
+			exit 1
+	esac
+}
+
+function GOSGD
+{
+
+	echo
+	echo "Theano-MPI started $SIZE GOSGD workers"
+	
+	args="$MODELFILE $MODELCLASS"
+
+	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none"
+	
+	case $SIZE in
+		2)
+			mpirun $env python -u $theanompipath/gosgd_worker.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/gosgd_worker.py ${devarray[1]} $args
+			;;
+		4)
+			mpirun $env python -u $theanompipath/gosgd_worker.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/gosgd_worker.py ${devarray[1]} $args : \
+		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[2]} $args : \
+		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[3]} $args
+			;;
+		8)
+			mpirun $env python -u $theanompipath/gosgd_worker.py ${devarray[0]} $args : \
+				   $env python -u $theanompipath/gosgd_worker.py ${devarray[1]} $args : \
+		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[2]} $args : \
+		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[3]} $args : \
+		   	 	   $env python -u $theanompipath/gosgd_worker.py ${devarray[4]} $args : \
+		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[5]} $args : \
+		   	   	   $env python -u $theanompipath/gosgd_worker.py ${devarray[6]} $args : \
+		   	   	   $env python -u $theanompipath/gosgd_worker.py ${devarray[7]} $args
+			;;
+		*)
+			echo -e "${RED}Error${NC}: Not implemented with this size"
+			exit 1
+	esac
+	
+	
+}
+
+# get the device array
+get_array $devices
+
+case $RULE in
+    'BSP')
+		BSP 
+    ;;
+    'EASGD')
+	    EASGD 
+    ;;
+    'GOSGD')
+	   GOSGD
+    ;;
+    *)
+        # unknown option
+		echo -e "${RED}Error${NC}: unknown rule ${RULE}"
+		exit 1
+    ;;
+esac
