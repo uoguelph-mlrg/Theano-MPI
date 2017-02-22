@@ -44,7 +44,7 @@ To accelerate the training of Theano models in a distributed way, Theano-MPI tri
 
 It is recommended to organize your model and data definition in the following way.
 
-* `launch_session.py`
+  * `launch_session.py` or `launch_session.cfg`
   * `models/*.py`
     * `__init__.py`
     * `modelfile.py` : defines your customized ModelClass
@@ -72,10 +72,26 @@ After your model definition is complete, you can choose the desired way of shari
 * EASGD (Elastic Averaging SGD)
 * GOSGD (Gossip SGD)
 
-Below is an example launch script for training a customized ModelClass on two GPUs. More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
+Below is an example launch config file for training a customized ModelClass on two GPUs.
+
+```bash
+# launch_session.cfg
+RULE=BSP
+MODELFILE=models.modelfile
+MODELCLASS=ModelClass
+SIZE=2
+DEVICES=cuda0,cuda1
+```
+Then you can launch the training session by calling the following command:
+
+```bash
+ $ tmlauncher -cfg=launch_session.cfg
+```
+
+Alternatively, you can launch sessions within python as shown below:
 
 ```python
-
+# launch_session.py
 from theanompi import BSP
 
 rule=BSP()
@@ -86,6 +102,7 @@ rule.init(devices=['cuda0', 'cuda1'] ,
           modelclass = 'ModelClass') 
 rule.wait()
 ```
+More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
 
 ## Example Performance
 
