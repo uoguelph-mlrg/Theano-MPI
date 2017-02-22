@@ -119,13 +119,13 @@ function get_array
 function BSP
 {
 	BSP_sync_type=$BSP_SYNC_TYPE
-	if [[-z $BSP_sync_type ]]
+	if [[ -z $BSP_sync_type ]]
 	then
 	BSP_sync_type='cdd'
 	fi
 	
 	BSP_exch_strategy=$BSP_EXCH_STRATEGY
-	if [[-z $BSP_exch_strategy ]]
+	if [[ -z $BSP_exch_strategy ]]
 	then
 	BSP_exch_strategy='nccl32'
 	fi
