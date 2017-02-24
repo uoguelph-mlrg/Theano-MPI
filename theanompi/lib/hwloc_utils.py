@@ -32,13 +32,12 @@ def range_to_list(_range):
     res = ",".join(map(str,ids))
     
     return res
-    
-    
-            
+
               
+# @param:
+#       cpulist: a comma delimited string of cpu core numbers
+#       label:   a string to be stored as part of a key in env
 def bind_to_socket_mem(cpulist, label=None):
-    
-    print cpulist
     
     if type(cpulist)!=str:
 
@@ -77,7 +76,7 @@ def detect_socket_num(debug=True, label=None):
         
         import os
         print '%s pid %d run on cpuset %s sock %s, bind to mem cpuset %s' % \
-                            (label, os.getpid(),cpuset,socketnum, cpuset_mem)
+                            (label, os.getpid(),cpuset.list_asprintf(),socketnum, cpuset_mem.list_asprintf())
     
     
     return cpuset, socketnum

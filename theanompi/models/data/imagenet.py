@@ -199,28 +199,22 @@ class ImageNet_data(object):
         if not para_load:
             return
 
-        
         from mpi4py import MPI
         import os
         import sys
         
         hostname = MPI.Get_processor_name()
         mpiinfo = MPI.Info.Create()
-        # uncommenting the following gives error:
-        # -------------------------------------------------------------------------- 
-        # All nodes which are allocated for this job are already filled.
-        # --------------------------------------------------------------------------
-        # env = dict(os.environ)
-        # mpiinfo.Set(key='env',value=env)
+
         num_spawn = 1
-        
-        # for key, value in dict(os.environ).iteritems():
-            # envstr+= '%s=%s ' % (key,value)
 
         if "CPULIST_train" in os.environ:
         # see https://gist.github.com/lebedov/eadce02a320d10f0e81c
-            print os.environ['CPULIST_train']
-            envstr='CPULIST_train=%s\n' %  os.environ['CPULIST_train']
+            # print os.environ['CPULIST_train']
+            envstr=""
+            # for key, value in dict(os.environ).iteritems():
+            #     envstr+= '%s=%s\n' % (key,value)
+            envstr+='CPULIST_train=%s\n' %  os.environ['CPULIST_train']
             mpiinfo.Set(key ='env', value = envstr)
 
         
