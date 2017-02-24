@@ -48,7 +48,10 @@ case $i in
 		BSP_SYNC_TYPE="${i#*=}"
 	;;
 	-bsp_exch_strategy=*)
-		BSP_EXCH_STRATEGY=="${i#*=}"
+		BSP_EXCH_STRATEGY="${i#*=}"
+	;;
+	-b|-bind)
+		BIND='True'
 	;;
     *)
         # unknown option
@@ -121,6 +124,7 @@ function range_expand
 
 function get_cpu_dev_list
 {
+	BIND=$1
 	# generate a devarray according to DEVICES or SIZE
 	if [[ -z $DEVICES && -z $SIZE ]]
 	then
@@ -149,7 +153,7 @@ function get_cpu_dev_list
 	
 	cpulist=($(nvidia-smi topo -m | sed -n -e 's/^.*\s\+\([0-9,-]\+\)$/\1/p'))
 	
-	#TODO reorder cpulist by device name to match the order in DEVICES
+	
 	
 	_SIZE=${#cpulist[@]}
 	if [[ $SIZE -gt $_SIZE ]]
@@ -157,16 +161,38 @@ function get_cpu_dev_list
 		echo -e "${RED}Error${NC}: there are not as many GPUs as requested ($SIZE requested, $_SIZE exist(s))"
 		exit
 	fi	
+	
+	#TODO reorder cpulist by device name to match the order in DEVICES during constructing cpulist_expand
+	
 	cpulist_expand=()
-	for index in ${!cpulist[*]}
-	do
-		tobeexpand=${cpulist[$index]}
-		cpulist_expand+=($(range_expand $tobeexpand))
-	done
+	
+	if [[ ! -z $BIND ]]
+	then
+	
+		for index in ${!cpulist[*]}
+		do
+			tobeexpand=${cpulist[$index]}
+			cpulist_expand+=($(range_expand $tobeexpand))
+		done
+	fi
 }
 
-get_cpu_dev_list
+get_cpu_dev_list $BIND
 
+function get_env
+{
+	BIND=$1
+	
+	if [[ -z $BIND ]]
+	then
+		env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 --bind-to none"
+	else
+		env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
+	fi
+}
+
+
+get_env $BIND
 ##################
 ##################
 # launching a rule
@@ -189,7 +215,7 @@ function BSP
 	
 	args="$BSP_sync_type $BSP_exch_strategy $MODELFILE $MODELCLASS"
 
-	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
+	
 
 	command_array=()
 	command_array+=('mpirun')
@@ -216,7 +242,7 @@ function EASGD
 	
 	args="$MODELFILE $MODELCLASS"
 
-	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
+
 	
 	command_array=()
 	command_array+=('mpirun')
@@ -250,8 +276,7 @@ function GOSGD
 	
 	args="$MODELFILE $MODELCLASS"
 
-	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
-	
+
 	command_array=()
 	command_array+=('mpirun')
 
@@ -272,6 +297,8 @@ function GOSGD
 	
 	
 }
+
+
 
 case $RULE in
     'BSP')
