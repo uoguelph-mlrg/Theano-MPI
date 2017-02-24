@@ -199,7 +199,6 @@ class ImageNet_data(object):
         if not para_load:
             return
 
-        num_spawn = 1
         
         from mpi4py import MPI
         import os
@@ -211,27 +210,29 @@ class ImageNet_data(object):
         # -------------------------------------------------------------------------- 
         # All nodes which are allocated for this job are already filled.
         # --------------------------------------------------------------------------
-        # mpiinfo.Set(key = 'host',value = hostname) 
+        # env = dict(os.environ)
+        # mpiinfo.Set(key='env',value=env)
+        num_spawn = 1
         
-        #env = dict(os.environ)
         # for key, value in dict(os.environ).iteritems():
             # envstr+= '%s=%s ' % (key,value)
-        
+
+        if "CPULIST_train" in os.environ:
         # see https://gist.github.com/lebedov/eadce02a320d10f0e81c
-        #envstr='LD_LIBRARY_PATH=%s' %  env['LD_LIBRARY_PATH']
-        
-        #mpiinfo.Set(key = 'env', value = envstr) 
+            print os.environ['CPULIST_train']
+            envstr='CPULIST_train=%s\n' %  os.environ['CPULIST_train']
+            mpiinfo.Set(key ='env', value = envstr)
 
         
         ninfo = mpiinfo.Get_nkeys()
-        #if self.verbose: print ninfo
+        # print ninfo
         
         mpicommand = sys.executable
 
         file_dir = os.path.dirname(os.path.realpath(__file__))# get the dir of imagenet.py
     
-        self.icomm= MPI.COMM_SELF.Spawn(mpicommand, \
-                args=[file_dir+'/proc_load_mpi.py'],\
+        self.icomm= MPI.COMM_SELF.Spawn(mpicommand, 
+                args=[file_dir+'/proc_load_mpi.py'],
                 info = mpiinfo, maxprocs = num_spawn)
                 
                 

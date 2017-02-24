@@ -61,7 +61,7 @@ Your ModelClass in `modelfile.py` should at least have the following attributes 
 * `self.adjust_hyperp` : a method, your way of adjusting hyperparameters, e.g., learning rate.
 * `self.cleanup` : a method, necessary model and data clean-up steps.
 
-Your DataClass in `dataname.py` should at least have the follwing attributes:
+Your DataClass in `dataname.py` should at least have the following attributes:
 
 * `self.n_batch_train` : an integer, the amount of training batches needed to go through in an epoch
 * `self.n_batch_val` : an integer, the amount of validation batches needed to go through during validation

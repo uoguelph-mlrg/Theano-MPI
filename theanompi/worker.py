@@ -112,6 +112,14 @@ if __name__ == '__main__':
     exch_strategy = sys.argv[3]
     modelfile = sys.argv[4]
     modelclass = sys.argv[5]
+    try:
+        cpulist = sys.argv[6]
+    except:
+        pass
+    else: # optional binding cores using hwloc
+        from theanompi.lib.hwloc_utils import bind_to_socket_mem,detect_socket_num
+        bind_to_socket_mem(cpulist, label='train')
+        detect_socket_num(debug=True, label='train')
     
     worker = BSP_Worker(device, sync_type, exch_strategy)
     

@@ -259,6 +259,14 @@ if __name__ == '__main__':
     device = sys.argv[1]
     modelfile = sys.argv[2]
     modelclass = sys.argv[3]
+    try:
+        cpulist = sys.argv[4]
+    except:
+        pass
+    else: # optional binding cores using hwloc
+        from theanompi.lib.hwloc_utils import bind_to_socket_mem,detect_socket_num
+        bind_to_socket_mem(cpulist, label='train')
+        detect_socket_num(debug=True, label='train')
     
     worker = EASGD_Worker(device)
     

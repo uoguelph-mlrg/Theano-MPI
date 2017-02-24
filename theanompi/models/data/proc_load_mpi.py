@@ -33,7 +33,12 @@ if __name__ == '__main__':
     rand_crop  =    config['rand_crop']        
     batch_crop_mirror  =    config['batch_crop_mirror']
     img_mean = config['img_mean']
-    
+    import os
+    if "CPULIST_train" in os.environ:
+        cpulist = os.environ['CPULIST_train']
+        from theanompi.lib.hwloc_utils import bind_to_socket_mem, detect_socket_num
+        bind_to_socket_mem(cpulist, label='load')
+        detect_socket_num(debug=True, label='load')
 
     ctx = pygpu.init(gpuid)
 

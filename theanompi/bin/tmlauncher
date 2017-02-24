@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# The Theano-MPI launcher
+
+# use shell to launch mpirun directly to avoid additional python process
+
+
 ##################
 #################
 # parsing configs
@@ -89,32 +94,84 @@ if [[ -z $RULE ]]; then
 	exit 1
 fi
 
-if [[ -z $SIZE ]]; then
-	echo -e "${RED}Error${NC}: NO size provided"
-	exit 1
-fi
+##############################
+##############################
+# Verifying device on hardware
+# Getting device array 
+# Getting cpu-affinity array corresponding to device array
+##############################
+##############################
+function range_expand
+{
+    IFS=,
+    set -- $1
+    n=$#
+    for element; do
+        if [[ $element =~ ^(-?[0-9]+)-(-?[0-9]+)$ ]]; then
+            set -- "$@" $(eval echo "{${BASH_REMATCH[1]}..${BASH_REMATCH[2]}}")
+        else
+            set -- "$@" $element
+        fi
+    done
+    shift $n
+    # echo "$@"
+	echo "${*// /,}"
+    # to return a comma-separated value: 
+}
+
+function get_cpu_dev_list
+{
+	# generate a devarray according to DEVICES or SIZE
+	if [[ -z $DEVICES && -z $SIZE ]]
+	then
+		echo -e "${RED}Error${NC}: Neither DEVICES nor SIZE is specified"
+		exit 1
+	elif [[ ! -z $DEVICES ]]
+	then
+		set -f
+		devarray=(${DEVICES//,/ }) # a comma delimited string of device names
+		
+		if [[ ! -z $SIZE && ${#devarray[@]} -ne ${SIZE} ]]
+		then
+			echo -e "${RED}Error${NC}: the length of device list (${#devarray[@]}) does not match the specified size (${SIZE})"
+			exit 1
+		else
+			SIZE=${#devarray[@]}
+		fi		
+	elif [[ ! -z $SIZE && -z $DEVICES ]]
+	then
+		devarray=()
+		for (( i=0; i<$SIZE; i++))
+		do
+			devarray+=("cuda$i")
+		done
+	fi
+	
+	cpulist=($(nvidia-smi topo -m | sed -n -e 's/^.*\s\+\([0-9,-]\+\)$/\1/p'))
+	
+	#TODO reorder cpulist by device name to match the order in DEVICES
+	
+	_SIZE=${#cpulist[@]}
+	if [[ $SIZE -gt $_SIZE ]]
+	then
+		echo -e "${RED}Error${NC}: there are not as many GPUs as requested ($SIZE requested, $_SIZE exist(s))"
+		exit
+	fi	
+	cpulist_expand=()
+	for index in ${!cpulist[*]}
+	do
+		tobeexpand=${cpulist[$index]}
+		cpulist_expand+=($(range_expand $tobeexpand))
+	done
+}
+
+get_cpu_dev_list
 
 ##################
 ##################
 # launching a rule
 ##################
 ##################
-function get_array
-{
-	set -f
-	devarray=(${DEVICES//,/ }) # a comma delimited string of device names
-	echo 
-	for i in "${!devarray[@]}"
-	do
-	    echo "rank$i=>${devarray[i]}"
-	done
-	
-	if [[ ${#devarray[@]} -ne ${SIZE} ]]
-	then
-		echo -e "${RED}Error${NC}: the length of device list (${#devarray[@]}) does not match the specified size (${SIZE})"
-		exit 1
-	fi		
-}
 
 function BSP
 {
@@ -130,132 +187,101 @@ function BSP
 	BSP_exch_strategy='nccl32'
 	fi
 	
-	echo
-	echo "Theano-MPI started $SIZE BSP($BSP_sync_type,$BSP_exch_strategy) workers"
-
 	args="$BSP_sync_type $BSP_exch_strategy $MODELFILE $MODELCLASS"
 
-	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none"
+	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
 
-	case $SIZE in
-		1)
-			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args
-			;;
-		2)
-			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/worker.py ${devarray[1]} $args
-			;;
-		4)
-			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/worker.py ${devarray[1]} $args : \
-		   		   $env python -u $theanompipath/worker.py ${devarray[2]} $args : \
-		   		   $env python -u $theanompipath/worker.py ${devarray[3]} $args
-			;;
-		8)
-			mpirun $env python -u $theanompipath/worker.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/worker.py ${devarray[1]} $args : \
-		   		   $env python -u $theanompipath/worker.py ${devarray[2]} $args : \
-		   		   $env python -u $theanompipath/worker.py ${devarray[3]} $args : \
-		   	 	   $env python -u $theanompipath/worker.py ${devarray[4]} $args : \
-		   		   $env python -u $theanompipath/worker.py ${devarray[5]} $args : \
-		   	   	   $env python -u $theanompipath/worker.py ${devarray[6]} $args : \
-		   	   	   $env python -u $theanompipath/worker.py ${devarray[7]} $args
-			;;
-		*)
-			echo -e "${RED}Error${NC}: Not implemented with this size"
-			exit 1
-	esac
+	command_array=()
+	command_array+=('mpirun')
+
+	for (( index=0; index<$SIZE; index++ ))
+	do 
+		command_array+=("$env -n 1 python -u $theanompipath/worker.py ${devarray[$index]} $args ${cpulist_expand[$index]}")
+		if [[ $index -ne $((SIZE-1)) ]]
+		then
+			command_array+=(":")
+		fi
+	done
+
+	echo
+	echo "Theano-MPI started $SIZE BSP($BSP_sync_type,$BSP_exch_strategy) workers"
+	echo "by executing: ${command_array[@]/#/}"
+	
+	${command_array[@]/#/}
+	
 }
 
 function EASGD
 {
-	echo
-	echo "Theano-MPI started $SIZE EASGD workers"
 	
 	args="$MODELFILE $MODELCLASS"
 
-	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none"
+	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
 	
+	command_array=()
+	command_array+=('mpirun')
 	
-	case $SIZE in
-		2)
-			mpirun $env python -u $theanompipath/easgd_server.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/easgd_worker.py ${devarray[1]} $args : \
-				   $env python -u $theanompipath/easgd_worker.py ${devarray[2]} $args
-			;;
-		3)
-			mpirun $env python -u $theanompipath/easgd_server.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/easgd_worker.py ${devarray[1]} $args : \
-				   $env python -u $theanompipath/easgd_worker.py ${devarray[2]} $args : \
-		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[3]} $args : \
-			;;
-		7)
-			mpirun $env python -u $theanompipath/easgd_server.py ${devarray[0]} $args : \
-			       $env python -u $theanompipath/easgd_worker.py ${devarray[1]} $args : \
-				   $env python -u $theanompipath/easgd_worker.py ${devarray[2]} $args : \
-		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[3]} $args : \
-		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[4]} $args : \
-		   	 	   $env python -u $theanompipath/easgd_worker.py ${devarray[5]} $args : \
-		   		   $env python -u $theanompipath/easgd_worker.py ${devarray[6]} $args : \
-		   	   	   $env python -u $theanompipath/easgd_worker.py ${devarray[7]} $args
-			;;
-		*)
-			echo -e "${RED}Error${NC}: Not implemented with this size"
-			exit 1
-	esac
+	for index in ${!cpulist_expand[*]}
+	do 
+		if [[ $index -eq 0 ]] 
+		then
+			# the first device will correspond to the server
+			file='easgd_server.py'
+		else
+			file='easgd_worker.py'
+		fi
+		command_array+=("$env -n 1 python -u $theanompipath/$file ${devarray[$index]} $args ${cpulist_expand[$index]}")
+		if [[ $index -ne $((SIZE-1)) ]]
+		then
+			command_array+=(":")
+		fi
+	done
+	
+	echo
+	echo "Theano-MPI started one EASGD server and ${SIZE-1} EASGD workers"
+	echo "by executing: ${command_array[@]/#/}"
+	
+	${command_array[@]/#/}
+	
 }
 
 function GOSGD
 {
-
-	echo
-	echo "Theano-MPI started $SIZE GOSGD workers"
 	
 	args="$MODELFILE $MODELCLASS"
 
-	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -n 1 --bind-to none"
+	env="--mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
 	
-	case $SIZE in
-		2)
-			mpirun $env python -u $theanompipath/gosgd_worker.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/gosgd_worker.py ${devarray[1]} $args
-			;;
-		4)
-			mpirun $env python -u $theanompipath/gosgd_worker.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/gosgd_worker.py ${devarray[1]} $args : \
-		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[2]} $args : \
-		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[3]} $args
-			;;
-		8)
-			mpirun $env python -u $theanompipath/gosgd_worker.py ${devarray[0]} $args : \
-				   $env python -u $theanompipath/gosgd_worker.py ${devarray[1]} $args : \
-		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[2]} $args : \
-		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[3]} $args : \
-		   	 	   $env python -u $theanompipath/gosgd_worker.py ${devarray[4]} $args : \
-		   		   $env python -u $theanompipath/gosgd_worker.py ${devarray[5]} $args : \
-		   	   	   $env python -u $theanompipath/gosgd_worker.py ${devarray[6]} $args : \
-		   	   	   $env python -u $theanompipath/gosgd_worker.py ${devarray[7]} $args
-			;;
-		*)
-			echo -e "${RED}Error${NC}: Not implemented with this size"
-			exit 1
-	esac
+	command_array=()
+	command_array+=('mpirun')
+
+	for index in ${!cpulist_expand[*]}
+	do 
+		command_array+=("$env -n 1 python -u $theanompipath/gosgd_worker.py ${devarray[$index]} $args ${cpulist_expand[$index]}")
+		if [[ $index -ne $((SIZE-1)) ]]
+		then
+			command_array+=(":")
+		fi
+	done
+
+	echo
+	echo "Theano-MPI started $SIZE GOSGD workers"
+	echo "by executing: ${command_array[@]/#/}"
+	
+	${command_array[@]/#/}
 	
 	
 }
 
-# get the device array
-get_array $devices
-
 case $RULE in
     'BSP')
-		BSP 
+	BSP 
     ;;
     'EASGD')
-	    EASGD 
+	EASGD 
     ;;
     'GOSGD')
-	   GOSGD
+	GOSGD
     ;;
     *)
         # unknown option
