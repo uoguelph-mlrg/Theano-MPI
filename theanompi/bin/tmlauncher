@@ -154,77 +154,127 @@ function find_cpuset_in_topo_by_GPUnumber
 	echo $cpuset
 }
 
+
+# check a single device name in the format of cuda[0-9]+
+function check_device_name
+{
+	name=$1
+	if [[ ! $name =~ cuda[0-9]+ ]]
+	then
+		echo -e "${RED}Error${NC}: device name $d is not in the format of cuda[0-9]+"
+	exit 1
+	fi
+}
+
+
+# separate a colon connected 'host:dev0,dev1,...' string into an ('host:dev0', 'host:dev1', ...) array
+function separate_host_dev_string
+{
+	string=$1
+	host="${string%%:*}"
+	devlist="${string##*:}"
+	set -f
+	_dev=(${devlist//,/ }) # a comma delimited string of device names
+	
+ 	dev=()
+	for d in ${_dev[@]}
+	do
+		check_device_name $d
+		dev+=($host:$d)
+	done
+	
+	echo ${dev[@]}
+
+}
+
+
+# get the cpusetarray corresponding to the device array on a single host
+# @param: 
+#			$1: an array of 'host:device' elements
+#			$2: the host on which to perform "nvidia-smi topo -m"
+#			$3: if needs core binding
+# output: 
+#			cpusetarray : an array of elements, each element is a string of comma delimited core numbers
+function get_cpusetarray_on_host
+{
+	declare -a arr=("${!1}") # pass in array variable
+	host=$2
+	BIND=$3
+
+	mapfile -t lines < <(ssh $host nvidia-smi topo -m | grep "^GPU[0-9]\+")
+	_SIZE=${#lines[@]} # shows the amount of available GPUs
+	
+	sz=${#arr[@]}
+	
+	if [[ $sz -gt $_SIZE ]]
+	then
+		echo -e "${RED}Error${NC}: there are not as many GPUs as requested on host $host ($sz requested, $_SIZE exist(s))"
+		exit 1
+	fi
+	
+	if [[ ! -z $BIND ]]
+	then
+		cpuset=()
+		for d in "${arr[@]}"
+		do
+			if [[ ! $d =~ $host:cuda[0-9]+ ]]
+			then
+		    	echo -e "${RED}Error${NC}: device name $d is not in the format of $host:cuda[0-9]+"
+		    	exit 1
+			else
+				GPUnumber=${d#*:cuda}
+				cpu=$(find_cpuset_in_topo_by_GPUnumber lines[@] $GPUnumber)
+				cpuset+=($(range_expand $cpu))
+			fi
+		done
+	fi
+	
+	echo ${cpuset[@]}
+}
+
 # get the devarray by parsing DEVICES
 # get the corresponding cpusetarray by parsing nvidia-smi topo -m
 # @param: 
 #			$1: a flag to control whether do core binding or not
+#			(global) DEVICES: an array of colon connected 'host:dev0,dev1,...' string 
 # output: 
-#			(global) devarray
-#			(global) cpusetarray
-#			(global) SIZE
+#			(global) devarray : an array of elements, each element is a string of colon connected 'host:dev' pair
+#			(global) cpusetarray : an array of elements, each element is a string of comma delimited core numbers
+#			(global) SIZE : the total number of devices being used on all hosts
 function get_cpu_dev_array
 {
 	BIND=$1
-	# generate a devarray according to DEVICES or SIZE
-	if [[ -z $DEVICES && -z $SIZE ]]
+	num_host=${#DEVICES[@]}	
+
+	if [[ num_host -eq 0 ]] || [[ -z $DEVICES ]]
 	then
-		echo -e "${RED}Error${NC}: Neither DEVICES nor SIZE is specified"
+		echo -e "${RED}Error${NC}: DEVICES empty"
 		exit 1
-	elif [[ ! -z $DEVICES ]]
+	elif [[ num_host -eq 1 ]] && [[ ! $DEVICES =~ ^.*:.*$ ]]
 	then
-		set -f
-		devarray=(${DEVICES//,/ }) # a comma delimited string of device names
-		
-		if [[ ! -z $SIZE && ${#devarray[@]} -ne ${SIZE} ]]
-		then
-			echo -e "${RED}Error${NC}: the length of device list (${#devarray[@]}) does not match the specified size (${SIZE})"
-			exit 1
-		else
-			for d in "${devarray[@]}"
-			do
-			  if [[ ! $d =~ cuda[0-9]+ ]]
-			  then
-			    echo -e "${RED}Error${NC}: device name $d is not in the format of cuda[0-9]+"
-			    exit 1
-			  fi
-			done
-			SIZE=${#devarray[@]}
-		fi		
-	elif [[ ! -z $SIZE && -z $DEVICES ]]
-	then
-		devarray=()
-		for (( i=0; i<$SIZE; i++))
-		do
-			devarray+=("cuda$i")
-		done
-	fi
-	
-	
-	mapfile -t lines < <(nvidia-smi topo -m | grep "^GPU[0-9]\+")
-	_SIZE=${#lines[@]} # shows the amount of available GPUs
-	
-	if [[ $SIZE -gt $_SIZE ]]
-	then
-		echo -e "${RED}Error${NC}: there are not as many GPUs as requested ($SIZE requested, $_SIZE exist(s))"
-		exit 1
-	fi	
-	
-	if [[ ! -z $BIND ]]
-	then
+		host=$(hostname)
+		_devarray=(${DEVICES//,/ }) # a comma delimited string of device names
+	 	devarray=()
 		cpusetarray=()
-		for d in "${devarray[@]}"
+		for d in ${_devarray[@]}
 		do
-			if [[ ! $d =~ cuda[0-9]+ ]]
-			then
-		    	echo -e "${RED}Error${NC}: device name $d is not in the format of cuda[0-9]+"
-		    	exit 1
-			else
-				GPUnumber=${d#cuda}
-				cpuset=$(find_cpuset_in_topo_by_GPUnumber lines[@] $GPUnumber)
-				cpusetarray+=($(range_expand $cpuset))
-			fi
+			check_device_name $d
+			devarray+=($host:$d)
+		done
+		cpusetarray+=($(get_cpusetarray_on_host devarray[@] $host $BIND))
+	else
+		devarray=()
+		cpusetarray=()
+		for str in "${DEVICES[@]}"
+		do
+			_devarr=($(separate_host_dev_string $str))
+		    devarray+=(${_devarr[@]})
+			host="${str%%:*}"
+			_cpusetarr=($(get_cpusetarray_on_host _devarr[@] $host $BIND))
+			cpusetarray+=(${_cpusetarr[@]})
 		done
 	fi
+	SIZE=${#devarray[@]}
 }
 
 get_cpu_dev_array $BIND
@@ -238,11 +288,10 @@ function get_env
 {
 	BIND=$1
 	
+	env="--mca mpi_max_info_val 10240 --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -x PATH=$PATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -x CPATH=$CPATH"
 	if [[ -z $BIND ]]
 	then
-		env="--mca mpi_max_info_val 10240 --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 --bind-to none"
-	else
-		env="--mca mpi_max_info_val 10240 --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1"
+		env=$env" --bind-to none"
 	fi
 }
 
@@ -261,7 +310,7 @@ get_env $BIND
 #			(global): SIZE, MODELFILE, MODELCLASS
 #			(global): BSP_SYNC_TYPE, BSP_EXCH_STRATEGY
 #			(global): env
-#			(global): devarray
+#			(global): devarray : a hypen separated 'host-dev' string
 #			(global): cpusetarray
 function BSP
 {
@@ -284,7 +333,10 @@ function BSP
 
 	for (( index=0; index<$SIZE; index++ ))
 	do 
-		command_array+=("$env -n 1 python -u $theanompipath/worker.py ${devarray[$index]} $args ${cpusetarray[$index]}")
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		dev="${string##*:}"
+		command_array+=("$env -host $host -n 1 python -u $theanompipath/worker.py $dev $args ${cpusetarray[$index]}")
 		if [[ $index -ne $((SIZE-1)) ]]
 		then
 			command_array+=(":")
