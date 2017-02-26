@@ -79,7 +79,6 @@ Below is an example launch config file for training a customized ModelClass on t
 RULE=BSP
 MODELFILE=models.modelfile
 MODELCLASS=ModelClass
-SIZE=2
 DEVICES=cuda0,cuda1
 ```
 Then you can launch the training session by calling the following command:
