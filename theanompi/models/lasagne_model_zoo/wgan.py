@@ -152,26 +152,7 @@ class WGAN(object):
         self.g_list=[]
         self.current_info=None
         
-        self.init_view()
-        
-    def init_view(self):
-        
-        import matplotlib.pyplot as plt
-        
-        from matplotlib.font_manager import FontProperties
-        
-        fontP = FontProperties()
-        fontP.set_size('small')
-        self.colors = ['-r','-b','-m','-g']
-                
-        fig = plt.figure(1, figsize=(8,4))
-        fig.subplots_adjust(left = 0.15, bottom = 0.07,
-        	                    right = 0.94, top = 0.94,
-        	                    hspace = 0.14, wspace=0.20)
-                                
-        self.a=fig.add_subplot(1,2,1)
-        self.b=fig.add_subplot(1,2,2)
-        
+        self.init_view=False
         
     def build_model(self):
         
@@ -299,11 +280,10 @@ class WGAN(object):
         c_score, g_score = self.val_fn(inputs)
         
         recorder.val_error(count, c_score, g_score, 0)  # print loss_critic, loss_gen and a 0 instead of cost, error and error_top_5 
+    
+    def print_info(self, recorder):
         
-    def adjust_hyperp(self, epoch):
-        
-        import time
-        print('\nEpoch %d' % epoch)
+        print('\nEpoch %d' % self.epoch)
         g_=np.mean(self.generator_scores)
         c_=np.mean(self.critic_scores)
         self.g_list.extend([g_])
@@ -314,36 +294,38 @@ class WGAN(object):
         self.critic_scores[:] = []
         self.generator_scores[:] = []
         
-        # And finally, we plot some generated data
         samples = self.gen_fn(lasagne.utils.floatX(np.random.rand(42, 100)))
+        samples = samples.reshape(6, 7, 28, 28).transpose(0, 2, 1, 3).reshape(6*28, 7*28)
         
-        self.view= self.a.imshow(samples.reshape(6, 7, 28, 28)
-                               .transpose(0, 2, 1, 3)
-                               .reshape(6*28, 7*28), cmap='gray')
-                               
-        self.view_loss, = self.b.plot(range(len(self.c_list)), self.c_list,self.colors[0], lw=2)
-        self.view_error, = self.b.plot(range(len(self.g_list)),self.g_list,self.colors[1], lw=2)
-        
+        if self.init_view == False:
+            
+            self.init_view = True
+            
+            recorder.plot_init(name='scores')
+    
+            recorder.plot_init(name='sample')
+                
+        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2)
+        recorder.plot(name='sample', image=samples, cmap='gray')
         
         try:
             import matplotlib.pyplot as plt
         except ImportError:
             pass
         else:
-            
-            plt.pause(0.3)
             sample_path='./samples/'
             import os
             if not os.path.exists(sample_path):
                 print('Creating folder: %s' % sample_path)
                 os.makedirs(sample_path)
                 
-            plt.imsave(sample_path+'%dwgan_mnist_samples.png' % epoch,
-                       (samples.reshape(6, 7, 28, 28)
-                               .transpose(0, 2, 1, 3)
-                               .reshape(6*28, 7*28)),
+            plt.imsave(sample_path+'%dwgan_mnist_samples.png' % self.epoch,
+                       samples,
                        cmap='gray')
+                       
         
+    def adjust_hyperp(self, epoch):
+
         # After half the epochs, we start decaying the learn rate towards zero
         if epoch >= num_epochs // 2:
             progress = float(epoch) / num_epochs

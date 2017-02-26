@@ -75,6 +75,9 @@ if __name__ == '__main__':
         
         model.adjust_hyperp(epoch=epoch)
         
+        if hasattr(model,'print_info'):
+            model.print_info(recorder)
+        
         recorder.save(count, model.shared_lr.get_value())
             
         if epoch % snapshot_freq == 0: 

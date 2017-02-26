@@ -44,6 +44,8 @@ class Recorder(object):
         self.epoch_time = None
         self.verbose = verbose
         self.comm, self.printFreq, self.modelname = comm, printFreq, modelname
+
+        self.figsaxe={}
 	
     def start(self):
 	
@@ -214,8 +216,77 @@ class Recorder(object):
         self.info_dict['epoch_time'] = self.info_dict['epoch_time'][0:load_epoch]
         self.info_dict['all_time'] = self.info_dict['all_time'][0:load_epoch]
         self.info_dict['lr'] = self.info_dict['lr'][0:load_epoch]
-             
-             
+    
+    def plot_init(self, name, fig_specs=None):
+        
+        #add a figure with a single subplot
+        
+        import matplotlib.pyplot as plt
+    
+        from matplotlib.font_manager import FontProperties
+    
+        fontP = FontProperties()
+        fontP.set_size('small')
+        self.colors = ['-r','-b','-m','-g']
+            
+        fig = plt.figure(figsize=(8,4))
+        
+        if fig_specs != None:
+            # fig_spec is a dictionary of fig adjust specs
+            fig.subplots_adjust(**fig_sepcs)
+            
+        else:
+            
+            fig.subplots_adjust(left = 0.15, bottom = 0.07,
+        	                    right = 0.94, top = 0.94,
+        	                    hspace = 0.14, wspace=0.20)
+                        
+        if type(name) != str:
+            raise TypeError('name should be a string')     
+               
+        self.figsaxe[name]=fig.add_subplot(111)
+        
+        
+    def plot(self, name, lines=None, image=None, **kwargs):
+        
+        import matplotlib.pyplot as plt
+        
+        if lines !=None and image !=None:
+            raise RuntimeError('Only one between lines and images can be accepted at a time')
+        
+        elif lines !=None and (type(lines) != list or type(lines[0]) !=list):
+                
+            raise TypeError('the lines to be plot need to be list of lists')
+                
+        if lines !=None:
+            
+            ax = self.figsaxe[name]
+            
+            for index, line in enumerate(lines):
+                
+                try:
+                    lw=kwargs['lw']
+                except:
+                    lw=2
+                    pass
+                
+                ax.plot(range(len(line)), line, self.colors[index], lw=lw)
+                
+            plt.pause(0.3)
+            
+        if image !=None :
+            
+            ax = self.figsaxe[name]
+            
+            try:
+                cmap=kwargs['cmap']
+            except:
+                cmap=plt.rcParams['image.cmap']
+                pass
+                
+            ax.imshow(image, cmap=cmap)
+            
+            plt.pause(0.3)
             
     def show(self, label='', color_id = 0, show=True):
         
