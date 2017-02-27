@@ -368,8 +368,6 @@ function BSP
 	
 }
 
-#TODO add multi-node support ot EASGD and GOSGD
-
 # launch Elastic Averaging SGD training
 # @param: 
 #			(global): SIZE, MODELFILE, MODELCLASS
@@ -393,7 +391,10 @@ function EASGD
 		else
 			file='easgd_worker.py'
 		fi
-		command_array+=("$env -np 1 python -u $theanompipath/$file ${devarray[$index]} $args ${cpusetarray[$index]}")
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		dev="${string##*:}"
+		command_array+=("$env -host $host -np 1 python -u $theanompipath/$file $dev $args ${cpusetarray[$index]}")
 		if [[ $index -ne $((SIZE-1)) ]]
 		then
 			command_array+=(":")
@@ -424,7 +425,10 @@ function GOSGD
 
 	for (( index=0; index<$SIZE; index++ ))
 	do 
-		command_array+=("$env -np 1 python -u $theanompipath/gosgd_worker.py ${devarray[$index]} $args ${cpusetarray[$index]}")
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		dev="${string##*:}"
+		command_array+=("$env -host $host -np 1 python -u $theanompipath/gosgd_worker.py $dev $args ${cpusetarray[$index]}")
 		if [[ $index -ne $((SIZE-1)) ]]
 		then
 			command_array+=(":")
