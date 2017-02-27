@@ -44,7 +44,9 @@ class Recorder(object):
         self.epoch_time = None
         self.verbose = verbose
         self.comm, self.printFreq, self.modelname = comm, printFreq, modelname
-
+        
+        # for online plotting
+        self.fig=None
         self.figsaxe={}
 	
     def start(self):
@@ -229,25 +231,43 @@ class Recorder(object):
         fontP.set_size('small')
         self.colors = ['-r','-b','-m','-g']
             
-        fig = plt.figure(figsize=(8,4))
+        if self.fig==None:
+            
+            self.fig = plt.figure(figsize=(8,4))
         
-        if fig_specs != None:
-            # fig_spec is a dictionary of fig adjust specs
-            fig.subplots_adjust(**fig_sepcs)
+            if fig_specs != None:
+                # fig_spec is a dictionary of fig adjust specs
+                self.fig.subplots_adjust(**fig_sepcs)
             
-        else:
+            else:
             
-            fig.subplots_adjust(left = 0.15, bottom = 0.07,
-        	                    right = 0.94, top = 0.94,
-        	                    hspace = 0.14, wspace=0.20)
+                self.fig.subplots_adjust(left = 0.15, bottom = 0.07,
+            	                    right = 0.94, top = 0.94,
+            	                    hspace = 0.14, wspace=0.20)
                         
         if type(name) != str:
-            raise TypeError('name should be a string')     
-               
-        self.figsaxe[name]=fig.add_subplot(111)
+            raise TypeError('name should be a string')  
+            
+        layout = 'grid'
+        n = len(self.fig.axes)
+    
+        if layout in ('h', 'horizontal'):
+            n_rows, n_cols = (1, n+1)   
+        elif layout in ('v', 'vertical'):
+            n_rows, n_cols = (n+1, 1)  
+        elif layout in ('g', 'grid'):
+            vector_length=n+1
+            n_cols = int(np.ceil(np.sqrt(vector_length)))
+            n_rows = int(np.ceil(vector_length/n_cols))
+        else:
+            raise ValueError('Bad layout Value')
+    
+        for i in range(n):
+            self.fig.axes[i].change_geometry(n_rows, n_cols, i+1)
+            
+        self.figsaxe[name] = self.fig.add_subplot(n_rows, n_cols, n+1)
         
-        
-    def plot(self, name, lines=None, image=None, **kwargs):
+    def plot(self, name, lines=None, image=None, pause=False, **kwargs):
         
         import matplotlib.pyplot as plt
         
@@ -271,10 +291,8 @@ class Recorder(object):
                     pass
                 
                 ax.plot(range(len(line)), line, self.colors[index], lw=lw)
-                
-            plt.pause(0.3)
             
-        if image !=None :
+        elif image !=None :
             
             ax = self.figsaxe[name]
             
@@ -286,7 +304,7 @@ class Recorder(object):
                 
             ax.imshow(image, cmap=cmap)
             
-            plt.pause(0.3)
+        if pause: plt.pause(0.001)
             
     def show(self, label='', color_id = 0, show=True):
         
@@ -427,11 +445,8 @@ class Recorder(object):
         
 
         if show: plt.show()
-            
-
+        
     
-        
-        
         
         
     

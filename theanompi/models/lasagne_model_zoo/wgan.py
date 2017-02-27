@@ -302,11 +302,11 @@ class WGAN(object):
             self.init_view = True
             
             recorder.plot_init(name='scores')
-    
+            
             recorder.plot_init(name='sample')
-                
-        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2)
+            
         recorder.plot(name='sample', image=samples, cmap='gray')
+        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2, pause=True)
         
         try:
             import matplotlib.pyplot as plt
