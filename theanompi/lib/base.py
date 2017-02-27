@@ -39,11 +39,27 @@ class MPI_GPU_Process(object):
             _string=None
         
         _string=comm.bcast(_string, root=0)
-
         _local_id.comm_id = bytearray(_string.encode('utf-8'))
-        _local_size = size # how many intra-node workers, in the case of copper maximum 8 workers per node, assuming running within a node here 
-        _local_rank = rank # assuming running within a node here 
- 
+        
+        
+        # make intranode gpucomms, assuming running on multiple nodes
+        # 1. get a list of all host-rank strings
+        import os
+        print os.uname()[1],os.environ['CPULIST_train']
+        hosts = [os.uname()[1]+",%d" % self.rank]
+        import numpy as np
+        hosts = np.array(comm.allgather(hosts)).flatten().tolist()
+        # 2. get a list of local host-rank strings
+        localhost = [host for host in hosts if host.startswith(os.uname()[1])]
+        # 3. count how many local ranks by counting the local host-rank strings (_local_size)
+        _local_size=len(localhost)
+        _local_rank=0
+        # 4. give self a rank among those ranks (_local_rank)
+        for index, host in enumerate(localhost):
+            if host==os.uname()[1]+",%d" % self.rank:
+                _local_rank=index
+                break
+                
         self.gpucomm = collectives.GpuComm(_local_id,_local_size,_local_rank)
     
     def get_intranode_pair_comm(self, pair):

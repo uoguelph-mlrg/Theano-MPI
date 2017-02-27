@@ -205,7 +205,13 @@ class ImageNet_data(object):
         
         hostname = MPI.Get_processor_name()
         mpiinfo = MPI.Info.Create()
-
+        
+        # will give all nodes filled issue if use key=host because need an additional slot
+        # also the hostname should be exactly the same in the output list of --display-allocation
+        if hostname != hostname.split('.')[0]:
+            hostname = hostname.split('.')[0]
+        mpiinfo.Set(key = 'add-host',value = hostname)
+            
         num_spawn = 1
 
         if "CPULIST_train" in os.environ:

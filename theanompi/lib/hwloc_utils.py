@@ -75,8 +75,9 @@ def detect_socket_num(debug=True, label=None):
     if debug:
         
         import os
-        print '%s pid %d run on cpuset %s sock %s, bind to mem cpuset %s' % \
-                            (label, os.getpid(),cpuset.list_asprintf(),socketnum, cpuset_mem.list_asprintf())
+        print '%s pid %d run on cpuset %s (%s) sock %s, bind to mem cpuset %s (%s)' % \
+                            (label, os.getpid(),cpuset, cpuset.list_asprintf(), 
+                                socketnum, cpuset_mem, cpuset_mem.list_asprintf())
     
     
     return cpuset, socketnum

@@ -232,7 +232,7 @@ function get_cpusetarray_on_host
 			cpu=$(find_cpuset_in_topo_by_GPUnumber lines[@] $GPUnumber)
 			if [[ -z $cpu ]]
 			then
-				echo -e "$LINENO: ${RED}Error${NC}: device ${d#*:} does not exist on host $host" >&2
+				echo -e "$LINENO: ${RED}Error${NC}: device ${d#*:} does not exist on host $host, or does not have the CPU affinity setting" >&2
 				exit 1
 			fi
 			cpuset+=($(range_expand $cpu))
@@ -303,10 +303,12 @@ function get_env
 {
 	local BIND=$1
 	
-	env="--mca mpi_max_info_val 10240 --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -x PATH=$PATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -x CPATH=$CPATH"
+	env="--mca mpi_max_info_val 10240 --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -x PATH=$PATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -x CPATH=$CPATH" #  -display-allocation"
 	if [[ -z $BIND ]]
 	then
 		env=$env" --bind-to none"
+		#else
+		#env=$env" -report-bindings"
 	fi
 }
 
@@ -351,7 +353,7 @@ function BSP
 		string=${devarray[$index]}
 		host="${string%%:*}"
 		dev="${string##*:}"
-		command_array+=("$env -host $host -n 1 python -u $theanompipath/worker.py $dev $args ${cpusetarray[$index]}")
+		command_array+=("$env -host $host -np 1 python -u $theanompipath/worker.py $dev $args ${cpusetarray[$index]}")
 		if [[ $index -ne $((SIZE-1)) ]]
 		then
 			command_array+=(":")
@@ -366,6 +368,7 @@ function BSP
 	
 }
 
+#TODO add multi-node support ot EASGD and GOSGD
 
 # launch Elastic Averaging SGD training
 # @param: 
@@ -390,7 +393,7 @@ function EASGD
 		else
 			file='easgd_worker.py'
 		fi
-		command_array+=("$env -n 1 python -u $theanompipath/$file ${devarray[$index]} $args ${cpusetarray[$index]}")
+		command_array+=("$env -np 1 python -u $theanompipath/$file ${devarray[$index]} $args ${cpusetarray[$index]}")
 		if [[ $index -ne $((SIZE-1)) ]]
 		then
 			command_array+=(":")
@@ -421,7 +424,7 @@ function GOSGD
 
 	for (( index=0; index<$SIZE; index++ ))
 	do 
-		command_array+=("$env -n 1 python -u $theanompipath/gosgd_worker.py ${devarray[$index]} $args ${cpusetarray[$index]}")
+		command_array+=("$env -np 1 python -u $theanompipath/gosgd_worker.py ${devarray[$index]} $args ${cpusetarray[$index]}")
 		if [[ $index -ne $((SIZE-1)) ]]
 		then
 			command_array+=(":")
