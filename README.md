@@ -121,7 +121,7 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 * To get the best running speed performance, the memory cache may need to be cleaned before running.
 
-* Bind cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher.
+* Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher.
 
 * Learnining rate and other hyperparams may need to be retuned according to number of workers and effective batch size to be stable and give optimal convergence. 
 
