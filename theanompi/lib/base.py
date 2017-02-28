@@ -45,7 +45,7 @@ class MPI_GPU_Process(object):
         # make intranode gpucomms, assuming running on multiple nodes
         # 1. get a list of all host-rank strings
         import os
-        print os.uname()[1],os.environ['CPULIST_train']
+        #print os.uname()[1],os.environ['CPULIST_train']
         hosts = [os.uname()[1]+",%d" % self.rank]
         import numpy as np
         hosts = np.array(comm.allgather(hosts)).flatten().tolist()

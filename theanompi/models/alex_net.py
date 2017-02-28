@@ -306,8 +306,10 @@ class AlexNet(object):
         if self.monitor_grad:
             
             norms = [grad.norm(L=2) for grad in self.grads]
+            import theano.tensor as T
+            norms = T.log10(norms)
             
-            self.get_norm = theano.function([self.subb_ind], norms,
+            self.get_norm = theano.function([self.subb_ind], [T.sum(norms), T.max(norms)],
                                               givens=[(self.x, self.shared_x_slice), 
                                                       (self.y, self.shared_y_slice)]
                                                                           )
@@ -429,12 +431,12 @@ class AlexNet(object):
                 
         recorder.start()
         
-        cost,error= function(self.subb_t)
-        
         if self.verbose: 
             if self.monitor_grad: 
-                print np.array(self.get_norm(self.subb_t))
-                #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
+                #print np.array(self.get_norm(self.subb_t))
+                print np.array(self.get_norm(self.subb_t)).tolist()[:2]
+                
+        cost,error= function(self.subb_t)
             
         recorder.train_error(count, cost, error)
         recorder.end('calc')
