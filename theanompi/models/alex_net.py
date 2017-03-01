@@ -374,7 +374,7 @@ class AlexNet(object):
         '''use parallel loading for large or remote data'''
 
             
-        if self.current_t==0: 
+        if self.current_t==0 and self.subb_t == 0:  
             self.data.shuffled=False
             self.data.shuffle_data(mode='train',common_seed=self.epoch)
             self.data.shard_data(mode='train',rank=self.rank, size=self.size)
@@ -384,7 +384,8 @@ class AlexNet(object):
 
         mode = 'train'
         function = self.train_iter_fn
-            
+        
+        # print len(img), 'current_t: %d, subb_t: %d' % (self.current_t,self.subb_t)
             
         if self.subb_t == 0: # load the whole file into shared_x when loading sub-batch 0 of each file.
         
@@ -464,7 +465,7 @@ class AlexNet(object):
         
         '''use the val_iter_fn compiled'''
         
-        if self.current_v==0:
+        if self.current_v==0 and self.subb_v == 0:
             self.data.shuffled=False
             self.data.shuffle_data(mode='val')
             self.data.shard_data(mode='val',rank=self.rank, size=self.size)

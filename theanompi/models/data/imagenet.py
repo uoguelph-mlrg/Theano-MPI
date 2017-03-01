@@ -102,8 +102,8 @@ class ImageNet_data(object):
             self.n_batch_train = len(self.rawdata[0])
             self.n_batch_val = len(self.rawdata[2])
         
-            if self.verbose: print 'train on %d files' % n_train_files  
-            if self.verbose: print 'val on %d files' % n_val_files
+            if self.verbose: print 'train on %d files' % self.n_batch_train  
+            if self.verbose: print 'val on %d files' % self.n_batch_val
                 
                 
         
@@ -164,7 +164,9 @@ class ImageNet_data(object):
         if mode=='train':
             # 1. generate random indices 
             np.random.seed(common_seed)
-
+            
+            self.n_batch_train=len(self.train_img_ext)
+            
             indices = np.random.permutation(self.n_batch_train)
 
             # 2. shuffle batches based on indices
@@ -175,15 +177,15 @@ class ImageNet_data(object):
                 img.append(self.train_img_ext[index])
                 labels.append(self.train_labels_ext[index])
         
-            self.train_img_shard = img
-            self.train_labels_shard = labels
+            self.train_img_shuffle = img
+            self.train_labels_shuffle = labels
             
             if self.verbose: print 'training data shuffled', indices
         
         elif mode=='val':
             
-            self.val_img_shard = self.val_img_ext
-            self.val_labels_shard = self.val_labels_ext
+            self.val_img_shuffle = self.val_img_ext
+            self.val_labels_shuffle = self.val_labels_ext
             
 
                 
@@ -196,17 +198,17 @@ class ImageNet_data(object):
         
             # sharding
             self.train_img_shard, self.train_labels_shard = \
-                    self.train_img_shard[rank::size], self.train_labels_shard[rank::size]
+                    self.train_img_shuffle[rank::size], self.train_labels_shuffle[rank::size]
             self.n_batch_train = len(self.train_img_shard)
             
-            if self.verbose: print 'training data sharded'
+            if self.verbose: print 'training data sharded', self.n_batch_train
             
         elif mode=='val':
             self.val_img_shard, self.val_labels_shard = \
-                    self.val_img_shard[rank::size], self.val_labels_shard[rank::size]
+                    self.val_img_shuffle[rank::size], self.val_labels_shuffle[rank::size]
             self.n_batch_val = len(self.val_img_shard)
         
-            if self.verbose: print 'validation data sharded'
+            if self.verbose: print 'validation data sharded', self.n_batch_val
         
         
         
