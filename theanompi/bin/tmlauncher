@@ -267,7 +267,7 @@ function get_cpu_dev_array
 		exit 1
 	elif [[ num_host -eq 1 ]] && [[ ! $DEVICES =~ ^.*:.*$ ]]
 	then
-		host=$(hostname)
+		host=$(hostname -s)
 		_devarray=(${DEVICES//,/ }) # a comma delimited string of device names
 	 	devarray=()
 		cpusetarray=()

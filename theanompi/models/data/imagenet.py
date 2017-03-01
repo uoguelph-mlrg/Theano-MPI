@@ -33,13 +33,12 @@ class ImageNet_data(object):
 
         self.n_class = 1000
         
-        self.get_data(file_batch_size=128) # TODO file_batch_size=256 does not work for some reason right now
+        self.get_data(file_batch_size=128)
         
         self.verbose = verbose
         
         self.batched=False
-        self.shuffled=False
-        self.sharded=False
+        self.extended=False
         
         # parallel loading
         self.para_load = para_load
@@ -137,16 +136,34 @@ class ImageNet_data(object):
                 
             self.batched=True
     
-    
-    def shuffle_data(self):
+    def extend_data(self, rank, size):
+        
+        if self.extended == False:
+            if self.batched == False:
+                raise RuntimError('extend_data needs to be after batch_data')
+        
+            # make divisible
+            from theanompi.models.data.utils import extend_data
+            self.train_img_ext, self.train_labels_ext = extend_data(rank, size, self.train_img, self.train_labels)
+            self.val_img_ext, self.val_labels_ext = extend_data(rank, size, self.val_img, self.val_labels)
+            
+            self.n_batch_train = len(self.train_img_ext)
+            self.n_batch_val = len(self.val_img_ext)
+            
+            self.extended=True
+        
+        
+    def shuffle_data(self, mode, common_seed=1234):
     
         # To be called at the begining of an epoch for shuffling the order of training data
-        if self.shuffled == False:
-            # 1. generate random indices 
 
-            import time, os
-            time_seed = int(time.time())*int(os.getpid())%1000
-            np.random.seed(time_seed)
+            
+        if self.extended == False:
+            raise RuntimError('shuffle_data needs to be after extend_data')
+        
+        if mode=='train':
+            # 1. generate random indices 
+            np.random.seed(common_seed)
 
             indices = np.random.permutation(self.n_batch_train)
 
@@ -155,40 +172,41 @@ class ImageNet_data(object):
             labels=[]
 
             for index in indices:
-                img.append(self.train_img[index])
-                labels.append(self.train_labels[index])
-            
-            self.train_img = img
-            self.train_labels = labels
+                img.append(self.train_img_ext[index])
+                labels.append(self.train_labels_ext[index])
         
-            if self.verbose: print 'training data shuffled', indices
+            self.train_img_shard = img
+            self.train_labels_shard = labels
             
-            self.shuffled=True
+            if self.verbose: print 'training data shuffled', indices
+        
+        elif mode=='val':
+            
+            self.val_img_shard = self.val_img_ext
+            self.val_labels_shard = self.val_labels_ext
+            
+
+                
 
     
-    def shard_data(self, file_batch_size, rank, size):
+    def shard_data(self, mode, rank, size):
         
-        # after batch_data
-        filenames_v, labels_v = self.val_img, self.val_labels
-        
-        if self.sharded == False:
-            # make divisible
-            from theanompi.models.data.utils import extend_data
-            filenames_v, labels_v = extend_data(rank, size, filenames_v, labels_v)
+            
+        if mode=='train':
         
             # sharding
-            filenames_v = filenames_v[rank::size]
-            labels_v = labels_v[rank::size]
+            self.train_img_shard, self.train_labels_shard = \
+                    self.train_img_shard[rank::size], self.train_labels_shard[rank::size]
+            self.n_batch_train = len(self.train_img_shard)
             
-            self.val_img_shard, self.val_labels_shard = filenames_v, labels_v
-        
+            if self.verbose: print 'training data sharded'
+            
+        elif mode=='val':
+            self.val_img_shard, self.val_labels_shard = \
+                    self.val_img_shard[rank::size], self.val_labels_shard[rank::size]
             self.n_batch_val = len(self.val_img_shard)
-            
+        
             if self.verbose: print 'validation data sharded'
-            
-            self.sharded=True
-        
-        
         
         
         
