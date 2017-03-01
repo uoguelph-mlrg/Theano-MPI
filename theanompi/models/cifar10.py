@@ -53,8 +53,13 @@ class Cifar10_model(object): # c01b input
         self.file_batch_size = file_batch_size
         self.n_softmax_out = self.data.n_class
         
-        # mini batching
+        # mini batching and other data parallel common routine
         self.data.batch_data(file_batch_size)
+        self.data.extend_data(rank=self.rank, size=self.size)
+        self.data.shuffle_data(mode='train', common_seed=1234)
+        self.data.shuffle_data(mode='val')
+        self.data.shard_data(mode='train', rank=self.rank, size=self.size) # to update data.n_batch_train
+        self.data.shard_data(mode='val', rank=self.rank, size=self.size) # to update data.n_batch_val
         
         # preprocessing
         self.batch_crop_mirror = batch_crop_mirror
@@ -285,7 +290,7 @@ class Cifar10_model(object): # c01b input
                                                   (self.y, self.shared_y_slice)]
                                                                 )
     
-    def compile_iter_fns(self):
+    def compile_iter_fns(self, sync_type):
         
         import time
         
@@ -293,7 +298,7 @@ class Cifar10_model(object): # c01b input
         
         from theanompi.lib.opt import pre_model_iter_fn
 
-        pre_model_iter_fn(self, sync_type='avg')
+        pre_model_iter_fn(self, sync_type=sync_type)
         
         if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
             
@@ -315,12 +320,12 @@ class Cifar10_model(object): # c01b input
         
         '''use the train_iter_fn compiled'''
             
-        if self.current_t==0: 
-            self.data.shuffled=False
-            self.data.shuffle_data()
+        if self.current_t==0 and self.subb_t == 0: 
+            self.data.shuffle_data(mode='train',common_seed=self.epoch)
+            self.data.shard_data(mode='train',rank=self.rank, size=self.size)
         
-        img= self.data.train_img
-        labels = self.data.train_labels
+        img= self.data.train_img_shard
+        labels = self.data.train_labels_shard
             
         img_mean = self.data.rawdata[4]
         mode='train'
@@ -377,7 +382,9 @@ class Cifar10_model(object): # c01b input
         
         '''use the val_iter_fn compiled'''
             
-        if self.current_v==0: self.data.shard_data(file_batch_size, self.rank, self.size)
+        if self.current_v==0 and self.subb_v == 0: 
+            self.data.shuffle_data(mode='val')
+            self.data.shard_data(mode='val',rank=self.rank, size=self.size)
             
         img= self.data.val_img_shard
         labels = self.data.val_labels_shard

@@ -21,8 +21,8 @@ class Cifar10_data():
         self.verbose = verbose
         
         self.batched=False
-        self.shuffled=False
-        self.sharded=False
+        self.extended=False
+
         
     def get_data(self):
 
@@ -113,20 +113,40 @@ class Cifar10_data():
                 
             self.batched=True
     
+    def extend_data(self, rank, size):
+
+        if self.extended == False:
+            if self.batched == False:
+                raise RuntimError('extend_data needs to be after batch_data')
+
+            # make divisible
+            from theanompi.models.data.utils import extend_data
+            self.train_img_ext, self.train_labels_ext = extend_data(rank, size, self.train_img, self.train_labels)
+            self.val_img_ext, self.val_labels_ext = extend_data(rank, size, self.val_img, self.val_labels)
     
-    def shuffle_data(self):
+            self.n_batch_train = len(self.train_img_ext)
+            self.n_batch_val = len(self.val_img_ext)
+    
+            self.extended=True
+ 
+ 
+    def shuffle_data(self, mode, common_seed=1234):
+        
+        if self.extended == False:
+            raise RuntimError('shuffle_data needs to be after extend_data')
     
         # To be called at the begining of an epoch for shuffling the order of training data
 
         # 312 = 40000 / 128 
-    
+        if mode=='train':
         # 1. generate random indices 
-        if self.shuffled == False:
             
             import time, os
             time_seed = int(time.time())*int(os.getpid())%1000
             np.random.seed(time_seed)
-
+            
+            self.n_batch_train = len(self.train_img_ext)
+            
             indices = np.random.permutation(self.n_batch_train)
 
             # 2. shuffle batches based on indices
@@ -134,43 +154,37 @@ class Cifar10_data():
             labels=[]
 
             for index in indices:
-                img.append(self.train_img[index])
-                labels.append(self.train_labels[index])
+                img.append(self.train_img_ext[index])
+                labels.append(self.train_labels_ext[index])
             
-            self.train_img = img
-            self.train_labels = labels
+            self.train_img_shuffle = img
+            self.train_labels_shuffle = labels
         
-            if self.verbose: print 'training data shuffled'
+            if self.verbose: print 'training data shuffled', indices
             
-            self.shuffled=True
+        elif mode=='val':
+            
+            self.val_img_shuffle = self.val_img_ext
+            self.val_labels_shuffle = self.val_labels_ext
 
     
-    def shard_data(self, file_batch_size, rank, size):
+    def shard_data(self, mode, rank, size):
         
-        # usually after batch_data and each shuffle_data call
-        
-        img_v, labels_v = self.val_img, self.val_labels
-        # make divisible
-        
-        if self.sharded == False:
-        
-            from theanompi.models.data.utils import extend_data
-            
-            if len(img_v) % size != 0: img_v, labels_v = extend_data(rank, size, img_v, labels_v)
+        if mode=='train':
             
             # sharding
+            self.train_img_shard, self.train_labels_shard = \
+                    self.train_img_shuffle[rank::size], self.train_labels_shuffle[rank::size]
+            self.n_batch_train = len(self.train_img_shard)
             
-            img_v = img_v[rank::size]
-           
-            labels_v = labels_v[rank::size]
-            
-            self.val_img_shard, self.val_labels_shard = img_v, labels_v
+            if self.verbose: print 'training data sharded', self.n_batch_train
         
+        elif mode=='val':
+            self.val_img_shard, self.val_labels_shard = \
+                    self.val_img_shuffle[rank::size], self.val_labels_shuffle[rank::size]
             self.n_batch_val = len(self.val_img_shard)
             
-            if self.verbose: print 'validation data sharded'
-            
-            self.sharded=True
+            if self.verbose: print 'validation data sharded', self.n_batch_val
             
             
         
