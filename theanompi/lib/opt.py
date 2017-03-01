@@ -75,16 +75,16 @@ def choose_iter_fn(model, sync_type):
         
         return model.train_fn
 
-def prepare_update_dict(model, sync_type):
+def prepare_update_dict(model, sync_type, clip=True):
     
 
     if model.use_momentum:
         
-        updates_w, updates_v, updates_dv = BSP_MSGD(model, model.use_nesterov_momentum,sync_type)
+        updates_w, updates_v, updates_dv = BSP_MSGD(model, model.use_nesterov_momentum,sync_type, clip)
             
     else:
         
-        updates_w, updates_v, updates_dv = BSP_SGD(model, sync_type)
+        updates_w, updates_v, updates_dv = BSP_SGD(model, sync_type, clip)
             
     if sync_type == 'cdd':
     
@@ -96,10 +96,23 @@ def prepare_update_dict(model, sync_type):
         
         
     return update_dict
-            
-def BSP_MSGD(model, use_nesterov_momentum,sync_type):
+    
+def _clip_paramlist(param_list, scale=10):
+    
+    import theano.tensor as T
+    
+    res=[]
+    for param in param_list:
+        res.append(T.clip(param, -scale, scale)) # clip the param to be less than 10
+    
+    return res
+           
+def BSP_MSGD(model, use_nesterov_momentum,sync_type, clip):
     
     params, grads, weight_types = model.params, model.grads, model.weight_types
+    
+    if clip==True:
+        grads=_clip_paramlist(grads)
     
     vels, vels2 = model.vels, model.vels2
     
@@ -148,10 +161,13 @@ def BSP_MSGD(model, use_nesterov_momentum,sync_type):
     return updates_w, updates_v, updates_dv
     
 
-def BSP_SGD(model,sync_type):
+def BSP_SGD(model,sync_type, clip):
     
     params, grads, weight_types = model.params, model.grads, model.weight_types
     
+    if clip==True:
+        grads=_clip_paramlist(grads)
+        
     vels, vels2 = model.vels, model.vels2
     
     lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
@@ -208,10 +224,13 @@ def BSP_SGD(model,sync_type):
     return updates_w, updates_v, updates_dv
     
     
-def MSGD(model, use_nesterov_momentum,sync_type):
+def MSGD(model, use_nesterov_momentum,sync_type, clip):
     
     params, grads, weight_types = model.params, model.grads, model.weight_types
     
+    if clip==True:
+        grads=_clip_paramlist(grads)
+        
     vels, vels2 = model.vels, model.vels2
     
     lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
@@ -249,11 +268,13 @@ def MSGD(model, use_nesterov_momentum,sync_type):
         
     return updates_w
     
-def SGD(model,sync_type):
-    
+def SGD(model,sync_type, clip):
     
     params, grads, weight_types = model.params, model.grads, model.weight_types
     
+    if clip==True:
+        grads=_clip_paramlist(grads)
+        
     vels, vels2 = model.vels, model.vels2
     
     lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate

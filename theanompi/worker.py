@@ -72,7 +72,7 @@ class BSP_Worker(MPI_GPU_Process):
             
             model.reset_iter('train')
             
-            count = iteration
+            count = exch_iteration
         
             # val
             
