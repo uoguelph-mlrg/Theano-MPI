@@ -93,11 +93,13 @@ class BSP_Exchanger(object):
             self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm)
             self.exch.prepare(self.ctx, self.param_list)
             
-        elif self.exch_strategy == 'swap':
+        elif self.sync_type == 'swap' and self.exch_strategy == 'nccl32':
             
             from theanompi.lib.exchanger_strategy import Exch_swap
             self.exch = Exch_swap(intercomm=self.comm)
             self.exch.prepare(self.ctx, self.param_list)
+        else:
+            raise RuntimeError('unknown sync_type, exch_strategy pair')
 
     def exchange(self, recorder):
         

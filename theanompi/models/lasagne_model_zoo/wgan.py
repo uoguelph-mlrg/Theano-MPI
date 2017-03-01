@@ -180,7 +180,7 @@ class WGAN(object):
         self.generator = generator
         self.critic = critic
         
-    def compile_iter_fns(self):
+    def compile_iter_fns(self, *args, **kwargs):
         
         
         eta = theano.shared(lasagne.utils.floatX(initial_eta))
@@ -281,6 +281,9 @@ class WGAN(object):
         
         recorder.val_error(count, c_score, g_score, 0)  # print loss_critic, loss_gen and a 0 instead of cost, error and error_top_5 
     
+    def reset_iter(self, *args, **kwargs):
+        pass
+        
     def print_info(self, recorder):
         
         print('\nEpoch %d' % self.epoch)

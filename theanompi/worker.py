@@ -44,7 +44,6 @@ class BSP_Worker(MPI_GPU_Process):
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
-        count=0
         
         from theanompi.lib.helper_funcs import save_model
 
@@ -72,7 +71,6 @@ class BSP_Worker(MPI_GPU_Process):
             
             model.reset_iter('train')
             
-            count = exch_iteration
         
             # val
             
@@ -82,23 +80,23 @@ class BSP_Worker(MPI_GPU_Process):
                 
                 for subb_i in range(model.n_subb):
                     
-                    model.val_iter(count, recorder)
+                    model.val_iter(batch_i*self.size, recorder)
 
                 
             model.reset_iter('val')
             
             recorder.gather_val_info()
         
-            recorder.print_val_info(count)
+            recorder.print_val_info(batch_i*self.size)
             model.current_info = recorder.get_latest_val_info()
             
-            if self.rank==0: recorder.save(count, model.shared_lr.get_value())
+            if self.rank==0: recorder.save(batch_i*self.size, model.shared_lr.get_value())
             
             if epoch % snapshot_freq == 0 and self.rank==0: save_model(model, snapshot_path, verbose=self.verbose)
             
             model.adjust_hyperp(epoch)
             
-            recorder.end_epoch(count, epoch)
+            recorder.end_epoch(batch_i*self.size, epoch)
             
         model.cleanup()
 
