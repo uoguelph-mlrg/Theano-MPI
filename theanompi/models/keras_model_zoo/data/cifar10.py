@@ -9,6 +9,7 @@ class Cifar10_data():
     
     def __init__(self, verbose):
         
+        self.verbose = verbose
         # data hyperparams
         
         # self.data_path  = '/scratch/hma02/data/cifar10/cifar-10-batches-py/'
@@ -21,11 +22,8 @@ class Cifar10_data():
         
         self.get_data()
         
-        self.verbose = verbose
-        
         self.batched=False
-        self.shuffled=False
-        self.sharded=False
+        self.extended=False
         
     def get_data(self):
         
@@ -33,9 +31,10 @@ class Cifar10_data():
         
         (X_train, y_train), (X_test, y_test) = cifar10.load_data()
         
-        print('X_train shape:', X_train.shape)
-        print(X_train.shape[0], 'train samples')
-        print(X_test.shape[0], 'test samples')
+        if self.verbose:
+            print('X_train shape:', X_train.shape)
+            print(X_train.shape[0], 'train samples')
+            print(X_test.shape[0], 'test samples')
         
         # convert class vectors to binary class matrices
         from keras.utils import np_utils
@@ -123,17 +122,37 @@ class Cifar10_data():
                 self.val_batches.append(ins_batch)
                 
             self.batched=True
+            
+    def extend_data(self, rank, size):
 
-    def shuffle_data(self):
+        if self.extended == False:
+            if self.batched == False:
+                raise RuntimError('extend_data needs to be after batch_data')
+
+            # make divisible
+            from theanompi.models.data.utils import extend_data
+            self.train_img_ext, _ = extend_data(rank, size, self.train_batches, self.train_batches)
+            self.val_img_ext, _ = extend_data(rank, size, self.val_batches, self.val_batches)
+    
+            self.n_batch_train = len(self.train_img_ext)
+            self.n_batch_val = len(self.val_img_ext)
+    
+            self.extended=True
+
+    def shuffle_data(self, mode, common_seed=1234):
         '''
         shuffle training data
         '''
         
-        if self.shuffled == False:
+        if self.extended == False:
+            raise RuntimError('shuffle_data needs to be after extend_data')
+              
+        if mode=='train':
             
-            import time, os
-            time_seed = int(time.time())*int(os.getpid())%1000
-            np.random.seed(time_seed)
+            # 1. generate random indices 
+            np.random.seed(common_seed)
+            
+            self.n_batch_train = len(self.train_img_ext)
 
             indices = np.random.permutation(self.n_batch_train)
 
@@ -141,36 +160,38 @@ class Cifar10_data():
             batches = []
 
             for index in indices:
-                batches.append(self.train_batches[index])
+                batches.append(self.train_img_ext[index])
 
-            self.train_batches = batches
+            self.train_img_shuffle = batches
 
-            if self.verbose: print 'training data shuffled'
+            if self.verbose: print 'training data shuffled', indices
+            
+        elif mode=='val':
+            
+            self.val_img_shuffle = self.val_img_ext
 
-            self.shuffled=True
         
         
         
-    def shard_data(self, file_batch_size, rank, size):
+    def shard_data(self, mode, rank, size):
         
         '''
         shard validation data
         '''
-        
-        val_batches = self.val_batches
-        # make divisible
-        
-        if self.sharded == False:
+        if mode=='train':
             
             # sharding
+            self.train_batches_shard= self.train_img_shuffle[rank::size]
+            self.n_batch_train = len(self.train_batches_shard)
             
-            self.val_batches_shard = val_batches[rank::size]
-        
+            if self.verbose: print 'training data sharded', self.n_batch_train
+            
+        elif mode=='val':
+            
+            # sharding
+            self.val_batches_shard= self.val_img_shuffle[rank::size]
             self.n_batch_val = len(self.val_batches_shard)
             
-            if self.verbose: print 'validation data sharded'
-            
-            self.sharded=True
-            
+            if self.verbose: print 'validation data sharded', self.n_batch_val
             
         

@@ -141,7 +141,10 @@ class Wide_ResNet(object):
         
         self.keras_get_params()
         
-    def compile_iter_fns(self):
+    def compile_iter_fns(self, sync_type='avg'):
+        
+        if sync_type != 'avg':
+            raise RuntimeError('currently wresnet only support compiling with sync_type avg ')
         
         import time
         
@@ -160,16 +163,22 @@ class Wide_ResNet(object):
         if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
         
         self.data.batch_data(self.model, batch_size)
+        self.data.extend_data(rank=self.rank, size=self.size)
+        self.data.shuffle_data(mode='train', common_seed=1234)
+        self.data.shuffle_data(mode='val')
+        self.data.shard_data(mode='train', rank=self.rank, size=self.size) # to update data.n_batch_train
+        self.data.shard_data(mode='val', rank=self.rank, size=self.size) # to update data.n_batch_val
                       
     
     def train_iter(self, count, recorder):
         
         
         if self.current_t ==0:
-            self.data.shuffle_data()
+            self.data.shuffle_data(mode='train',common_seed=self.epoch)
+            self.data.shard_data(mode='train',rank=self.rank, size=self.size)
         
         recorder.start()
-        cost, acc = self.model.train_function(self.data.train_batches[self.current_t])
+        cost, acc = self.model.train_function(self.data.train_batches_shard[self.current_t])
         recorder.train_error(count, cost, 1.0-acc)
         recorder.end('calc')
         
@@ -185,8 +194,11 @@ class Wide_ResNet(object):
               
     def val_iter(self, count, recorder):
         
-        
-        cost, acc = self.model.test_function(self.data.val_batches[self.current_v])
+        if self.current_v==0:
+            self.data.shuffle_data(mode='val')
+            self.data.shard_data(mode='val',rank=self.rank, size=self.size)
+            
+        cost, acc = self.model.test_function(self.data.val_batches_shard[self.current_v])
         
         recorder.val_error(count, cost, 1.0-acc, 0)
         
