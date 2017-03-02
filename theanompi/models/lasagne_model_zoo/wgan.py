@@ -139,7 +139,7 @@ class WGAN(object):
         # model
         self.build_model()
         
-        self.params = self.generator_params+self.critic_params
+        self.params = self.critic_params #+self.generator_params
         
         # training related
         self.epoch=0
@@ -304,27 +304,12 @@ class WGAN(object):
             
             self.init_view = True
             
-            recorder.plot_init(name='scores')
+            recorder.plot_init(name='scores', save=True) # if save=True then pause=False
             
-            recorder.plot_init(name='sample')
+            recorder.plot_init(name='sample', save=True)
             
         recorder.plot(name='sample', image=samples, cmap='gray')
-        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2, pause=True)
-        
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
-            pass
-        else:
-            sample_path='./samples/'
-            import os
-            if not os.path.exists(sample_path):
-                print('Creating folder: %s' % sample_path)
-                os.makedirs(sample_path)
-                
-            plt.imsave(sample_path+'%dwgan_mnist_samples.png' % self.epoch,
-                       samples,
-                       cmap='gray')
+        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2, save=True) # if pause=True then save=False
                        
         
     def adjust_hyperp(self, epoch):

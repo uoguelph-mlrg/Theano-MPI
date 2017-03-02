@@ -55,11 +55,17 @@ class BSP_Worker(MPI_GPU_Process):
             
             # train
             exch_iteration=0
-            for batch_i in range(model.data.n_batch_train):
+            batch_i=0
+            while batch_i <model.data.n_batch_train:
                 
                 for subb_i in range(model.n_subb):
         
-                    model.train_iter(batch_i, recorder)
+                    out = model.train_iter(batch_i, recorder)
+                    
+                    if out!=None: 
+                        batch_i = out
+                    else:
+                        batch_i+=1
                     
                     if exch_iteration % exchange_freq == 0: 
                         exchanger.exchange(recorder)
@@ -95,6 +101,9 @@ class BSP_Worker(MPI_GPU_Process):
             if epoch % snapshot_freq == 0 and self.rank==0: save_model(model, snapshot_path, verbose=self.verbose)
             
             model.adjust_hyperp(epoch)
+            
+            if hasattr(model,'print_info'):
+                model.print_info(recorder)
             
             recorder.end_epoch(batch_i*self.size, epoch)
             

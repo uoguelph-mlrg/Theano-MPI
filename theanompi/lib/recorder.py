@@ -219,9 +219,14 @@ class Recorder(object):
         self.info_dict['all_time'] = self.info_dict['all_time'][0:load_epoch]
         self.info_dict['lr'] = self.info_dict['lr'][0:load_epoch]
     
-    def plot_init(self, name, fig_specs=None):
+    def plot_init(self, name, fig_specs=None, save=False):
         
         #add a figure with a single subplot
+        
+        if save==True:
+            
+            import matplotlib
+            matplotlib.use('Agg') # non-interactive backend
         
         import matplotlib.pyplot as plt
     
@@ -267,7 +272,7 @@ class Recorder(object):
             
         self.figsaxe[name] = self.fig.add_subplot(n_rows, n_cols, n+1)
         
-    def plot(self, name, lines=None, image=None, pause=False, **kwargs):
+    def plot(self, name, lines=None, image=None, pause=False, save=False, **kwargs):
         
         import matplotlib.pyplot as plt
         
@@ -304,7 +309,18 @@ class Recorder(object):
                 
             ax.imshow(image, cmap=cmap)
             
-        if pause: plt.pause(0.001)
+        if pause==True: plt.pause(0.001)
+        if save == True:
+            if self.save_counter==None:
+                self.save_counter=0
+            else:
+                self.save_counter+=1
+            import os
+            path='./inforec/'+ '%d/' % os.getpid()
+            if not os.path.exists(path):
+             print('Creating folder: %s' % path)
+             os.makedirs(path)
+            self.fig.savefig(path+'plot_%d.png' % self.save_counter,format='png')
             
     def show(self, label='', color_id = 0, show=True):
         
