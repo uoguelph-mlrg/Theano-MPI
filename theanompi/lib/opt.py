@@ -75,7 +75,7 @@ def choose_iter_fn(model, sync_type):
         
         return model.train_fn
 
-def prepare_update_dict(model, sync_type, clip=True):
+def prepare_update_dict(model, sync_type, clip=False):
     
 
     if model.use_momentum:
