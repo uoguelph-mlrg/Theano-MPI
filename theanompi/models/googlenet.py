@@ -25,7 +25,7 @@ input_height = 224
 
 # apparently, training converges better with batch_crop_mirror=False. 
 # 1200 6.898191 vs 1320 6.892865
-batch_crop_mirror = True 
+batch_crop_mirror = False 
 rand_crop = True
 
 image_mean = 'img_mean'

@@ -342,6 +342,18 @@ function BSP
 	then
 	BSP_exch_strategy='nccl32'
 	fi
+	local prehost="empty"
+	for (( index=0; index<$SIZE; index++ ))
+	do
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		if [[ "$index" -gt 0 ]] && [[ $prehost != $host ]]
+		then
+			BSP_exch_strategy='ar'
+			break
+		fi
+		prehost=$host
+	done
 	
 	local args="$BSP_sync_type $BSP_exch_strategy $MODELFILE $MODELCLASS"
 
