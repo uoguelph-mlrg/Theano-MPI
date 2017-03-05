@@ -464,6 +464,10 @@ class Cifar10_model(object): # c01b input
             print 'lr adjusted to %.6f' % np.float32(tuned_base_lr)
         
         self.shared_lr.set_value(np.float32(tuned_base_lr))
+    
+    def scale_lr(self, size):
+        
+            self.shared_lr.set_value(np.array(self.shared_lr.get_value()*size, dtype='float32'))
         
     def cleanup(self):
         

@@ -332,6 +332,10 @@ get_env $BIND
 function BSP
 {
 	local BSP_sync_type=$BSP_SYNC_TYPE
+	if [[ $SIZE -eq 1 ]]
+	then
+		BSP_sync_type='avg'
+	fi
 	if [[ -z $BSP_sync_type ]]
 	then
 	BSP_sync_type='cdd'
