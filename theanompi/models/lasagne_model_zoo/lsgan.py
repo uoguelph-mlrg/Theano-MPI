@@ -1,5 +1,5 @@
 """
-Code adjusted from https://gist.github.com/f0k/f3190ebba6c53887d598d03119ca2066#file-wgan_mnist-py
+Code adjusted from https://gist.github.com/f0k/9b0bb51040719eeafec7eba473a9e79b
 
 """
 
@@ -11,10 +11,6 @@ import theano
 import theano.tensor as T
 import lasagne
 
-# ##################### Build the neural network model #######################
-# We create two models: The generator and the critic network.
-# The models are the same as in the Lasagne DCGAN example, except that the
-# discriminator is now a critic with linear output instead of sigmoid output.
 def rmsprop(cost, params, learning_rate, momentum=0.5, rescale=5.):
     
     grads = T.grad(cost=cost, wrt=params)
@@ -104,8 +100,8 @@ def build_critic(input_var=None):
                                    nonlinearity=lrelu))
     # fully-connected layer
     layer = batch_norm(DenseLayer(layer, 1024, nonlinearity=lrelu))
-    # output layer (linear and without bias)
-    layer = DenseLayer(layer, 1, nonlinearity=None, b=None)
+    # output layer (linear)
+    layer = DenseLayer(layer, 1, nonlinearity=None)
     print ("critic output:", layer.output_shape)
     return layer
     
@@ -113,10 +109,9 @@ def build_critic(input_var=None):
 num_epochs=100
 epochsize=100
 batchsize=64
-initial_eta=5e-5
-clip=0.01
+initial_eta=1e-4
          
-class WGAN(object):
+class LSGAN(object):
     
     def __init__(self, config):
         
@@ -124,7 +119,7 @@ class WGAN(object):
         self.rank = config['rank']
         self.size = config['size']
         
-        self.name = 'Wasserstein_GAN'
+        self.name = 'LeastSquare_GAN'
         
         # data
         from theanompi.models.data.mnist import MNIST_data
@@ -172,8 +167,7 @@ class WGAN(object):
         # Create expression for passing fake data through the critic
         self.fake_out = lasagne.layers.get_output(critic,
                 lasagne.layers.get_output(generator))
-        
-        
+       
         # Create update expressions for training
         self.generator_params = lasagne.layers.get_all_params(generator, trainable=True)
         self.critic_params = lasagne.layers.get_all_params(critic, trainable=True)
@@ -182,28 +176,20 @@ class WGAN(object):
         
     def compile_iter_fns(self, *args, **kwargs):
         
+        # Create loss expressions to be minimized
+        # a, b, c = -1, 1, 0  # Equation (8) in the paper
+        a, b, c = 0, 1, 1  # Equation (9) in the paper
+        loss_gen = lasagne.objectives.squared_error(self.fake_out, c).mean()
+        # loss_gen = -1*self.fake_out.mean()
+        loss_critic = (lasagne.objectives.squared_error(self.real_out, b).mean() +
+                       lasagne.objectives.squared_error(self.fake_out, a).mean())
+        # loss_critic = self.real_out.mean() - self.fake_out.mean()
+        self.shared_lr = theano.shared(lasagne.utils.floatX(initial_eta))
         
-        eta = theano.shared(lasagne.utils.floatX(initial_eta))
-        self.eta=eta
-        self.shared_lr=eta
-        
-        
-        loss_critic = self.real_out.mean() - self.fake_out.mean()
-        critic_updates = rmsprop(
-                -1*loss_critic, self.critic_params, learning_rate=eta)
-                
-        loss_gen = -1*self.fake_out.mean()
         generator_updates = rmsprop(
-                loss_gen, self.generator_params, learning_rate=eta)
-                
-                
-        # Clip critic parameters in a limited range around zero (except biases)
-        critic_clip_updates=[]
-        for param in lasagne.layers.get_all_params(self.critic, trainable=True,
-                                                   regularizable=True):
-                                                   
-            critic_clip_updates.append([param, T.clip(param, -clip, clip)])
-            
+                loss_gen, self.generator_params, learning_rate=self.shared_lr)
+        critic_updates = rmsprop(
+                loss_critic, self.critic_params, learning_rate=self.shared_lr)
             
         # Instantiate a symbolic noise generator to use for training
         from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -224,8 +210,7 @@ class WGAN(object):
         self.critic_train_fn = theano.function([self.input_var],loss_critic,
                                           givens={self.noise_var: noise},
                                           updates=critic_updates)
-        self.critic_clip_fn = theano.function([],updates=critic_clip_updates)
-
+                                          
         # Compile another function generating some data
         self.gen_fn = theano.function([self.noise_var],
                                  lasagne.layers.get_output(self.generator,
@@ -240,42 +225,27 @@ class WGAN(object):
     def train_iter(self, count, recorder):
         
         batches_train = self.data.batches_train
-
-        if (self.generator_updates < 5) or (self.generator_updates % 100 == 0):
-            critic_runs = 50
-            print('update critic 50 times')
-        else:
-            critic_runs = 2
         
         c_score_list = []
         recorder.start()
-        for _ in range(critic_runs):
-            batch = next(batches_train)
-            inputs, targets = batch
-            c_score = self.critic_train_fn(inputs)
-            c_score_list.append(c_score)
-            self.critic_clip_fn()
-            
-            count+=1
-            
-            
+
+        inputs, targets = next(batches_train)
+
+        c_score = self.critic_train_fn(inputs)
+        c_score_list.append(c_score)
         self.critic_scores.extend(c_score_list)
+        
         g_score = self.generator_train_fn()
         self.generator_scores.append(g_score)
-        self.generator_updates += 1
         
         recorder.train_error(count, sum(c_score_list)/len(c_score_list), g_score)
         recorder.end('calc')
-        
-        return count
         
     def val_iter(self, count, recorder):
         
         batches_val = self.data.batches_val
         
-        batch = next(batches_val)
-        
-        inputs, targets = batch
+        inputs, targets = next(batches_val)
         
         c_score, g_score = self.val_fn(inputs)
         
@@ -291,8 +261,8 @@ class WGAN(object):
         c_=np.mean(self.critic_scores)
         self.g_list.extend([g_])
         self.c_list.extend([c_])
-        print("  generator score:\t\t{}".format(g_))
-        print("  Wasserstein distance:\t\t{}".format(c_))
+        print("  generator loss:\t\t{}".format(g_))
+        print("  critic loss:\t\t{}".format(c_))
         
         self.critic_scores[:] = []
         self.generator_scores[:] = []
@@ -301,11 +271,9 @@ class WGAN(object):
         samples = samples.reshape(6, 7, 28, 28).transpose(0, 2, 1, 3).reshape(6*28, 7*28)
         
         if self.init_view == False:
-            
             self.init_view = True
             self.save_flag=False
             recorder.plot_init(name='scores', save=self.save_flag) # if save=True then pause=False
-            
             recorder.plot_init(name='sample', save=self.save_flag)
             
         recorder.plot(name='sample', image=samples, cmap='gray')
@@ -317,7 +285,7 @@ class WGAN(object):
         # After half the epochs, we start decaying the learn rate towards zero
         if epoch >= num_epochs // 2:
             progress = float(epoch) / num_epochs
-            self.eta.set_value(lasagne.utils.floatX(initial_eta*2*(1 - progress)))
+            self.shared_lr.set_value(lasagne.utils.floatX(initial_eta*2*(1 - progress)))
             
     def cleanup(self):
         
@@ -346,5 +314,5 @@ class WGAN(object):
         
 if __name__ == '__main__':
     
-    raise RuntimeError('to be tested using test_model.py:\n$ python test_model.py lasagne_model_zoo.wgan WGAN')
+    raise RuntimeError('to be tested using test_model.py:\n$ python test_model.py lasagne_model_zoo.lsgan LSGAN')
         

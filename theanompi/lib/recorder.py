@@ -48,6 +48,7 @@ class Recorder(object):
         # for online plotting
         self.fig=None
         self.figsaxe={}
+        self.save_counter=0
 	
     def start(self):
 	
@@ -272,7 +273,7 @@ class Recorder(object):
             
         self.figsaxe[name] = self.fig.add_subplot(n_rows, n_cols, n+1)
         
-    def plot(self, name, lines=None, image=None, pause=False, save=False, **kwargs):
+    def plot(self, name, lines=None, image=None, save=False, **kwargs):
         
         import matplotlib.pyplot as plt
         
@@ -309,18 +310,17 @@ class Recorder(object):
                 
             ax.imshow(image, cmap=cmap)
             
-        if pause==True: plt.pause(0.001)
-        if save == True:
-            if self.save_counter==None:
-                self.save_counter=0
-            else:
-                self.save_counter+=1
-            import os
-            path='./inforec/'+ '%d/' % os.getpid()
-            if not os.path.exists(path):
-             print('Creating folder: %s' % path)
-             os.makedirs(path)
-            self.fig.savefig(path+'plot_%d.png' % self.save_counter,format='png')
+        if save == False:
+            plt.pause(0.001)
+        
+            
+        self.save_counter+=1
+        import os
+        path='./inforec/'+ '%d/' % os.getpid()
+        if not os.path.exists(path):
+         print('Creating folder: %s' % path)
+         os.makedirs(path)
+        self.fig.savefig(path+'plot_%d.png' % self.save_counter,format='png')
             
     def show(self, label='', color_id = 0, show=True):
         
