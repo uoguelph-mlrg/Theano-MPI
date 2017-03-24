@@ -114,8 +114,8 @@ Time per 5120 images in seconds: [allow_gc = True]
 | GoogLeNet-32b | 73.24 | 35.88 | 18.45 | 9.59 |
 | VGGNet-16b | 353.48 | 191.97 | 99.18 | 66.89 |
 | VGGNet-32b | 332.32 | 163.70 | 82.65 | 49.42 |
-<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_a.png width=500/>
-<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_g.png width=500/>
+<img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_a.png width=500/>
+<img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_g.png width=500/>
 
 ## Note
 

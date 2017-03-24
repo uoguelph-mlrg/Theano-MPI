@@ -2,13 +2,31 @@ from __future__ import absolute_import
 
 import numpy as np
 
+def iterate_minibatches(inputs, targets, shuffle=False,
+                        forever=False):
+                        
+    '''
+    source:
+         https://gist.github.com/f0k/f3190ebba6c53887d598d03119ca2066#file-wgan_mnist-py                    
+    '''
+    assert len(inputs) == len(targets)
+    if shuffle:
+        indices = np.arange(len(inputs))
+    while True:
+        if shuffle:
+            np.random.shuffle(indices)
+        for idx in indices:
+            yield inputs[idx], targets[idx]
+        if not forever:
+            break
+            
 class Cifar10_data():
     
     def __init__(self, verbose):
         
         # data hyperparams
         
-        self.data_path  = '/scratch/hma02/data/cifar10/cifar-10-batches-py/'
+        self.data_path  = '/mnt/data/hma02/data/cifar10/cifar-10-batches-py/'
         
         self.channels = 3
         self.width =32
@@ -112,6 +130,12 @@ class Cifar10_data():
                 self.val_labels.append(batch_label)
                 
             self.batched=True
+            
+            self.batches_train = iterate_minibatches(self.train_img, self.train_labels, shuffle=True,
+                                                  forever=True)  
+            
+            self.batches_val = iterate_minibatches(self.val_img, self.val_labels, shuffle=True,
+                                                  forever=True)
     
     def extend_data(self, rank, size):
 

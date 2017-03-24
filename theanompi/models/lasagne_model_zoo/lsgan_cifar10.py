@@ -11,49 +11,6 @@ import theano
 import theano.tensor as T
 import lasagne
 
-def rmsprop(cost, params, learning_rate, momentum=0.5, rescale=5.):
-    
-    grads = T.grad(cost=cost, wrt=params)
-    
-    running_square_ = [theano.shared(np.zeros_like(p.get_value(),dtype=p.dtype), broadcastable=p.broadcastable)
-                      for p in params]
-    running_avg_ = [theano.shared(np.zeros_like(p.get_value(),dtype=p.dtype), broadcastable=p.broadcastable)
-                   for p in params]
-    memory_ = [theano.shared(np.zeros_like(p.get_value(),dtype=p.dtype), broadcastable=p.broadcastable)
-                       for p in params]
-    
-    grad_norm = T.sqrt(sum(map(lambda x: T.sqr(x).sum(), grads)))
-    not_finite = T.or_(T.isnan(grad_norm), T.isinf(grad_norm))
-    grad_norm = T.sqrt(grad_norm)
-    scaling_num = rescale
-    scaling_den = T.maximum(rescale, grad_norm)
-    # Magic constants
-    combination_coeff = 0.9
-    minimum_grad = 1E-4
-    updates = []
-    for n, (param, grad) in enumerate(zip(params, grads)):
-       grad = T.switch(not_finite, 0.1 * param,
-                       grad * (scaling_num / scaling_den))
-       old_square = running_square_[n]
-       new_square = combination_coeff * old_square + (
-           1. - combination_coeff) * T.sqr(grad)
-       old_avg = running_avg_[n]
-       new_avg = combination_coeff * old_avg + (
-           1. - combination_coeff) * grad
-       rms_grad = T.sqrt(new_square - new_avg ** 2)
-       rms_grad = T.maximum(rms_grad, minimum_grad)
-       memory = memory_[n]
-       update = momentum * memory - learning_rate * grad / rms_grad
-
-       update2 = momentum * momentum * memory - (
-           1 + momentum) * learning_rate * grad / rms_grad
-           
-       updates.append((old_square, new_square))
-       updates.append((old_avg, new_avg))
-       updates.append((memory, update))
-       updates.append((param, param + update2))
-    return updates
-
 def build_generator(input_var=None):
     from lasagne.layers import InputLayer, ReshapeLayer, DenseLayer
     try:
@@ -69,15 +26,17 @@ def build_generator(input_var=None):
     from lasagne.nonlinearities import sigmoid
     # input: 100dim
     layer = InputLayer(shape=(None, 100), input_var=input_var)
-    # fully-connected layer
-    layer = batch_norm(DenseLayer(layer, 1024))
+    # # fully-connected layer
+    # layer = batch_norm(DenseLayer(layer, 1024))
     # project and reshape
-    layer = batch_norm(DenseLayer(layer, 128*7*7))
-    layer = ReshapeLayer(layer, ([0], 128, 7, 7))
+    layer = batch_norm(DenseLayer(layer, 1024*4*4))
+    layer = ReshapeLayer(layer, ([0], 1024, 4, 4))
     # two fractional-stride convolutions
-    layer = batch_norm(Deconv2DLayer(layer, 64, 5, stride=2, crop='same',
-                                     output_size=14))
-    layer = Deconv2DLayer(layer, 1, 5, stride=2, crop='same', output_size=28,
+    layer = batch_norm(Deconv2DLayer(layer, 512, 5, stride=2, crop='same',
+                                     output_size=8))
+    layer = batch_norm(Deconv2DLayer(layer, 256, 5, stride=2, crop='same',
+                                     output_size=16))
+    layer = Deconv2DLayer(layer, 3, 5, stride=2, crop='same', output_size=32,
                           nonlinearity=sigmoid)
     print ("Generator output:", layer.output_shape)
     return layer
@@ -89,17 +48,19 @@ def build_critic(input_var=None):
         from lasagne.layers.dnn import batch_norm_dnn as batch_norm
     except ImportError:
         from lasagne.layers import batch_norm
-    from lasagne.nonlinearities import LeakyRectify
+    from lasagne.nonlinearities import LeakyRectify, sigmoid
     lrelu = LeakyRectify(0.2)
     # input: (None, 1, 28, 28)
-    layer = InputLayer(shape=(None, 1, 28, 28), input_var=input_var)
+    layer = InputLayer(shape=(None, 3, 32, 32), input_var=input_var)
     # two convolutions
-    layer = batch_norm(Conv2DLayer(layer, 64, 5, stride=2, pad='same',
-                                   nonlinearity=lrelu))
     layer = batch_norm(Conv2DLayer(layer, 128, 5, stride=2, pad='same',
                                    nonlinearity=lrelu))
-    # fully-connected layer
-    layer = batch_norm(DenseLayer(layer, 1024, nonlinearity=lrelu))
+    layer = batch_norm(Conv2DLayer(layer, 256, 5, stride=2, pad='same',
+                                   nonlinearity=lrelu))
+    layer = batch_norm(Conv2DLayer(layer, 512, 5, stride=2, pad='same',
+                                   nonlinearity=lrelu))
+    # # fully-connected layer
+    # layer = batch_norm(DenseLayer(layer, 1024, nonlinearity=lrelu))
     # output layer (linear)
     layer = DenseLayer(layer, 1, nonlinearity=None)
     print ("critic output:", layer.output_shape)
@@ -108,7 +69,7 @@ def build_critic(input_var=None):
 
 num_epochs=100
 epochsize=100
-batchsize=64
+batchsize=128
 initial_eta=1e-4
          
 class LSGAN(object):
@@ -122,12 +83,11 @@ class LSGAN(object):
         self.name = 'LeastSquare_GAN'
         
         # data
-        from theanompi.models.data.mnist import MNIST_data
+        from theanompi.models.data.cifar10 import Cifar10_data
 
-        self.data = MNIST_data(self.verbose)
+        self.data = Cifar10_data(self.verbose)
         self.data.rawdata[0] = self.data.rawdata[0]/np.float32(255.)
         self.data.rawdata[2] = self.data.rawdata[2]/np.float32(255.)
-        self.data.rawdata[5] = self.data.rawdata[5]/np.float32(255.)
         self.data.batch_data(batchsize)
         
         self.batch_size=batchsize
@@ -189,9 +149,9 @@ class LSGAN(object):
         # loss_critic = self.real_out.mean() - self.fake_out.mean()
         self.shared_lr = theano.shared(lasagne.utils.floatX(initial_eta))
         
-        generator_updates = rmsprop(
+        generator_updates = lasagne.updates.rmsprop(
                 loss_gen, self.generator_params, learning_rate=self.shared_lr)
-        critic_updates = rmsprop(
+        critic_updates = lasagne.updates.rmsprop(
                 loss_critic, self.critic_params, learning_rate=self.shared_lr)
             
         # Instantiate a symbolic noise generator to use for training
@@ -239,7 +199,10 @@ class LSGAN(object):
         self.critic_scores.extend(c_score_list)
         
         g_score = self.generator_train_fn()
+        
         self.generator_scores.append(g_score)
+        
+        # print(c_score,g_score)
         
         recorder.train_error(count, sum(c_score_list)/len(c_score_list), g_score)
         recorder.end('calc')
@@ -270,17 +233,17 @@ class LSGAN(object):
         self.critic_scores[:] = []
         self.generator_scores[:] = []
         
-        samples = self.gen_fn(lasagne.utils.floatX(np.random.rand(42, 100)))
-        samples = samples.reshape(6, 7, 28, 28).transpose(0, 2, 1, 3).reshape(6*28, 7*28)
+        samples = self.gen_fn(lasagne.utils.floatX(np.random.rand(4*4, 100)))
+        samples = samples.reshape(4, 4, 3, 32, 32).transpose(0, 3, 1, 4, 2).reshape(4*32, 4*32, 3)
         
         if self.init_view == False:
             self.init_view = True
             self.save_flag=False
-            recorder.plot_init(name='scores', save=self.save_flag) # if save=True then pause=False
+            recorder.plot_init(name='scores', save=self.save_flag)
             recorder.plot_init(name='sample', save=self.save_flag)
             
-        recorder.plot(name='sample', image=samples, cmap='gray')
-        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2, save=self.save_flag) # if pause=True then save=False
+        recorder.plot(name='sample', image=samples)
+        recorder.plot(name='scores', lines=[self.c_list,self.g_list], lw=2, save=self.save_flag)
                        
         
     def adjust_hyperp(self, epoch):
@@ -302,8 +265,8 @@ class LSGAN(object):
             print('Creating folder: %s' % path)
             os.makedirs(path)
         
-        np.savez(path+'%d_lsgan_mnist_gen.npz' % self.epoch, *lasagne.layers.get_all_param_values(self.generator))
-        np.savez(path+'%d_lsgan_mnist_crit.npz' % self.epoch, *lasagne.layers.get_all_param_values(self.critic))
+        np.savez(path+'%d_lsgan_cifar10_gen.npz' % self.epoch, *lasagne.layers.get_all_param_values(self.generator))
+        np.savez(path+'%d_lsgan_cifar10_crit.npz' % self.epoch, *lasagne.layers.get_all_param_values(self.critic))
     
     def load(self, path_gen, path_cri):
         

@@ -4,16 +4,22 @@ if __name__ == '__main__':
     import sys
     modelfile = sys.argv[1]
     modelclass = sys.argv[2]
-        
+    
     # setting up device
-    import os
-    if 'THEANO_FLAGS' in os.environ:
-        raise ValueError('Use theanorc to set the theano config')
-    os.environ['THEANO_FLAGS'] = 'device={0}'.format('cuda0')
-    import theano.gpuarray
-    # This is a bit of black magic that may stop working in future
-    # theano releases
-    ctx = theano.gpuarray.type.get_context(None)
+    device='cuda0'
+    backend='cudandarray' if device.startswith('gpu') else 'gpuarray'
+    if backend=='gpuarray':
+        import os
+        if 'THEANO_FLAGS' in os.environ:
+            raise ValueError('Use theanorc to set the theano config')
+        os.environ['THEANO_FLAGS'] = 'device={0}'.format(device)
+        import theano.gpuarray
+        # This is a bit of black magic that may stop working in future
+        # theano releases
+        ctx = theano.gpuarray.type.get_context(None)
+    else:
+        import theano.sandbox.cuda
+        theano.sandbox.cuda.use(device)
     
     config={}
     config['verbose'] = True

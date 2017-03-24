@@ -109,10 +109,6 @@ class MNIST_data():
         # numpy.ndarray of 1 dimension (vector) that has the same length as
         # the number of rows in the input. It should give the target
         # to the example with the same index in the input.
-
-
-        
-        
         
         test_set_x, test_set_y = test_set
         valid_set_x, valid_set_y = valid_set
@@ -120,8 +116,9 @@ class MNIST_data():
         
         img_mean = np.array((train_set_x.mean(axis=0)+valid_set_x.mean(axis=0))/2.)[np.newaxis,:]
         
-        self.rawdata = [train_set_x, train_set_y, valid_set_x, valid_set_y, img_mean,
-                test_set_x, test_set_y]
+        self.rawdata = [train_set_x, train_set_y, 
+                        valid_set_x, valid_set_y, img_mean,
+                        test_set_x, test_set_y]
         
         
     def batch_data(self, batchsize):
