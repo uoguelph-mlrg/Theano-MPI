@@ -103,7 +103,7 @@ class BSP_Worker(MPI_GPU_Process):
             model.adjust_hyperp(epoch)
             
             if hasattr(model,'print_info'):
-                model.print_info(recorder)
+                model.print_info(recorder, verbose=self.verbose)
             
             recorder.end_epoch(batch_i*self.size, epoch)
             

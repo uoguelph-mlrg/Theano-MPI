@@ -11,7 +11,7 @@ import theano
 import theano.tensor as T
 import lasagne
 
-def build_generator(input_var=None):
+def build_generator(input_var=None, verbose=False):
     from lasagne.layers import InputLayer, ReshapeLayer, DenseLayer
     try:
         from lasagne.layers import TransposedConv2DLayer as Deconv2DLayer
@@ -38,10 +38,10 @@ def build_generator(input_var=None):
                                      output_size=16))
     layer = Deconv2DLayer(layer, 3, 5, stride=2, crop='same', output_size=32,
                           nonlinearity=sigmoid)
-    print ("Generator output:", layer.output_shape)
+    if verbose: print ("Generator output:", layer.output_shape)
     return layer
 
-def build_critic(input_var=None):
+def build_critic(input_var=None, verbose=False):
     from lasagne.layers import (InputLayer, Conv2DLayer, ReshapeLayer,
                                 DenseLayer)
     try:
@@ -63,7 +63,7 @@ def build_critic(input_var=None):
     # layer = batch_norm(DenseLayer(layer, 1024, nonlinearity=lrelu))
     # output layer (linear)
     layer = DenseLayer(layer, 1, nonlinearity=None)
-    print ("critic output:", layer.output_shape)
+    if verbose: print ("critic output:", layer.output_shape)
     return layer
     
 
@@ -122,8 +122,8 @@ class LSGAN(object):
         self.input_var = T.tensor4('inputs')
         
         # Create neural network model
-        generator = build_generator(self.noise_var)
-        critic = build_critic(self.input_var)
+        generator = build_generator(self.noise_var,self.verbose)
+        critic = build_critic(self.input_var,self.verbose)
         
         # Create expression for passing real data through the critic
         self.real_out = lasagne.layers.get_output(critic)
@@ -161,7 +161,7 @@ class LSGAN(object):
 
         # Compile functions performing a training step on a mini-batch (according
         # to the updates dictionary) and returning the corresponding score:
-        print('Compiling...')
+        if self.verbose: print('Compiling...')
         
         import time
         
@@ -220,15 +220,15 @@ class LSGAN(object):
     def reset_iter(self, *args, **kwargs):
         pass
         
-    def print_info(self, recorder):
+    def print_info(self, recorder, verbose):
         
-        print('\nEpoch %d' % self.epoch)
+        if verbose: print('\nEpoch %d' % self.epoch)
         g_=np.mean(self.generator_scores)
         c_=np.mean(self.critic_scores)
         self.g_list.extend([g_])
         self.c_list.extend([c_])
-        print("  generator loss:\t\t{}".format(g_))
-        print("  critic loss:\t\t{}".format(c_))
+        if verbose: print("  generator loss:\t\t{}".format(g_))
+        if verbose: print("  critic loss:\t\t{}".format(c_))
         
         self.critic_scores[:] = []
         self.generator_scores[:] = []
@@ -254,6 +254,10 @@ class LSGAN(object):
             self.shared_lr.set_value(lasagne.utils.floatX(initial_eta*2*(1 - progress)))
             
     def cleanup(self):
+        
+        pass
+        
+    def scale_lr(self,*args, **kwargs):
         
         pass
         

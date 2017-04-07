@@ -99,7 +99,8 @@ class BSP_Exchanger(object):
             self.exch = Exch_swap(intercomm=self.comm)
             self.exch.prepare(self.ctx, self.param_list)
         else:
-            raise RuntimeError('unknown sync_type, exch_strategy pair')
+            raise RuntimeError('unknown (sync_type, exch_strategy) pair: (%s,%s)' 
+                                            % (self.sync_type, self.exch_strategy))
 
     def exchange(self, recorder):
         
