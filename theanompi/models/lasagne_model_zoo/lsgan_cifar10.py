@@ -220,7 +220,7 @@ class LSGAN(object):
     def reset_iter(self, *args, **kwargs):
         pass
         
-    def print_info(self, recorder, verbose):
+    def print_info(self, recorder, verbose=True):
         
         if verbose: print('\nEpoch %d' % self.epoch)
         g_=np.mean(self.generator_scores)
