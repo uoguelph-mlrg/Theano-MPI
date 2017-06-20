@@ -176,6 +176,10 @@ def check_model(model):
         
         assert hasattr(model, 'epoch') == True
         
+        assert hasattr(model, 'n_epochs') == True
+        
+        assert hasattr(model, 'n_subb') == True # number of sub batches in a minibatch , default:1
+        
         assert hasattr(model, 'compile_iter_fns') == True and callable(getattr(model, 'compile_iter_fns')) == True
         
         assert hasattr(model, 'train_iter') == True and callable(getattr(model, 'train_iter')) == True
@@ -186,12 +190,31 @@ def check_model(model):
         
         assert hasattr(model, 'adjust_hyperp') == True and callable(getattr(model, 'adjust_hyperp')) == True
         
+        assert hasattr(model, 'scale_lr') == True and callable(getattr(model, 'scale_lr')) == True
+        
         assert hasattr(model, 'cleanup') == True and callable(getattr(model, 'cleanup')) == True
+        
+        
+        
+        
         
     
     except AssertionError:
         
         print 'Model def lacks some attributes and/or methods'
+        print 'attributes include: data, '
+        print '                    epoch (initialized to 0),'
+        print '                    n_epochs (max epochs),'
+        print '                    n_subb (number of sub batches in a minibatch, default to 1)'
+        
+        print
+        print 'methods include: compile_iter_fns(self, *args, **kwargs), '
+        print '                 train_iter(self, *args, **kwargs) ,'
+        print '                 val_iter(self, *args, **kwargs) ,  '
+        print '                 reset_iter(self, *args, **kwargs) ,'
+        print '                 adjust_hyperp(self, *args, **kwargs) ,'
+        print '                 scale_lr(self, *args, **kwargs) ,  '
+        print '                 cleanup(self, *args, **kwargs) ,   '
         raise
         
 def check_model_cdd(model):
