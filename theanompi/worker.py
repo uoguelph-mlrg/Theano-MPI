@@ -44,6 +44,7 @@ class BSP_Worker(MPI_GPU_Process):
         snapshot_path = './snapshots/'
         recorder=self.recorder
         exchanger=self.exchanger
+        self.stop = False
         
         from theanompi.lib.helper_funcs import save_model
 
@@ -81,13 +82,21 @@ class BSP_Worker(MPI_GPU_Process):
             # val
             
             self.comm.Barrier()
-    
-            for batch_j in range(model.data.n_batch_val):
+            
+            batch_j=0
+            while batch_j <model.data.n_batch_val:
+            # for batch_j in range(model.data.n_batch_val):
                 
                 for subb_i in range(model.n_subb):
                     
-                    model.val_iter(batch_i*self.size, recorder)
-
+                    out = model.val_iter(batch_i*self.size, recorder)
+                    
+                    if out=='stop': 
+                        self.stop=True
+                    elif out !=None:
+                        batch_j=out
+                    else:
+                        batch_j+=1
                 
             model.reset_iter('val')
             
@@ -96,7 +105,7 @@ class BSP_Worker(MPI_GPU_Process):
             recorder.print_val_info(batch_i*self.size)
             model.current_info = recorder.get_latest_val_info()
             
-            if self.rank==0: recorder.save(batch_i*self.size, model.shared_lr.get_value())
+            if self.rank==0: recorder.save(batch_i*self.size, 0)
             
             if epoch % snapshot_freq == 0 and self.rank==0: save_model(model, snapshot_path, verbose=self.verbose)
             
@@ -106,6 +115,9 @@ class BSP_Worker(MPI_GPU_Process):
                 model.print_info(recorder, verbose=self.verbose)
             
             recorder.end_epoch(batch_i*self.size, epoch)
+            
+            if self.stop==True:
+                break
             
         model.cleanup()
 

@@ -252,11 +252,13 @@ def save_model(model, path, verbose):
             save_weights(layers, path, model.epoch)
         except AttributeError:
             import pickle
+            if not os.path.exists(path):
+                os.makedirs(path)
             with open(path+model.name+"params_%d.pkl" % model.epoch, 'wb') as f:
                 pickle.dump(model.params, f, protocol=pickle.HIGHEST_PROTOCOL)
         
         np.save(path + 'lr_' + str(model.epoch) + \
-                        '.npy', model.shared_lr.get_value())
+                        '.npy', 0)
         #vels = model.vels 
         #save_momentums(vels, self.config['weights_dir'], self.epoch)
 
