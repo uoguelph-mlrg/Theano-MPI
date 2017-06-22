@@ -93,6 +93,7 @@ class BSP_Worker(MPI_GPU_Process):
                     
                     if out=='stop': 
                         self.stop=True
+                        break
                     elif out !=None:
                         batch_j=out
                     else:
