@@ -62,8 +62,8 @@ class LSTM(object):
         SEED = (self.rank+1)*123 #int(os.getpid())
         numpy.random.seed(SEED)
         
-        import lstm
-        from lstm import get_dataset, get_minibatches_idx
+        import theanompi.models.lstm
+        from theanompi.models.lstm import get_dataset, get_minibatches_idx
         lstm.SEED=SEED
         
         load_data, self.prepare_data = get_dataset(dataset)
@@ -157,7 +157,7 @@ class LSTM(object):
         
         import theano
         
-        from lstm import build_model, init_tparams,init_params,load_params
+        from theanompi.models.lstm import build_model, init_tparams,init_params,load_params
         
 
         if self.rank==0: print('Building model')
@@ -205,7 +205,7 @@ class LSTM(object):
 
         lr = tensor.scalar(name='lr')
         
-        from lstm import adadelta
+        from theanompi.models.lstm import adadelta
         self.f_grad_shared, self.f_update = adadelta(lr, self.tparams, grads,
                                          self.x, self.mask, self.y, self.cost)
         
@@ -215,7 +215,7 @@ class LSTM(object):
         
     def train_iter(self, count,recorder):
         
-        from lstm import unzip
+        from theanompi.models.lstm import unzip
         
         recorder.start()
         
@@ -273,7 +273,7 @@ class LSTM(object):
         
     # if numpy.mod(self.uidx, self.model_options['validFreq']) == 0:
         self.use_noise.set_value(0.)
-        from lstm import pred_error
+        from theanompi.models.lstm import pred_error
         train_err = pred_error(self.f_pred, self.prepare_data, self.train, self.kf)
         valid_err = pred_error(self.f_pred, self.prepare_data, self.valid,
                                self.kf_valid)
@@ -287,7 +287,7 @@ class LSTM(object):
             valid_err <= numpy.array(self.history_errs)[:,
                                                    0].min()):
             
-            from lstm import unzip
+            from theanompi.models.lstm import unzip
             self.best_p = unzip(self.tparams)
             self.bad_counter = 0
 
@@ -324,7 +324,7 @@ class LSTM(object):
         
     def cleanup(self,*args, **kwargs):
         
-        from lstm import zipp, unzip, get_minibatches_idx, pred_error
+        from theanompi.models.lstm import zipp, unzip, get_minibatches_idx, pred_error
         
         if self.best_p is not None:
             zipp(self.best_p, self.tparams)

@@ -34,7 +34,7 @@ def extend_data(rank, size, img_batches, label_batches):
     
     assert n_files % size == 0
     
-    if rank==0: print 'rank%d: bad list is %s, extended to %d' % (rank, str(bad_left_list),len(_img_batches))
+    if rank==0: print('rank%d: bad list is %s, extended to %d' % (rank, str(bad_left_list),len(_img_batches)))
     
     return _img_batches, _label_batches
 

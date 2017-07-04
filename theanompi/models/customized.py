@@ -79,7 +79,7 @@ class Customized(ModelBase): # c01b input
         
     def build_model(self):
         
-        if self.verbose: print 'Customized MLP'
+        if self.verbose: print('Customized MLP')
 
         # start graph construction from scratch
         
@@ -145,12 +145,12 @@ class Customized(ModelBase): # c01b input
             
         self.model_size = size
             
-        print 'model size %d' % int(self.model_size)
+        print('model size %d' % int(self.model_size))
         
     
     def compile_train(self, updates_dict=None):
         
-        print 'compiling training function...'
+        print('compiling training function...')
         
         x = self.x
         y = self.y
@@ -201,7 +201,7 @@ class Customized(ModelBase): # c01b input
         
     def compile_inference(self):
 
-        print 'compiling inference function...'
+        print('compiling inference function...')
     
         x = self.x
         
@@ -211,7 +211,7 @@ class Customized(ModelBase): # c01b input
         
     def compile_val(self):
 
-        print 'compiling validation function...'
+        print('compiling validation function...')
     
         x = self.x
         y = self.y
@@ -300,35 +300,35 @@ if __name__ == '__main__':
     
     free, total = drv.mem_get_info()
     
-    print '%.1f %% of device memory is free.' % ((free/float(total))*100)
+    print('%.1f %% of device memory is free.' % ((free/float(total))*100))
     
-    print model.train(0)
-    
-    free, total = drv.mem_get_info()
-    
-    print '%.1f %% of device memory is free.' % ((free/float(total))*100)
-    
-    print model.train(0)
+    print(model.train(0))
     
     free, total = drv.mem_get_info()
     
-    print '%.1f %% of device memory is free.' % ((free/float(total))*100)
+    print('%.1f %% of device memory is free.' % ((free/float(total))*100))
+    
+    print(model.train(0))
+    
+    free, total = drv.mem_get_info()
+    
+    print('%.1f %% of device memory is free.' % ((free/float(total))*100))
     
     model.compile_val()
     
     free, total = drv.mem_get_info()
     
-    print '%.1f %% of device memory is free.' % ((free/float(total))*100)
+    print('%.1f %% of device memory is free.' % ((free/float(total))*100))
     
-    print model.val(0)
+    print(model.val(0))
     
     free, total = drv.mem_get_info()
     
-    print '%.1f %% of device memory is free.' % ((free/float(total))*100)
+    print('%.1f %% of device memory is free.' % ((free/float(total))*100))
     
     model.compile_inference()
     
-    print model.inference(model.shared_x.get_value()[0])
+    print(model.inference(model.shared_x.get_value()[0]))
     
     model.adjust_lr(epoch=40,size=1)
     

@@ -71,8 +71,7 @@ class Recorder(object):
         self.info_dict['epoch_time'].append([count, duration])
 
         if self.verbose: 
-            print 'global epoch %d took %.4f h' % (uepoch, duration/3600.0)
-            print ''
+            print('global epoch %d took %.4f h\n' % (uepoch, duration/3600.0))
 
         self.epoch_time = None
 
@@ -93,13 +92,13 @@ class Recorder(object):
         if (count) % printFreq ==0:
 
             #print train info
-            if self.verbose: print ''
+            if self.verbose: print('')
             cost =sum(self.train_info['cost'])/len(self.train_info['cost'])
             error =sum(self.train_info['error'])/len(self.train_info['error'])
 
             self.info_dict['train_info'].append([count, cost, error])
 
-            if self.verbose: print '%d %f %f'% (count, cost, error)
+            if self.verbose: print('%d %f %f'% (count, cost, error))
 
             self.train_info['cost'][:] = []
             self.train_info['error'][:] = []
@@ -114,8 +113,8 @@ class Recorder(object):
             self.info_dict['all_time'].append([count, t_all, calc, comm, wait])
 
             if self.verbose:
-                print 'time per %d batches: %.2f (train %.2f comm %.2f wait %.2f)' % \
-                            (printFreq, t_all, calc, comm, wait)
+                print('time per %d batches: %.2f (train %.2f comm %.2f wait %.2f)' % \
+                            (printFreq, t_all, calc, comm, wait))
              
             self.all_time['calc'][:] = []
             self.all_time['comm'][:] = []
@@ -157,10 +156,10 @@ class Recorder(object):
     
         if self.verbose:
             if comment !=None :
-                print comment
-            print '\nvalidation cost:%.4f' % cost
-            print 'validation error:%.4f' % error
-            print 'validation top_5_error:%.4f' % error_top5
+                print(comment)
+            print('\nvalidation cost:%.4f' % cost)
+            print('validation error:%.4f' % error)
+            print('validation top_5_error:%.4f' % error_top5)
     
         self.val_info['cost'][:] = []
         self.val_info['error'][:] = []

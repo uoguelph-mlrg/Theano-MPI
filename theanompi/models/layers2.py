@@ -35,7 +35,7 @@ class Weight(object):
         #print 'weight loaded: ' + name
         np_values = np.load(dir + name + '.npy')
         
-        print self.shape, np_values.shape
+        print(self.shape, np_values.shape)
         
         if self.shape != np_values.shape:
             raise ValueError('The weight to be loaded must be of the same shape. %s != %s' % (self.shape,np_values.shape))
@@ -217,8 +217,8 @@ class Layer(object):
         
     def print_shape(self):
         
-        print 'Layer %s \t in %s --> out %s' % (self.name, 
-                                self.input_shape, self.output_shape)
+        print('Layer %s \t in %s --> out %s' % (self.name, 
+                                self.input_shape, self.output_shape))
     
 class Subtract(Layer):
     
@@ -973,7 +973,7 @@ class Softmax(Layer):
             raise TypeError('y should have the same shape as self.y_pred',
                             ('y', y.type, 'y_pred', self.y_pred.type))                            
                                     
-        if num_top != 5: print 'val errors from top %d' % num_top ############TOP 5 VERSION##########        
+        if num_top != 5: print('val errors from top %d' % num_top) ############TOP 5 VERSION##########        
         
         # check if y is of the correct datatype
         if y.dtype.startswith('int'):
@@ -1025,9 +1025,9 @@ def count_params(params, verbose):
         
         model_size+=param.size.eval()
         
-        if verbose: print param.shape.eval()
+        if verbose: print(param.shape.eval())
         
-    if verbose: print 'model size %.3f M floats' % (float(model_size)/(1024*1024))
+    if verbose: print('model size %.3f M floats' % (float(model_size)/(1024*1024)))
     
 def extract_weight_types(params):
     

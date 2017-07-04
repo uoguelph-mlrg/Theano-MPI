@@ -164,7 +164,7 @@ class Cifar10_data():
 
             self.train_img_shuffle = batches
 
-            if self.verbose: print 'training data shuffled', indices
+            if self.verbose: print('training data shuffled', indices)
             
         elif mode=='val':
             
@@ -184,7 +184,7 @@ class Cifar10_data():
             self.train_batches_shard= self.train_img_shuffle[rank::size]
             self.n_batch_train = len(self.train_batches_shard)
             
-            if self.verbose: print 'training data sharded', self.n_batch_train
+            if self.verbose: print('training data sharded', self.n_batch_train)
             
         elif mode=='val':
             
@@ -192,6 +192,6 @@ class Cifar10_data():
             self.val_batches_shard= self.val_img_shuffle[rank::size]
             self.n_batch_val = len(self.val_batches_shard)
             
-            if self.verbose: print 'validation data sharded', self.n_batch_val
+            if self.verbose: print('validation data sharded', self.n_batch_val)
             
         

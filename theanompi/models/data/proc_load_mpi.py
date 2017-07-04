@@ -50,7 +50,7 @@ if __name__ == '__main__':
         sock.bind('tcp://*:{0}'.format(sock_data))
     except zmq.error.ZMQError:
         import os
-        print '[load] %s port %d zmq error' % (os.getpid(),sock_data)
+        print('[load] %s port %d zmq error' % (os.getpid(),sock_data))
         sock.close()
         zmq.Context().term()
         raise
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pass
 
     shape, dtype, h = sock.recv_pyobj()
-    if verbose: print '[load] 1. shared_x information received'
+    if verbose: print('[load] 1. shared_x information received')
 
     gpu_data_remote_b = pygpu.gpuarray.open_ipc_handle(ctx, h, np.prod(shape)*dtype.itemsize)
     gpu_data_remote = pygpu.gpuarray.from_gpudata(gpu_data_remote_b, 0, dtype, shape, ctx)
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     # if verbose: print '[load] 2. img_mean received'
 
     import os
-    print 'loading %s started' % os.getpid()
+    print('loading %s started' % os.getpid())
     count=0
     mode=None
     import time
@@ -129,6 +129,6 @@ if __name__ == '__main__':
             icomm.isend("copy_finished",dest=0,tag=55)
             
     icomm.Disconnect()
-    if verbose: print '[load] paraloading process closed'
+    if verbose: print('[load] paraloading process closed')
 
 

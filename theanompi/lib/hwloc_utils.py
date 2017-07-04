@@ -24,7 +24,7 @@ def range_to_list(_range):
                 ids.extend(range(int(xr[0]),int(xr[1])+1))
                 continue
             else:
-                raise Exception, 'unknown range type: "%s"'%x
+                raise Exception('unknown range type: "%s"'%x)
     elif _range.split('-')[0] != _range:
         xr = map(str.strip, _range.split('-'))
         ids.extend(range(int(xr[0]),int(xr[1])+1))
@@ -75,9 +75,9 @@ def detect_socket_num(debug=True, label=None):
     if debug:
         
         import os
-        print '%s pid %d run on cpuset %s (%s) sock %s, bind to mem cpuset %s (%s)' % \
+        print('%s pid %d run on cpuset %s (%s) sock %s, bind to mem cpuset %s (%s)' % \
                             (label, os.getpid(),cpuset, cpuset.list_asprintf(), 
-                                socketnum, cpuset_mem, cpuset_mem.list_asprintf())
+                                socketnum, cpuset_mem, cpuset_mem.list_asprintf()))
     
     
     return cpuset, socketnum

@@ -60,7 +60,7 @@ class GOSGD_Worker(MPI_GPU_Process):
             
             # train
             
-            print model.data.n_batch_train
+            print(model.data.n_batch_train)
     
             for batch_i in range(model.data.n_batch_train):
                 

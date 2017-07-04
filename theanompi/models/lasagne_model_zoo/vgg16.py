@@ -18,7 +18,7 @@ def build_model_vgg16(input_shape, verbose):
     
     '''
     
-    if verbose: print 'VGG16 (from lasagne model zoo)'
+    if verbose: print('VGG16 (from lasagne model zoo)')
     
     net = {}
     net['input'] = InputLayer(input_shape)
@@ -264,7 +264,7 @@ class VGG16(object): # c01b input
         
         # args is a list of dictionaries
         
-        if self.verbose: print 'compiling training function...'
+        if self.verbose: print('compiling training function...')
         
         import theano
         
@@ -281,7 +281,7 @@ class VGG16(object): # c01b input
                                                                           )
     def compile_inference(self):
 
-        print 'compiling inference function...'
+        if self.verbose: print('compiling inference function...')
         
         from lasagne.layers import get_output
         
@@ -291,7 +291,7 @@ class VGG16(object): # c01b input
         
     def compile_val(self):
 
-        if self.verbose: print 'compiling validation function...'
+        if self.verbose: print('compiling validation function...')
         
         import theano
         
@@ -320,7 +320,7 @@ class VGG16(object): # c01b input
 
         pre_model_iter_fn(self, sync_type=sync_type)
         
-        if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
+        if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
             
     def reset_iter(self, mode):
         
@@ -415,7 +415,7 @@ class VGG16(object): # c01b input
         
         if self.verbose: 
             if self.monitor_grad: 
-                print np.array(self.get_norm(self.subb_t))
+                print(np.array(self.get_norm(self.subb_t)))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
             
         recorder.train_error(count, cost, error)

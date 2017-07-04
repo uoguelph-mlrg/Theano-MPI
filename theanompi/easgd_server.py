@@ -44,12 +44,12 @@ class EASGD_Server(MPI_GPU_Process):
             
             if self.first_worker_id == None:
                 self.first_worker_id = worker_id
-                print '[Server] recording worker is %s' % worker_id
+                print('[Server] recording worker is %s' % worker_id)
                 reply = 'first'
             # rank -> id -> gpucomm
             self.worker_id[str(worker_rank)] = int(worker_id) 
             
-            print '[Server] registered worker %d' % worker_id
+            print('[Server] registered worker %d' % worker_id)
             
             return reply
             
@@ -72,8 +72,8 @@ class EASGD_Server(MPI_GPU_Process):
                 self.start_time = time.time()
             # stop when finish all epochs
             if sum(self.uidx.values()) >= self.validFreq*model.n_epochs: 
-                print "[Server] Total training time %.2fh" % \
-                        ((time.time() - self.start_time)/3600.0)
+                print("[Server] Total training time %.2fh" % \
+                        ((time.time() - self.start_time)/3600.0))
                 reply = 'stop'
         
             elif self.valid['%s' % worker_id]:
@@ -119,8 +119,8 @@ class EASGD_Server(MPI_GPU_Process):
         
                 now = float(time.time())
 
-                print '[Server] %d time per 40 batches: %.2f s' % \
-                        (self.uepoch, (now - self.last))
+                print('[Server] %d time per 40 batches: %.2f s' % \
+                        (self.uepoch, (now - self.last)))
 
                 self.last_uidx = now_uidx
                 self.last = now
@@ -133,11 +133,11 @@ class EASGD_Server(MPI_GPU_Process):
 
             self.worker_gpucomm.pop(str(worker_id))
         
-            print '[Server] disconnected with worker %d' % worker_id
+            print('[Server] disconnected with worker %d' % worker_id)
             
         elif message == 'stop':
             
-            print '[Server] stopped by %d' % worker_id
+            print('[Server] stopped by %d' % worker_id)
             
             import sys
             sys.exit(0)
@@ -183,11 +183,11 @@ class EASGD_Server(MPI_GPU_Process):
         
         if self.comm == None:
             
-            print 'Server communicator not initialized'
+            print('Server communicator not initialized')
             
             return
             
-        print 'server started'
+        print('server started')
 
         while True:
             #  Wait for next request from client

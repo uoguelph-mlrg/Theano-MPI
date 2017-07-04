@@ -1,2 +1,2 @@
-from rules import BSP, EASGD, GOSGD
+from theanompi.rules import BSP, EASGD, GOSGD
 

@@ -201,8 +201,8 @@ class EASGD_Exchanger(object):
         
         if self.test==True: 
 
-            print 'before exchange rank%d : %s' % (self.gpucomm.rank,
-                            get_1d_value(self.w_param_list[0].get_value()))
+            print('before exchange rank%d : %s' % (self.gpucomm.rank,
+                            get_1d_value(self.w_param_list[0].get_value())))
             
 
         
@@ -229,8 +229,8 @@ class EASGD_Exchanger(object):
         
         if self.test==True:
             
-            print 'after exchange rank%d : %s' % (self.gpucomm.rank,
-                            get_1d_value(self.w_param_list[0].get_value()))
+            print('after exchange rank%d : %s' % (self.gpucomm.rank,
+                            get_1d_value(self.w_param_list[0].get_value())))
                             
         
         self.update_func()
@@ -479,13 +479,13 @@ class GOSGD_Exchanger(object):
             
             self.gpucomm, src_gpurank, self_gpurank = self.get_gpucomm_with(src_rank)
             
-            if self.test: print '%d merging with %d' % (self.rank, src_rank)
+            if self.test: print('%d merging with %d' % (self.rank, src_rank))
             
             self._merge_params_from(src_gpurank, src_rank)
             
             s = self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700, status=status)
             
-            if self.test: print '%d probed again, got %s' % (self.rank,s)
+            if self.test: print('%d probed again, got %s' % (self.rank,s))
             
         if recorder: recorder.end('comm')
 
@@ -498,13 +498,13 @@ class GOSGD_Exchanger(object):
             b.container.value.sync()
             self.gpucomm.broadcast(b.container.value, root=src_gpurank)
         
-        if self.test: print '%d params received from %d' % (self.rank, src_rank)
+        if self.test: print('%d params received from %d' % (self.rank, src_rank))
         
         src_alpha = np.array(0, dtype=theano.config.floatX)
         
         self.comm.Recv(buf=src_alpha, source=src_rank, tag=701)
         
-        if self.test: print '%d alpha received from %d' % (self.rank, src_rank)
+        if self.test: print('%d alpha received from %d' % (self.rank, src_rank))
         
         self.src_alpha.set_value(src_alpha)
         
@@ -524,18 +524,18 @@ class GOSGD_Exchanger(object):
         
         # detect if any other worker is pushing to self at the same time to prevent deadlock
         while self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=700): 
-            if self.test: print 'a potential deadlock prevented'
+            if self.test: print('a potential deadlock prevented')
             self.process_messages(count_arr, recorder)
             
         if recorder: recorder.start()
 
         # 0. blocking request
         
-        if self.test: print '%d pushing msg to %d'  % (self.rank,dest_rank)
+        if self.test: print('%d pushing msg to %d'  % (self.rank,dest_rank))
         
         self.comm.Send(buf=count_arr,dest=dest_rank, tag=700)  
         
-        if self.test: print '%d requested to %d'  % (self.rank,dest_rank)
+        if self.test: print('%d requested to %d'  % (self.rank,dest_rank))
         
         # 1. push
         
@@ -543,7 +543,7 @@ class GOSGD_Exchanger(object):
         
         self._push_params(self_gpurank, dest_rank)
         
-        if self.test: print '%d msg pushed'  % self.rank
+        if self.test: print('%d msg pushed'  % self.rank)
         
         if recorder: recorder.end('comm')
         

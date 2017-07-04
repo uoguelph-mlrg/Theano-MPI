@@ -34,7 +34,7 @@ def save_weights(layers, weights_dir, epoch):
     
     if not os.path.exists(weights_dir):
             os.makedirs(weights_dir)
-            print 'Creating folder: %s' % weights_dir
+            print('Creating folder: %s' % weights_dir)
             
     for idx in range(len(layers)):
         if hasattr(layers[idx], 'W'):
@@ -148,7 +148,7 @@ def save_momentums(vels, weights_dir, epoch):
     
     if not os.path.exists(weights_dir):
             os.makedirs(weights_dir)
-            print 'Creating folder: %s' % weights_dir
+            print('Creating folder: %s' % weights_dir)
             
     for ind in range(len(vels)):
         np.save(os.path.join(weights_dir, 'mom_' + str(ind) + '_' + str(epoch)),
@@ -201,20 +201,7 @@ def check_model(model):
     
     except AssertionError:
         
-        print 'Model def lacks some attributes and/or methods'
-        print 'attributes include: data, '
-        print '                    epoch (initialized to 0),'
-        print '                    n_epochs (max epochs),'
-        print '                    n_subb (number of sub batches in a minibatch, default to 1)'
-        
-        print
-        print 'methods include: compile_iter_fns(self, *args, **kwargs), '
-        print '                 train_iter(self, *args, **kwargs) ,'
-        print '                 val_iter(self, *args, **kwargs) ,  '
-        print '                 reset_iter(self, *args, **kwargs) ,'
-        print '                 adjust_hyperp(self, *args, **kwargs) ,'
-        print '                 scale_lr(self, *args, **kwargs) ,  '
-        print '                 cleanup(self, *args, **kwargs) ,   '
+        print('Model def lacks some attributes and/or methods\nattributes include: data, \n                    epoch (initialized to 0),\n                    n_epochs (max epochs),\n                    n_subb (number of sub batches in a minibatch, default to 1)\n\nmethods include: compile_iter_fns(self, *args, **kwargs), \n                 train_iter(self, *args, **kwargs) ,\n                 val_iter(self, *args, **kwargs) ,  \n                 reset_iter(self, *args, **kwargs) ,\n                 adjust_hyperp(self, *args, **kwargs) ,\n                 scale_lr(self, *args, **kwargs) ,  \n                 cleanup(self, *args, **kwargs) ,   \n')
         raise
         
 def check_model_cdd(model):
@@ -263,7 +250,7 @@ def save_model(model, path, verbose):
         #save_momentums(vels, self.config['weights_dir'], self.epoch)
 
     if verbose:
-        print '\nweights saved at epoch %d' % model.epoch
+        print('\nweights saved at epoch %d' % model.epoch)
 
     try:
         with open(path+"val_info.txt", "a") as f:

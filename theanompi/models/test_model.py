@@ -54,7 +54,7 @@ if __name__ == '__main__':
         
         batch_i=0
         
-        print 'train on %d batches' % model.data.n_batch_train
+        print('train on %d batches' % model.data.n_batch_train)
         while batch_i <model.data.n_batch_train:
         
             for subb_i in range(model.n_subb):
@@ -128,22 +128,17 @@ if __name__ == '__main__':
     
     y_pred_top_x = np.argsort(soft_prob, axis=1)[:, -num_top:] # prob sorted from small to large
     
-    print ''
-    print 'top-5 prob:'
-    print y_pred_top_x[0]
+    print('\ntop-5 prob:')
+    print(y_pred_top_x[0])
     
+    print('\ntop-5 prob catagories:')
+    print([soft_prob[0][index] for index in y_pred_top_x[0]])
     
-    print ''
-    print 'top-5 prob catagories:'
-    print [soft_prob[0][index] for index in y_pred_top_x[0]]
-    
-    print ''
     # git clone https://github.com/hma02/show_batch.git
     # run mk_label_dict.py to generate label_dict.npy
     label_dict = np.load('label_dict.npy').tolist()
     
-    print 'discription:'
+    print('\ndiscription:')
     for cat in y_pred_top_x[0]:
-        print "%s: %s" % (cat,label_dict[cat])
-        print ''
+        print("%s: %s" % (cat,label_dict[cat]))
     

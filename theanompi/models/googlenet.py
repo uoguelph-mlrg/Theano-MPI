@@ -38,7 +38,7 @@ monitor_grad = False
 
 seed_weight_on_pid = False
 
-from layers2 import (Normal, Constant, Layer, Conv, Pool, LRN, 
+from theanompi.models.layers2 import (Normal, Constant, Layer, Conv, Pool, LRN, 
                                       ConvPoolLRN_bc01, Dimshuffle, Flatten,
                                       Dropout, FC, Softmax, get_params, get_layers, count_params)
                                                                  
@@ -398,7 +398,7 @@ class GoogLeNet(object):
         
     def build_model(self):
         
-        if self.verbose: print self.name
+        if self.verbose: print(self.name)
         
         import theano.tensor as T
         if seed_weight_on_pid:
@@ -651,7 +651,7 @@ class GoogLeNet(object):
         
         # args is a list of dictionaries
         
-        if self.verbose: print 'compiling training function...'
+        if self.verbose: print('compiling training function...')
         
         import theano
         
@@ -668,7 +668,7 @@ class GoogLeNet(object):
                                                                           )
     def compile_inference(self):
 
-        if self.verbose: print 'compiling inference function...'
+        if self.verbose: print('compiling inference function...')
         
         import theano
         
@@ -676,7 +676,7 @@ class GoogLeNet(object):
         
     def compile_val(self):
 
-        if self.verbose: print 'compiling validation function...'
+        if self.verbose: print('compiling validation function...')
         
         import theano
         
@@ -695,7 +695,7 @@ class GoogLeNet(object):
 
         pre_model_iter_fn(self, sync_type=sync_type)
         
-        if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
+        if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
             
     def reset_iter(self, mode):
         
@@ -788,7 +788,7 @@ class GoogLeNet(object):
         
         if self.verbose: 
             if self.monitor_grad: 
-                print np.array(self.get_norm(self.subb_t))
+                print(np.array(self.get_norm(self.subb_t)))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
             
         recorder.train_error(count, cost, error)

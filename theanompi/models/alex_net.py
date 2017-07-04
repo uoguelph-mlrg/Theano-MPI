@@ -148,7 +148,7 @@ class AlexNet(object):
     
     def build_model(self):
         
-        if self.verbose: print self.name
+        if self.verbose: print(self.name)
 
         # start graph construction from scratch
         import theano.tensor as T
@@ -301,7 +301,7 @@ class AlexNet(object):
         
         # args is a list of dictionaries
         
-        if self.verbose: print 'compiling training function...'
+        if self.verbose: print('compiling training function...')
         
         import theano
         
@@ -320,7 +320,7 @@ class AlexNet(object):
                                                                           )
     def compile_inference(self):
 
-        if self.verbose: print 'compiling inference function...'
+        if self.verbose: print('compiling inference function...')
         
         import theano
         
@@ -328,7 +328,7 @@ class AlexNet(object):
         
     def compile_val(self):
 
-        if self.verbose: print 'compiling validation function...'
+        if self.verbose: print('compiling validation function...')
         
         import theano
         
@@ -347,7 +347,7 @@ class AlexNet(object):
 
         pre_model_iter_fn(self, sync_type=sync_type)
         
-        if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
+        if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
     
     def reset_iter(self, mode):
         
@@ -440,7 +440,7 @@ class AlexNet(object):
         if self.verbose: 
             if self.monitor_grad: 
                 #print np.array(self.get_norm(self.subb_t))
-                print np.array(self.get_norm(self.subb_t)).tolist()[:2]
+                print(np.array(self.get_norm(self.subb_t)).tolist()[:2])
                 
         cost,error= function(self.subb_t)
             

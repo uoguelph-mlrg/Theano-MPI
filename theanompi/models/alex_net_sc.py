@@ -144,7 +144,7 @@ class AlexNet_sc(object):
     
     def build_model(self):
         
-        if self.verbose: print self.name
+        if self.verbose: print(self.name)
 
         # start graph construction from scratch
         import theano.tensor as T
@@ -297,7 +297,7 @@ class AlexNet_sc(object):
         
         # args is a list of dictionaries
         
-        if self.verbose: print 'compiling training function...'
+        if self.verbose: print('compiling training function...')
         
         import theano
         
@@ -314,7 +314,7 @@ class AlexNet_sc(object):
                                                                           )
     def compile_inference(self):
 
-        if self.verbose: print 'compiling inference function...'
+        if self.verbose: print('compiling inference function...')
         
         import theano
         
@@ -322,7 +322,7 @@ class AlexNet_sc(object):
         
     def compile_val(self):
 
-        if self.verbose: print 'compiling validation function...'
+        if self.verbose: print('compiling validation function...')
         
         import theano
         
@@ -341,7 +341,7 @@ class AlexNet_sc(object):
 
         pre_model_iter_fn(self, sync_type='avg')
         
-        if self.verbose: print 'Compile time: %.3f s' % (time.time()-start)
+        if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
     
     def reset_iter(self, mode):
         
@@ -432,7 +432,7 @@ class AlexNet_sc(object):
         
         if self.verbose: 
             if self.monitor_grad: 
-                print np.array(self.get_norm(self.subb_t))
+                print(np.array(self.get_norm(self.subb_t)))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
             
         recorder.train_error(count, cost, error)
@@ -624,7 +624,7 @@ if __name__ == '__main__':
     recorder.print_val_info(batch_i)
     
     model.epoch+=1
-    print 'finish one epoch'
+    print('finish one epoch')
     
     model.adjust_hyperp(epoch=40)
     
@@ -661,21 +661,16 @@ if __name__ == '__main__':
     
     y_pred_top_x = np.argsort(soft_prob, axis=1)[:, -num_top:] # prob sorted from small to large
     
-    print ''
-    print 'top-5 prob:'
-    print y_pred_top_x[0]
+    print('\ntop-5 prob:')
+    print(y_pred_top_x[0])
     
+    print('\ntop-5 prob catagories:')
+    print([soft_prob[0][index] for index in y_pred_top_x[0]])
     
-    print ''
-    print 'top-5 prob catagories:'
-    print [soft_prob[0][index] for index in y_pred_top_x[0]]
-    
-    print ''
     # git clone https://github.com/hma02/show_batch.git
     # run mk_label_dict.py to generate label_dict.npy
     label_dict = np.load('label_dict.npy').tolist()
     
-    print 'discription:'
+    print('\ndiscription:')
     for cat in y_pred_top_x[0]:
-        print "%s: %s" % (cat,label_dict[cat])
-        print ''
+        print("%s: %s" % (cat,label_dict[cat]))

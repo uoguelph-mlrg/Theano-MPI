@@ -29,7 +29,7 @@ class EASGD_Worker(MPI_GPU_Process):
         
         if self.comm == None:
             
-            print 'Worker communicator not initialized'
+            print('Worker communicator not initialized')
             
             return
             
@@ -47,7 +47,7 @@ class EASGD_Worker(MPI_GPU_Process):
         
         if self.comm == None:
             
-            print 'Worker communicator not initialized'
+            print('Worker communicator not initialized')
             
             return
         
@@ -103,7 +103,7 @@ class EASGD_Worker(MPI_GPU_Process):
         
         if self.verbose: self.comm_request('stop')
 
-        print 'success'
+        print('success')
         
         
     def build(self, model, config):
