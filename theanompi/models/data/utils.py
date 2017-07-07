@@ -4,8 +4,8 @@ def unpickle(path):
     ''' For cifar-10 data, it will return dictionary'''
     #Load the cifar 10
     f = open(path, 'rb')
-    import cPickle
-    data = cPickle.load(f)
+    import pickle
+    data = pickle.load(f,encoding='latin1')
     f.close()
     return data 
     

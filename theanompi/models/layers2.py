@@ -261,7 +261,7 @@ class Crop(Layer):
         cropsize = output_shape[2] # works for both c01b and bc01
 
         # crop images
-        center_margin = (self.input_shape[2] - cropsize) / 2
+        center_margin = (self.input_shape[2] - cropsize) // 2
         
         
         if flag_batch:
@@ -470,8 +470,8 @@ class ConvPoolLRN(Layer):
                 
             else:
             
-                self.filter_shape[0] = self.filter_shape[0] / 2
-                self.filter_shape[3] = self.filter_shape[3] / 2
+                self.filter_shape[0] = self.filter_shape[0] // 2
+                self.filter_shape[3] = self.filter_shape[3] // 2
                 # self.input_shape[0] = self.input_shape[0] / 2
                 # self.input_shape[3] = self.input_shape[3] / 2
                 channel = self.input_shape[0]
@@ -519,7 +519,7 @@ class ConvPoolLRN(Layer):
                 # print test.shape
                     
                 conv_out0 = \
-                    dnn.dnn_conv(img=input_shuffled[:, :channel/2,
+                    dnn.dnn_conv(img=input_shuffled[:, :channel//2,
                                                     :, :],
                                  kerns=W0_shuffled,
                                  subsample=(convstride, convstride),
@@ -530,7 +530,7 @@ class ConvPoolLRN(Layer):
                 W1_shuffled = \
                     self.W1.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
                 conv_out1 = \
-                    dnn.dnn_conv(img=input_shuffled[:, channel/2:,
+                    dnn.dnn_conv(img=input_shuffled[:, channel//2:,
                                                     :, :],
                                  kerns=W1_shuffled,
                                  subsample=(convstride, convstride),
@@ -568,7 +568,7 @@ class ConvPoolLRN(Layer):
 #                 conv_out = conv_out + self.b.val.dimshuffle(0, 'x', 'x', 'x')
 #             else:
 #                 contiguous_input0 = gpu_contiguous(
-#                     self.input[:channel/2, :, :, :])
+#                     self.input[:channel//2, :, :, :])
 #                 contiguous_filters0 = gpu_contiguous(self.W0.val)
 #                 conv_out0 = self.conv_op(
 #                     contiguous_input0, contiguous_filters0)
@@ -576,7 +576,7 @@ class ConvPoolLRN(Layer):
 #                     self.b0.val.dimshuffle(0, 'x', 'x', 'x')
 #
 #                 contiguous_input1 = gpu_contiguous(
-#                     self.input[channel/2:, :, :, :])
+#                     self.input[channel//2:, :, :, :])
 #                 contiguous_filters1 = gpu_contiguous(self.W1.val)
 #                 conv_out1 = self.conv_op(
 #                     contiguous_input1, contiguous_filters1)
@@ -599,7 +599,7 @@ class ConvPoolLRN(Layer):
             from theano.gpuarray.basic_ops import gpu_contiguous
             from theano.gpuarray.blas import GpuCorrMM
 
-            border_mode = 'half' if padsize == (filter_shape[1]-1)/2 else (padsize, padsize)
+            border_mode = 'half' if padsize == (filter_shape[1]-1)//2 else (padsize, padsize)
             self.corr_mm_op = GpuCorrMM(subsample=(convstride,convstride),
                                                 border_mode=border_mode)
 
@@ -622,7 +622,7 @@ class ConvPoolLRN(Layer):
                 W0_shuffled = self.W0.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
 
                 contiguous_filters0 = gpu_contiguous(W0_shuffled[:, :, ::-1, ::-1])
-                contiguous_input0 = gpu_contiguous(input_shuffled[:, :channel / 2,:, :])
+                contiguous_input0 = gpu_contiguous(input_shuffled[:, :channel // 2,:, :])
 
                 conv_out0 = self.corr_mm_op(contiguous_input0, contiguous_filters0)
                 conv_out0 = conv_out0 + self.b0.val.dimshuffle('x', 0, 'x', 'x')
@@ -630,7 +630,7 @@ class ConvPoolLRN(Layer):
                 W1_shuffled = self.W1.val.dimshuffle(3, 0, 1, 2)  # c01b to bc01
 
                 contiguous_filters1 = gpu_contiguous(W1_shuffled[:, :, ::-1, ::-1])
-                contiguous_input1 = gpu_contiguous(input_shuffled[:, channel / 2:,:, :])
+                contiguous_input1 = gpu_contiguous(input_shuffled[:, channel // 2:,:, :])
 
                 conv_out1 = self.corr_mm_op(contiguous_input1, contiguous_filters1)
                 conv_out1 = conv_out1 + self.b1.val.dimshuffle('x', 0, 'x', 'x')

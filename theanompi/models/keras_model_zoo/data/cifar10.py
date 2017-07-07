@@ -88,7 +88,7 @@ class Cifar10_data():
                 
             from keras.engine.training import slice_X
             
-            self.n_batch_train = ins[0].shape[0]/batch_size
+            self.n_batch_train = ins[0].shape[0]//batch_size
             self.train_batches = []
             index_arr = range(ins[0].shape[0])
             for batch_index in range(self.n_batch_train):
@@ -105,7 +105,7 @@ class Cifar10_data():
                 self.train_batches.append(ins_batch)
             
             
-            self.n_batch_val = val_ins[0].shape[0]/batch_size
+            self.n_batch_val = val_ins[0].shape[0]//batch_size
             self.val_batches = []
             index_arr = range(val_ins[0].shape[0])
             for batch_index in range(self.n_batch_val):

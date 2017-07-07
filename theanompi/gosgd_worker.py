@@ -27,7 +27,7 @@ class GOSGD_Worker(MPI_GPU_Process):
         check_model(model)
         
         # construct model train function based on sync rule
-        model.compile_iter_fns()
+        model.compile_iter_fns(sync_type='avg')
         
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=model.name, verbose=self.verbose)

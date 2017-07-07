@@ -91,7 +91,7 @@ class Cifar10_data():
     
         if self.batched==False:
             
-            self.n_batch_train = self.rawdata[0].shape[0]/file_batch_size
+            self.n_batch_train = self.rawdata[0].shape[0]//file_batch_size
         
             self.train_img, self.train_labels=[],[]
 
@@ -111,7 +111,7 @@ class Cifar10_data():
             
             
             
-            self.n_batch_val = self.rawdata[2].shape[0]/file_batch_size
+            self.n_batch_val = self.rawdata[2].shape[0]//file_batch_size
         
             self.val_img, self.val_labels=[],[]
 

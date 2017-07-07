@@ -297,7 +297,7 @@ class Cifar10_model(object): # c01b input
         start = time.time()
         
         from theanompi.lib.opt import pre_model_iter_fn
-
+        
         pre_model_iter_fn(self, sync_type=sync_type)
         
         if self.verbose: print('Compile time: %.3f s' % (time.time()-start))

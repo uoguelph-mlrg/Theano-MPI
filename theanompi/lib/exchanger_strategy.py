@@ -39,21 +39,21 @@ class Exch_allreduce(Exch_strategy):
         
     def prepare(self, source_param_list, dest_param_list=None):
         
-    	self.source_param_list = source_param_list
+        self.source_param_list = source_param_list
         if dest_param_list!=None:
             self.dest_param_list = dest_param_list
         else:
             self.dest_param_list = self.source_param_list
-            
+    
         self.param_update_list = []
 
-    	
-    	for param in self.source_param_list:
-    	    param_update = param.get_value()
-    	    self.param_update_list.append(param_update)
-            
+
+        for param in self.source_param_list:
+            param_update = param.get_value()
+            self.param_update_list.append(param_update)
+    
         if self.avg:
-        
+
             division_factor = 1.0 / self.size
             self.avg_func = theano.function([], \
                             updates=[(param, param * division_factor) \
@@ -63,9 +63,9 @@ class Exch_allreduce(Exch_strategy):
         
         if self.avg:
             self.avg_func()
-            
+    
         self.comm.Barrier()
-        
+
         for source_param, param_update, dest_param in \
             zip(self.source_param_list, self.param_update_list, self.dest_param_list):
             self.comm.Allreduce(source_param.get_value(), param_update)
@@ -254,8 +254,8 @@ class Exch_asa32(Exch_strategy):
                                      param_update.shape[0]%size_tmp,)
 
             assert param_update_shape[0] % size_tmp == 0
-            print 'weight shape changed from %s to %s' % \
-                         (param_update.shape, param_update_shape)
+            print('weight shape changed from %s to %s' % \
+                         (param_update.shape, param_update_shape))
                          
         elif param_update.size % size_tmp == 0:
             param_update_shape = param_update.shape
@@ -270,17 +270,17 @@ class Exch_asa32(Exch_strategy):
         size_tmp=self.size
         assert numElements>=param_update.size
         if numElements%size_tmp!=0:
-            print numElements,'x',param_update_shape
+            print(numElements,'x',param_update_shape)
             raise
             
     def prepare(self, ctx, source_param_list, dest_param_list=None):
         
-    	self.source_param_list = source_param_list
+        self.source_param_list = source_param_list
         if dest_param_list!=None:
             self.dest_param_list = dest_param_list
         else:
             self.dest_param_list = self.source_param_list
-            
+    
         self.ctx = ctx
 
         self.d_f32_sumfloats = pygpu.gpuarray.GpuKernel("""
@@ -298,22 +298,22 @@ class Exch_asa32(Exch_strategy):
 
         self.d_param_32_tmp_list=[]
         self.d_param_32_sum_list=[]
-        
+
         self.numElements_list=[]
         self.reduce_size_list = []
         self.grid_sum_size_list=[]
-        
+
         self.ranksize = np.int32(self.size)
-        
+
         block_size = np.int32(256)
 
         for param in self.source_param_list:
-            
+    
             # Prepare data in host (CPU) memory
             param_update = param.get_value()
-            
+
             param_update_shape = self.verify_shape(param_update)
-            
+
             numElements = np.uint32(np.prod(param_update_shape))
             self.verify_numElements(numElements,param_update_shape,param_update)
             self.numElements_list.append(numElements)
@@ -321,7 +321,7 @@ class Exch_asa32(Exch_strategy):
             self.reduce_size_list.append(reducesize)
             grid_sum_size = (reducesize / block_size + 1, 1)
             self.grid_sum_size_list.append(grid_sum_size)
-            
+
             param_32_tmp = pygpu.zeros(numElements, dtype=np.float32,
                                        context=self.ctx)
             param_32_sum = pygpu.zeros(reducesize, dtype=np.float32,
@@ -409,8 +409,8 @@ class Exch_asa16(Exch_strategy):
                                      param_update.shape[0]%size_tmp,)
 
             assert param_update_shape[0] % size_tmp == 0
-            print 'weight shape changed from %s to %s' % \
-                         (param_update.shape, param_update_shape)
+            print('weight shape changed from %s to %s' % \
+                         (param_update.shape, param_update_shape))
                          
         elif param_update.size % size_tmp == 0:
             param_update_shape = param_update.shape
@@ -425,19 +425,19 @@ class Exch_asa16(Exch_strategy):
         size_tmp=self.size
         assert numElements>=param_update.size
         if numElements%size_tmp!=0:
-            print numElements,'x',param_update_shape
+            print(numElements,'x',param_update_shape)
             raise
             
     def prepare(self, ctx, source_param_list, dest_param_list=None):
         
-    	self.source_param_list = source_param_list
+        self.source_param_list = source_param_list
         if dest_param_list!=None:
             self.dest_param_list = dest_param_list
         else:
             self.dest_param_list = self.source_param_list
-            
-        self.ctx = ctx
     
+        self.ctx = ctx
+
         self.float2half = pygpu.elemwise.GpuElemwise("a = b",
                                                      [arg("b", 'float32'),
                                                       arg("a", 'float16', write=True)],
@@ -466,21 +466,21 @@ class Exch_asa16(Exch_strategy):
         self.d_param_16_update_list = []
         self.d_param_16_tmp_list=[]
         self.d_param_16_sum_list=[]
-        
+
         self.numElements_list=[]
         self.reduce_size_list = []
         self.grid_sum_size_list=[]
         self.grid_size_list=[]
         self.offset_list=[]
-        
+
         self.ranksize = np.int32(self.size)
-        
+
         block_size = np.int32(256)
 
         for param in self.source_param_list:
-            
+    
             #Prepare data in host (CPU) memory
-            
+
             param_update =  param.get_value()
 
             param_update_shape = self.verify_shape(param_update)
@@ -501,7 +501,7 @@ class Exch_asa16(Exch_strategy):
             param_16_tmp = np.zeros(numElements, dtype=np.ushort)
             param_16_sum = np.zeros(reducesize, dtype=np.ushort)
             param_16_update = np.zeros(numElements, dtype=np.ushort)
-            
+
 
             #Prepare data in decive (GPU) memory
             param_update_ga = gpuarray.GPUArray(param_update_shape,param_update.dtype)
@@ -512,10 +512,10 @@ class Exch_asa16(Exch_strategy):
 
             d_param_16_sum = gpuarray.to_gpu(param_16_sum)
             self.d_param_16_sum_list.append(d_param_16_sum)
-            
+
             d_param_16 =gpuarray.to_gpu(param_16)
             self.d_param_16_list.append(d_param_16)
-            
+
             d_param_16_update =gpuarray.to_gpu(param_16_update)
             self.d_param_16_update_list.append(d_param_16_update)
 
@@ -526,7 +526,7 @@ class Exch_asa16(Exch_strategy):
             self.avg_func = theano.function([], \
                             updates=[(param, param * division_factor) \
                             for param in self.source_param_list])
-    
+
     def exchange(self):
         
         mpidtype = self.mpidtype
@@ -615,12 +615,12 @@ class Exch_copper(Exch_strategy):
     
     def prepare(self, ctx, drv, source_param_list, dest_param_list=None):
         
-    	self.source_param_list = source_param_list
+        self.source_param_list = source_param_list
         if dest_param_list!=None:
             self.dest_param_list = dest_param_list
         else:
             self.dest_param_list = self.source_param_list
-            
+
         self.ctx = ctx
         self.drv = drv
     
@@ -1042,8 +1042,8 @@ class Exch_copper16(Exch_strategy):
                                      param_update.shape[0]%size_tmp,)
 
             assert param_update_shape[0] % size_tmp == 0
-            print 'weight shape changed from %s to %s' % \
-                         (param_update.shape, param_update_shape)
+            print('weight shape changed from %s to %s' % \
+                         (param_update.shape, param_update_shape))
                          
         elif param_update.size % size_tmp == 0:
             param_update_shape = param_update.shape
@@ -1058,17 +1058,17 @@ class Exch_copper16(Exch_strategy):
         size_tmp=self.size
         assert numElements>=param_update.size
         if numElements%size_tmp!=0:
-            print numElements,'x',param_update_shape
+            print(numElements,'x',param_update_shape)
             raise
             
     def prepare(self, ctx, drv, source_param_list, dest_param_list=None):
         
-    	self.source_param_list = source_param_list
+        self.source_param_list = source_param_list
         if dest_param_list!=None:
             self.dest_param_list = dest_param_list
         else:
             self.dest_param_list = self.source_param_list
-            
+    
         self.ctx = ctx
         self.drv = drv
     
@@ -1256,7 +1256,7 @@ class Exch_copper16(Exch_strategy):
                                 self.numElements_list[wcount], self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-                
+
                 if (self.rank == 1):
                     self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                         dest=0, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=0)
@@ -1265,7 +1265,7 @@ class Exch_copper16(Exch_strategy):
                     self.ctx.synchronize() 
                     #should synchronize context after a kernel call 
                     # to make sure the kernel has been finished
-   	
+
                 elif (self.rank == 0):
                     self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                         dest=1, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=1)
@@ -1274,11 +1274,12 @@ class Exch_copper16(Exch_strategy):
                     self.ctx.synchronize() 
                     #should synchronize context after a kernel call 
                     # to make sure the kernel has been finished
-   		self.half2float(self.d_param_16_list[wcount], param_update_ga, \
+    
+                self.half2float(self.d_param_16_list[wcount], param_update_ga, \
                                 self.numElements_list[wcount],self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-            	wcount+=1          
+                wcount+=1          
                 #self.comm.Barrier()
 
 
@@ -1286,27 +1287,27 @@ class Exch_copper16(Exch_strategy):
         elif (self.size == 4):
             wcount=0
             for param_update_ga in self.param_update_ga_list:
-    
+
                 '''
                 Summing GPU Data
                 Step 1
                 Source GPU -> Destination GPU
                 1 -> 0, 3 -> 2
                 '''
-    		self.float2half(param_update_ga, self.d_param_16_list[wcount], \
-                                self.numElements_list[wcount], self.offset_list[wcount], \
-                                block=(256,1,1),grid=self.grid_size_list[wcount])
+                self.float2half(param_update_ga, self.d_param_16_list[wcount], \
+                                    self.numElements_list[wcount], self.offset_list[wcount], \
+                                    block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-                
+
                 if (self.rank %2 == 1):
                    	self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-1)
-   	
+
                 elif (self.rank %2 == 0):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank+1)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
-    
+
                 '''
                 Step 2
                 Sendrecv Pairing: 0 and 2
@@ -1317,32 +1318,32 @@ class Exch_copper16(Exch_strategy):
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
-   	
+
                 elif (self.rank == 0):
-                   	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
+                    self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=2, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=2)
-                   	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
+                    self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
-                   	self.ctx.synchronize() 
-    
-    
+                    self.ctx.synchronize() 
+
+
                 '''
                 Broadcasting Result
                 Source GPU -> Destination GPU
                 0 -> 1, 2 -> 3
                 '''
-    
+
                 if (self.rank %2 == 0):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+1)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+1)
+
                 elif (self.rank %2 == 1):
-               	        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank-1)
-   		
-   		self.half2float(self.d_param_16_list[wcount], param_update_ga, \
-                                self.numElements_list[wcount],self.offset_list[wcount], \
-                                block=(256,1,1),grid=self.grid_size_list[wcount])
+                        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank-1)
+
+                self.half2float(self.d_param_16_list[wcount], param_update_ga, \
+                                    self.numElements_list[wcount],self.offset_list[wcount], \
+                                    block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-            	wcount+=1 
+                wcount+=1 
                 #self.comm.Barrier()
 
 
@@ -1361,36 +1362,36 @@ class Exch_copper16(Exch_strategy):
                 Source GPU -> Destination GPU
                 1 -> 0, 3 -> 2, 5 -> 4, 7 -> 6
                 '''
-    		self.float2half(param_update_ga, self.d_param_16_list[wcount], \
+                self.float2half(param_update_ga, self.d_param_16_list[wcount], \
                                 self.numElements_list[wcount], self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-                
+
                 if (self.rank %2 == 1):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-1)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-1)
+
                 elif (self.rank %2 == 0):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank+1)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
-    
-    
+
+
                 '''
                 Step 2
                 Source GPU -> Destination GPU
                 0 -> 2, 4 -> 6
                 '''
                 if (self.rank %4 == 0):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+2)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+2)
+
                 elif (self.rank == 2) or (self.rank == 6):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank-2)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
-    
-    
+
+
                 '''
                 Step 3
                 Sendrecv Pairing: 2 and 6
@@ -1401,15 +1402,15 @@ class Exch_copper16(Exch_strategy):
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
-   	
+
                 elif (self.rank == 6):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                             dest=2, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=2)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
-    
-    
+
+
                 '''
                 Broadcasting Results
                 Step 1
@@ -1417,29 +1418,29 @@ class Exch_copper16(Exch_strategy):
                 2 -> 0, 6 -> 4
                 '''
                 if  (self.rank == 2) or (self.rank == 6):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-2)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-2)
+
                 elif (self.rank %4 == 0):
-               	        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank+2)
-    
-    
+                        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank+2)
+
+
                 '''
                 Step 2
                 Source GPU -> Destination GPU
                 0 -> 1, 2 -> 3, 4 -> 5, 6 -> 7
                 '''
-    
+
                 if (self.rank %2 == 0):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+1)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+1)
+
                 elif (self.rank %2 == 1):
-               	        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank-1)
-   	
-    		self.half2float(self.d_param_16_list[wcount], param_update_ga, \
+                        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank-1)
+
+                self.half2float(self.d_param_16_list[wcount], param_update_ga, \
                                 self.numElements_list[wcount],self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-            	wcount+=1 
+                wcount+=1 
                 #self.comm.Barrier()
 
 
@@ -1455,51 +1456,51 @@ class Exch_copper16(Exch_strategy):
                 Source GPU -> Destination GPU
                 1 -> 0, 3 -> 2, 5 -> 4, 7 -> 6, 9 -> 8, 11 -> 10, 13 -> 12, 15 -> 14
                 '''
-    		self.float2half(param_update_ga, self.d_param_16_list[wcount], \
+                self.float2half(param_update_ga, self.d_param_16_list[wcount], \
                                 self.numElements_list[wcount], self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-                
+
                 if (self.rank %2 == 1):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-1)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-1)
+
                 elif (self.rank %2 == 0):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank+1)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
-    
-    
+
+
                 '''
                 Step 2
                 Source GPU -> Destination GPU
                 0 -> 2, 4 -> 6, 8 -> 10, 12 -> 14
                 '''
                 if (self.rank %4 == 0):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+2)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+2)
+
                 elif (self.rank == 2) or (self.rank == 6) or (self.rank == 10) or (self.rank == 14):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank-2)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
-    
-    
+
+
                 '''
                 Step 3
                 Source GPU -> Destination GPU
                 2 -> 6, 10 -> 14
                 '''
                 if (self.rank == 2) or (self.rank == 10):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+4)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+4)
+
                 elif (self.rank == 6) or (self.rank == 14):
                    	self.comm.Recv([bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=self.rank-4)
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize()
-    
-    
+
+
                 '''
                 Step 4
                 Sendrecv Pairing: 6 and 14
@@ -1510,7 +1511,7 @@ class Exch_copper16(Exch_strategy):
                    	self.vecaddhalf(self.d_param_16_list[wcount], self.d_param_16_tmp_list[wcount], self.numElements_list[wcount], \
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
-   	
+
                 elif (self.rank == 14):
                    	self.comm.Sendrecv([bufint(self.d_param_16_list[wcount]), mpidtype], \
                                 dest=6, recvbuf=[bufint(self.d_param_16_tmp_list[wcount]), mpidtype], source=6)
@@ -1518,7 +1519,7 @@ class Exch_copper16(Exch_strategy):
                             block=(256, 1, 1), grid=self.grid_sum_size_list[wcount])
                    	self.ctx.synchronize() 
 
-    
+
                 '''
                 Broadcasting Result
                 Step 1
@@ -1526,40 +1527,40 @@ class Exch_copper16(Exch_strategy):
                 6 -> 2, 14 -> 10
                 '''
                 if (self.rank == 6) or (self.rank == 14):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-4)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-4)
+
                 elif (self.rank == 2) or (self.rank == 10):
-               	        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank+4)
-    
-    
+                        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank+4)
+
+
                 '''
                 Step 2
                 Source GPU -> Destination GPU
                 2 -> 0, 6 -> 4, 10 -> 8, 14 -> 12
                 '''
                 if  (self.rank == 2) or (self.rank == 6) or (self.rank == 10) or (self.rank == 14):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-2)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank-2)
+
                 elif (self.rank %4 == 0):
-               	        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank+2)
-    
-    
+                        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank+2)
+
+
                 '''
                 Step 3
                 Source GPU -> Destination GPU
                 0 -> 1, 2 -> 3, 4 -> 5, 6 -> 7, 8 -> 9, 10 -> 11, 12 -> 13, 14 -> 15
                 '''
-    
+
                 if (self.rank %2 == 0):
-               	        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+1)
-   	
+                        self.comm.Send([bufint(self.d_param_16_list[wcount]), mpidtype], dest=self.rank+1)
+
                 elif (self.rank %2 == 1):
-               	        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank-1)
-   		self.half2float(self.d_param_16_list[wcount], param_update_ga, \
+                        self.comm.Recv([bufint(self.d_param_16_list[wcount]), mpidtype], source=self.rank-1)
+                self.half2float(self.d_param_16_list[wcount], param_update_ga, \
                                 self.numElements_list[wcount],self.offset_list[wcount], \
                                 block=(256,1,1),grid=self.grid_size_list[wcount])
                 self.ctx.synchronize()
-            	wcount+=1 
+                wcount+=1 
                 #self.comm.Barrier()
                 
                 
@@ -1644,7 +1645,7 @@ class Exch_swap(object):
         gpucomm = pygpu.collectives.GpuComm(_local_id,_local_size,_local_rank)
     
         if self.test==True: 
-            print 'on rank %d, pair %s generated' % (self.interrank, pair)
+            print('on rank %d, pair %s generated' % (self.interrank, pair))
     
         return gpucomm, pair
     
@@ -1664,9 +1665,9 @@ class Exch_swap(object):
         
         if self.test==True: 
             
-            print 'rank %d exchanges with rank %d' % (pair[0], pair[1])
+            print('rank %d exchanges with rank %d' % (pair[0], pair[1]))
 
-            print 'before exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value()))
+            print('before exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value())))
             
         # allgather between two ranks is equivalent to sendrecv
         
@@ -1679,7 +1680,7 @@ class Exch_swap(object):
             
         if self.test==True:
             
-            print 'after exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value()))
+            print('after exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value())))
         
         return pair
         
@@ -1692,9 +1693,9 @@ class Exch_swap(object):
         
         if self.test==True: 
             
-            print 'rank %d exchanges with rank %d' % (pair[0], pair[1])
+            print('rank %d exchanges with rank %d' % (pair[0], pair[1]))
 
-            print 'before exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value()))
+            print('before exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value())))
         
         
         if self.interrank not in winner_ranks:
@@ -1714,7 +1715,7 @@ class Exch_swap(object):
             
             
         if self.test==True:
-            print 'on rank %d (gpurank %d) winner is %d (gpurank %d)' % (self.interrank, intrarank, winner, winner_gpurank)
+            print('on rank %d (gpurank %d) winner is %d (gpurank %d)' % (self.interrank, intrarank, winner, winner_gpurank))
             
         # bcast between two ranks is equivalent to send
         
@@ -1726,7 +1727,7 @@ class Exch_swap(object):
         
         if self.test==True:
             
-            print 'after exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value()))
+            print('after exchange rank%d : %s' % (self.interrank, self.get_1d_value(self.source_param_list[0].get_value())))
         
         return pair
         
