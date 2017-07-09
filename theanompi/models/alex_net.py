@@ -126,7 +126,7 @@ class AlexNet(object):
         self.val_iter_fn = None
         
         # iter related
-        self.n_subb = file_batch_size/batch_size
+        self.n_subb = file_batch_size//batch_size
         self.current_t = 0 # current filename pointer in the filename list
         self.last_one_t = False # if pointer is pointing to the last filename in the list
         self.subb_t = 0 # sub-batch index

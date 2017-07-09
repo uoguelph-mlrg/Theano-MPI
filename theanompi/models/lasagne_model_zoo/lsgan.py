@@ -132,7 +132,7 @@ class LSGAN(object):
         
         self.batch_size=batchsize
         self.file_batch_size=batchsize
-        self.n_subb=self.file_batch_size/self.batch_size
+        self.n_subb=self.file_batch_size//self.batch_size
         
         # model
         self.build_model()
