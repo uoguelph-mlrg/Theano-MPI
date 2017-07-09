@@ -1,0 +1,1 @@
+from theanompi.models.keras_model_zoo.wresnet import Wide_ResNet

@@ -1,0 +1,480 @@
+#!/bin/bash
+
+# The Theano-MPI launcher
+
+# use shell to launch mpirun directly to avoid additional python process
+
+
+##################
+#################
+# parsing configs
+#################
+##################
+
+RED='\e[1;31m'
+NC='\e[0m' # No Color or other format
+
+set -e
+
+python -c "import theanompi"
+if [[ $? ]]
+then
+	echo 'Found Theano-MPI in:'
+	theanompipath=$(python -c "import theanompi;print theanompi.__path__[0]")
+	echo $theanompipath
+else
+	echo -e "$LINENO: ${RED}Error${NC}: Theano-MPI not found" >&2
+	exit 1
+fi
+
+
+for i in "$@"
+do
+case $i in
+    -cfg=*|--config=*)
+	    CONFIG="${i#*=}"
+    ;;
+    -file=*|--modelfile=*)
+	    MODELFILE="${i#*=}"
+    ;;
+    -class=*|--modelclass=*)
+	    MODELCLASS="${i#*=}"
+    ;;
+	-r=*|--rule=*)
+		RULE="${i#*=}"
+	;;
+	-s=*|--size=*)
+		SIZE="${i#*=}"
+	;;
+	-bsp_sync_type=*)
+		BSP_SYNC_TYPE="${i#*=}"
+	;;
+	-bsp_exch_strategy=*)
+		BSP_EXCH_STRATEGY="${i#*=}"
+	;;
+	-b|-bind)
+		BIND='True'
+	;;
+    *)
+        # unknown option
+		echo -e "$LINENO: ${RED}Error${NC}: unknown option ${i}" >&2
+		exit 1
+    ;;
+esac
+done
+
+CONFIG=${CONFIG}
+MODELFILE=${MODELFILE}
+MODELCLASS=${MODELCLASS}
+RULE=${RULE}
+
+if [[ (-z $CONFIG) && (-z $MODELFILE) && (-z $MODELCLASS) && (-z $RULE) ]]
+then
+	echo -e "$LINENO: ${RED}Error${NC}: Neither config nor run options provided" >&2
+	exit 1
+elif [[ ! -z $CONFIG ]]
+then
+	# if config file provided, RULE, MODELFILE and MODELCLASS will be overwritten
+	echo
+	echo 'config file provided:'
+	source $CONFIG
+	echo "RULE = $RULE"
+	echo "MODELFILE = $MODELFILE"
+	echo "MODELCLASS = $MODELCLASS"
+fi
+
+if [[ -z $MODELFILE ]]; then
+	echo -e "$LINENO: ${RED}Error${NC}: NO modelfile provided" >&2
+	exit 1
+fi
+
+if [[ -z $MODELCLASS ]]; then
+	echo -e "$LINENO: ${RED}Error${NC}: NO modelclass provided" >&2
+	exit 1
+fi
+
+if [[ -z $RULE ]]; then
+	echo -e "$LINENO: ${RED}Error${NC}: NO rule provided" >&2
+	exit 1
+fi
+
+##############################
+##############################
+# Verifying device on hardware
+# Getting device array 
+# Getting cpu-affinity array corresponding to device array
+##############################
+##############################
+
+# expand ranges complex like '1-3,4-6' to '1,2,3,4,5,6'
+# @param: 
+#			$1: a string of range complex
+# output: a string of comma-separated values
+function range_expand
+{
+    IFS=,
+    set -- $1
+    n=$#
+    for element; do
+        if [[ $element =~ ^(-?[0-9]+)-(-?[0-9]+)$ ]]; then
+            set -- "$@" $(eval echo "{${BASH_REMATCH[1]}..${BASH_REMATCH[2]}}")
+        else
+            set -- "$@" $element
+        fi
+    done
+    shift $n
+    # echo "$@"
+	echo "${*// /,}"
+    # to return a comma-separated value: 
+}
+
+# though the output lines of nvidia-smi topo -m 
+# find the cpu affinity ranges corresponding to a specific GPU number 
+# @param: 
+#			$1: output lines of nvidia-smi topo -m
+#			$2: a GPU number 
+# output: a string of cpu affinity ranges
+function find_cpuset_in_topo_by_GPUnumber
+{
+	declare -a _lines=("${!1}") # pass in array variable
+	_GPUnumber=$2 
+	local cpuset=""
+	local number=""
+	
+	for d in "${_lines[@]}"
+	do
+		# ^ = start of line, $ = end of liine, \s = space, 
+		# \[\] = a set of characters to be matched
+		# \+ = match one or more, \(\) = store the match inside bracket into variable 1
+	    
+		number=$(echo $d | sed -n -e 's/^\(GPU[0-9]\+\).*/\1/p')
+		number=${number#GPU}
+		if [[ $number == $_GPUnumber ]]
+		then
+			cpuset=$(echo $d | sed -n -e 's/^.*\s\+\([0-9,-]\+\)$/\1/p')
+			break
+		fi
+	done
+	
+	echo $cpuset
+}
+
+
+# check a single device name in the format of cuda[0-9]+
+function check_device_name
+{
+	name=$1
+	if [[ ! $name =~ cuda[0-9]+ ]]
+	then
+		echo -e "$LINENO: ${RED}Error${NC}: device name $d is not in the format of cuda[0-9]+" >&2
+		exit 1
+	fi
+}
+
+
+# separate a colon connected 'host:dev0,dev1,...' string into an ('host:dev0', 'host:dev1', ...) array
+function separate_host_dev_string
+{
+	local string=$1
+	local host="${string%%:*}"
+	local devlist="${string##*:}"
+	set -f
+	_dev=(${devlist//,/ }) # a comma delimited string of device names
+	
+ 	dev=()
+	for d in ${_dev[@]}
+	do
+		check_device_name $d
+		dev+=($host:$d)
+	done
+	
+	echo ${dev[@]}
+
+}
+
+
+# get the cpusetarray corresponding to the device array on a single host
+# @param: 
+#			$1: an array of 'host:device' elements
+#			$2: the host on which to perform "nvidia-smi topo -m"
+#			$3: if needs core binding
+# output: 
+#			cpusetarray : an array of elements, each element is a string of comma delimited core numbers
+function get_cpusetarray_on_host
+{
+	declare -a arr=("${!1}") # pass in array variable
+	local host=$2
+	local BIND=$3
+
+	mapfile -t lines < <(ssh $host nvidia-smi topo -m | grep "^GPU[0-9]\+")
+	_SIZE=${#lines[@]} # shows the amount of available GPUs
+	
+	local sz=${#arr[@]}
+	
+	if [[ $sz -gt $_SIZE ]]
+	then
+		echo -e "$LINENO: ${RED}Error${NC}: there are not as many GPUs as requested on host $host ($sz requested, $_SIZE exist(s))" >&2
+		exit 1
+	fi
+	
+	local cpuset=()
+	local cpu=""
+	local GPUnumber=""
+	
+	for d in "${arr[@]}"
+	do
+		if [[ ! $d =~ $host:cuda[0-9]+ ]]
+		then
+	    	echo -e "$LINENO: ${RED}Error${NC}: device name $d is not in the format of $host:cuda[0-9]+" >&2
+	    	exit 1
+		else
+			GPUnumber=${d#*:cuda}
+			cpu=$(find_cpuset_in_topo_by_GPUnumber lines[@] $GPUnumber)
+			if [[ -z $cpu ]]
+			then
+				echo -e "$LINENO: ${RED}Error${NC}: device ${d#*:} does not exist on host $host, or does not have the CPU affinity setting" >&2
+				exit 1
+			fi
+			cpuset+=($(range_expand $cpu))
+		fi
+	done
+		
+	if [[ -z $BIND ]]
+	then
+		cpuset=()
+	fi
+	
+	echo ${cpuset[@]}
+}
+
+# get the devarray by parsing DEVICES
+# get the corresponding cpusetarray by parsing nvidia-smi topo -m
+# @param: 
+#			$1: a flag to control whether do core binding or not
+#			(global) DEVICES: an array of colon connected 'host:dev0,dev1,...' string 
+# output: 
+#			(global) devarray : an array of elements, each element is a string of colon connected 'host:dev' pair
+#			(global) cpusetarray : an array of elements, each element is a string of comma delimited core numbers
+#			(global) SIZE : the total number of devices being used on all hosts
+function get_cpu_dev_array
+{
+	local BIND=$1
+	local num_host=${#DEVICES[@]}	
+
+	if [[ num_host -eq 0 ]] || [[ -z $DEVICES ]]
+	then
+		echo -e "$LINENO: ${RED}Error${NC}: DEVICES empty" >&2
+		exit 1
+	elif [[ num_host -eq 1 ]] && [[ ! $DEVICES =~ ^.*:.*$ ]]
+	then
+		host=$(hostname -s)
+		_devarray=(${DEVICES//,/ }) # a comma delimited string of device names
+	 	devarray=()
+		cpusetarray=()
+		for d in ${_devarray[@]}
+		do
+			check_device_name $d
+			devarray+=($host:$d)
+		done
+		cpusetarray+=($(get_cpusetarray_on_host devarray[@] $host $BIND))
+	else
+		devarray=()
+		cpusetarray=()
+		for str in "${DEVICES[@]}"
+		do
+			_devarr=($(separate_host_dev_string $str))
+		    devarray+=(${_devarr[@]})
+			host="${str%%:*}"
+			_cpusetarr=($(get_cpusetarray_on_host _devarr[@] $host $BIND))
+			cpusetarray+=(${_cpusetarr[@]})
+		done
+	fi
+	SIZE=${#devarray[@]}
+}
+
+get_cpu_dev_array $BIND
+
+# get the env options used in calling mpirunm
+# @param: 
+#			$1: a flag to control whether do core binding or not
+# output: 
+#			(global) env
+function get_env
+{
+	local BIND=$1
+	
+	env="--mca mpi_max_info_val 10240 --mca mpi_warn_on_fork 0 --mca btl_smcuda_use_cuda_ipc 1 --mca mpi_common_cuda_cumemcpy_async 1 -x PATH=$PATH -x LIBRARY_PATH=$LIBRARY_PATH -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH -x CPATH=$CPATH" #  -display-allocation"
+	if [[ -z $BIND ]]
+	then
+		env=$env" --bind-to none"
+		#else
+		#env=$env" -report-bindings"
+	fi
+}
+
+
+get_env $BIND
+
+##################
+##################
+# launching a rule
+##################
+##################
+
+
+# launch Bulk Synchronous Parallel training
+# @param: 
+#			(global): SIZE, MODELFILE, MODELCLASS
+#			(global): BSP_SYNC_TYPE, BSP_EXCH_STRATEGY
+#			(global): env
+#			(global): devarray : a hypen separated 'host-dev' string
+#			(global): cpusetarray
+function BSP
+{
+	local BSP_sync_type=$BSP_SYNC_TYPE
+	if [[ $SIZE -eq 1 ]]
+	then
+		BSP_sync_type='avg'
+	fi
+	if [[ -z $BSP_sync_type ]]
+	then
+	BSP_sync_type='cdd'
+	fi
+	
+	local BSP_exch_strategy=$BSP_EXCH_STRATEGY
+	if [[ -z $BSP_exch_strategy ]]
+	then
+	BSP_exch_strategy='nccl32'
+	fi
+	local prehost="empty"
+	for (( index=0; index<$SIZE; index++ ))
+	do
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		if [[ "$index" -gt 0 ]] && [[ $prehost != $host ]]
+		then
+			BSP_exch_strategy='ar'
+			break
+		fi
+		prehost=$host
+	done
+	
+	local args="$BSP_sync_type $BSP_exch_strategy $MODELFILE $MODELCLASS"
+
+	local command_array=()
+	command_array+=('mpirun')
+
+	for (( index=0; index<$SIZE; index++ ))
+	do 
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		dev="${string##*:}"
+		command_array+=("$env -host $host -np 1 python -u $theanompipath/worker.py $dev $args ${cpusetarray[$index]}")
+		if [[ $index -ne $((SIZE-1)) ]]
+		then
+			command_array+=(":")
+		fi
+	done
+
+	echo
+	echo "Theano-MPI started $SIZE BSP($BSP_sync_type,$BSP_exch_strategy) workers"
+	#echo "by executing: ${command_array[@]/#/}"
+	
+	${command_array[@]/#/}
+	
+}
+
+# launch Elastic Averaging SGD training
+# @param: 
+#			(global): SIZE, MODELFILE, MODELCLASS
+#			(global): env
+#			(global): devarray
+#			(global): cpusetarray
+function EASGD
+{
+	
+	local args="$MODELFILE $MODELCLASS"
+	
+	local command_array=()
+	command_array+=('mpirun')
+	
+	for (( index=0; index<$SIZE; index++ ))
+	do 
+		if [[ $index -eq 0 ]] 
+		then
+			# the first device will correspond to the server
+			file='easgd_server.py'
+		else
+			file='easgd_worker.py'
+		fi
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		dev="${string##*:}"
+		command_array+=("$env -host $host -np 1 python -u $theanompipath/$file $dev $args ${cpusetarray[$index]}")
+		if [[ $index -ne $((SIZE-1)) ]]
+		then
+			command_array+=(":")
+		fi
+	done
+	
+	echo
+	echo "Theano-MPI started one EASGD server and ${SIZE-1} EASGD workers"
+	#echo "by executing: ${command_array[@]/#/}"
+	
+	${command_array[@]/#/}
+	
+}
+
+# launch Gossip SGD training
+# @param: 
+#			(global): SIZE, MODELFILE, MODELCLASS
+#			(global): env
+#			(global): devarray
+#			(global): cpusetarray
+function GOSGD
+{
+	
+	local args="$MODELFILE $MODELCLASS"
+
+	local command_array=()
+	command_array+=('mpirun')
+
+	for (( index=0; index<$SIZE; index++ ))
+	do 
+		string=${devarray[$index]}
+		host="${string%%:*}"
+		dev="${string##*:}"
+		command_array+=("$env -host $host -np 1 python -u $theanompipath/gosgd_worker.py $dev $args ${cpusetarray[$index]}")
+		if [[ $index -ne $((SIZE-1)) ]]
+		then
+			command_array+=(":")
+		fi
+	done
+
+	echo
+	echo "Theano-MPI started $SIZE GOSGD workers"
+	#echo "by executing: ${command_array[@]/#/}"
+	
+	${command_array[@]/#/}
+	
+	
+}
+
+
+
+case $RULE in
+    'BSP')
+	BSP 
+    ;;
+    'EASGD')
+	EASGD 
+    ;;
+    'GOSGD')
+	GOSGD
+    ;;
+    *)
+        # unknown option
+		echo -e "$LINENO: ${RED}Error${NC}: unknown rule ${RULE}" >&2
+		exit 1
+    ;;
+esac

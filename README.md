@@ -1,6 +1,5 @@
 # Theano-MPI
-Theano-MPI is a distributed framework for training deep learning models built in Theano based on data-parallelism. 
-The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and Elastic Averaging SGD. This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
+Theano-MPI is a python framework for distributed training of deep learning models built in Theano. It implements data-parallelism in serveral ways, e.g., Bulk Synchronous Parallel, [Elastic Averaging SGD](https://arxiv.org/abs/1412.6651) and [Gossip SGD](https://arxiv.org/abs/1611.09726). This project is an extension to [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet), aiming to scale up the training framework to more than 8 GPUs and across nodes. Please take a look at this [technical report](http://arxiv.org/abs/1605.08325) for an overview of implementation details. To cite our work, please use the following bibtex entry.
 
 ```bibtex
 @article{ma2016theano,
@@ -11,90 +10,125 @@ The data-parallelism is implemented in two ways: Bulk Synchronous Parallel and E
 }
 ```
 
-Theano-MPI is compatible for training models built in different framework libraries, e.g., Lasagne, Keras, Blocks, as long as its model parameters can be exposed as theano shared variables. See lib/base/models/ for details. Or you can build your own models from scratch using basic theano tensor operations and expose your model parameters as theano shared variables. See wiki for a tutorial on building customized neural networks.
-
-
+Theano-MPI is compatible for training models built in different framework libraries, e.g., [Lasagne](https://github.com/Lasagne/Lasagne), [Keras](https://github.com/fchollet/keras), [Blocks](https://github.com/mila-udem/blocks), as long as its model parameters can be exposed as theano shared variables. Theano-MPI also comes with a light-weight layer library for you to build customized models. See [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki) for a quick guide on building customized neural networks based on them. Check out the examples of building [Lasagne VGGNet](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/vgg16.py), [Wasserstein GAN](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/wgan.py), [LS-GAN](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/theanompi/models/lasagne_model_zoo/lsgan.py) and [Keras Wide-ResNet](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/theanompi/models/keras_model_zoo/wresnet.py).
 
 ## Dependencies
-* [OpenMPI 1.8.7](http://www.open-mpi.org/) or an MPI-2 standard equivalent that supports CUDA.
-* [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI 1.8.7
+
+Theano-MPI depends on the following libraries and packages. We provide some guidance to the installing them in [wiki](https://github.com/uoguelph-mlrg/Theano-MPI/wiki/Install-dependencies-of-Theano-MPI).
+* [OpenMPI](http://www.open-mpi.org/) 1.8 + or an MPI-2 standard equivalent that supports CUDA.
+* [mpi4py](https://pypi.python.org/pypi/mpi4py) built on OpenMPI.
 * [numpy](http://www.numpy.org/)
-* [Theano](http://deeplearning.net/software/theano/) 0.8 or higher
+* [Theano](http://deeplearning.net/software/theano/) 0.9 +
 * [zeromq](http://zeromq.org/bindings:python)
 * [hickle](https://github.com/telegraphic/hickle)
-* [CUDA 7.0](https://developer.nvidia.com/cuda-toolkit-70)
-* [cuDNN](https://developer.nvidia.com/cudnn)
-* [PyCUDA](http://mathema.tician.de/software/pycuda/) built on CUDA 7.0
+* [CUDA](https://developer.nvidia.com/cuda-toolkit-70) 7.5 +
+* [cuDNN](https://developer.nvidia.com/cudnn) a version compatible with your CUDA Installation.
+* [pygpu](http://deeplearning.net/software/libgpuarray/installation.html)
+* [NCCL](https://github.com/NVIDIA/nccl)
 
-## How to run
+## Installation 
 
-### Prepare image data batches
-Follow the precedure in [theano_alexnet](https://github.com/uoguelph-mlrg/theano_alexnet) README.md for downloading image data from ImageNet, shuffling training images, generating data batches, computing the mean image and generating label files. The preprocessed data files will be in hickle format. Each file contains 128 or more images. This is the file batch size *B*. Any divisor of *B* can be used as *batch size* during training. Set *dir_head*, *train_folder*, *val_folder* in run/config.yaml to reflect the location of your preprocessed data.
+Once all dependeices are ready, one can clone Theano-MPI and install it by the following.
 
-### Run training sessions on copper
-- 1. ssh copper.sharcnet.ca
-- 2. ssh to one computing node e.g., cop3
-- 3. set ~/.theanorc to the following:
 ```
-[global]
-
-mode = FAST_RUN
-
-floatX = float32
-
-base_compiledir = /home/USERNAME/.theano
-
-[cuda]
-
-root=/opt/sharcnet/cuda/7.0.28/toolkit
+ $ python setup.py install [--user]
 ```
-- 4. cd into run/ and configure each section in the config.yaml. Configure the yaml file corresponding to the chosen model, e.g., alexnet.yaml, googlenet.yaml, vggnet.yaml or customized.yaml.
-- to start a BSP training session: 
-  - 1) In config.yaml, choose as follows:
-  ```
-  worker_type: BSP
-  ```
-  - 2) choose a parameter exchanging strategy from "ar", "asa32", "asa16" and "copper", where "ar" means using Allreduce() from mpi4py, "asa32" and "asa16" mean using the Alltoall-sum-Allgather strategy with float32 and float16 respectively, "copper" means using the binary reduction strategy designed for copper GPU topology.
-  - 3) execute "./run_bsp_workers.sh N", in which N is the desired number of workers. N can only be a power of 2 if chosing strategies like "asa" and "copper".
 
-- to start an EASGD training session: 
-  - 1) If you want to start server and workers in one communicator, configure config.yaml file as follows:
-   ```
-   sync_start: True 
-   avg_freq: 2 or desired value
-   
-   worker_type: EASGD
-   
-   # randomness
-   shuffle: True
-   ```
-  - 2) check the example ./run_easgd_4w_sync_start.sh (or ./run_easgd_4w.sh if sync_start==False),  decide how many workers you want to run and which hosts and GPUs you want to use for each worker and the server, make your customized run.sh script. 
-  - 3) execute your ./run.sh.
+## Usage
 
-## Performance Testing
+To accelerate the training of Theano models in a distributed way, Theano-MPI tries to identify two components:
 
-###BSP
+* the iterative update function of the Theano model
+* the parameter sharing rule between instances of the Theano model
+
+
+It is recommended to organize your model and data definition in the following way.
+
+  * `launch_session.py` or `launch_session.cfg`
+  * `models/*.py`
+    * `__init__.py`
+    * `modelfile.py` : defines your customized ModelClass
+    * `data/*.py`
+      * `dataname.py` : defines your customized DataClass
+
+Your ModelClass in `modelfile.py` should at least have the following attributes and methods:
+
+* `self.params` : a list of Theano shared variables, i.e. trainable model parameters
+* `self.data` : an instance of your customized DataClass defined in `dataname.py`
+* `self.compile_iter_fns` : a method, your way of compiling train_iter_fn and val_iter_fn
+* `self.train_iter` : a method, your way of using your train_iter_fn
+* `self.val_iter` : a method, your way of using your val_iter_fn
+* `self.adjust_hyperp` : a method, your way of adjusting hyperparameters, e.g., learning rate.
+* `self.cleanup` : a method, necessary model and data clean-up steps.
+
+Your DataClass in `dataname.py` should at least have the following attributes:
+
+* `self.n_batch_train` : an integer, the amount of training batches needed to go through in an epoch
+* `self.n_batch_val` : an integer, the amount of validation batches needed to go through during validation
+
+After your model definition is complete, you can choose the desired way of sharing parameters among model instances:
+
+* BSP (Bulk Syncrhonous Parallel)
+* EASGD (Elastic Averaging SGD)
+* GOSGD (Gossip SGD)
+
+Below is an example launch config file for training a customized ModelClass on two GPUs.
+
+```bash
+# launch_session.cfg
+RULE=BSP
+MODELFILE=models.modelfile
+MODELCLASS=ModelClass
+DEVICES=cuda0,cuda1
+```
+Then you can launch the training session by calling the following command:
+
+```bash
+ $ tmlauncher -cfg=launch_session.cfg
+```
+
+Alternatively, you can launch sessions within python as shown below:
+
+```python
+# launch_session.py
+from theanompi import BSP
+
+rule=BSP()
+# modelfile: the relative path to the model file
+# modelclass: the class name of the model to be imported from that file
+rule.init(devices=['cuda0', 'cuda1'] , 
+          modelfile = 'models.modelfile', 
+          modelclass = 'ModelClass') 
+rule.wait()
+```
+More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tree/master/examples).
+
+## Example Performance
+
+###BSP tested on up to eight Tesla K80 GPUs
 Time per 5120 images in seconds: [allow_gc = True]
 
-| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  | 16GPU |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| AlexNet-128b | 31.20 | 15.65 | 7.78 | 3.90 | |
-| GoogLeNet-32b | 134.90 | 67.38 | 33.60 | 16.81 | |
-| VGGNet-32b | 410.3 | 216.0 | 113.8 | 64.7 | 38.5 |
-
-<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_a.png width=500/>
-<img src=https://github.com/uoguelph-mlrg/Parallel-training/raw/master/show/val_g.png width=500/>
-
-## How to customize your model
-
-See wiki for a tutorial of customizing a MLP model in the framework.
-
-Also check out an example [incoperation](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/lib/base/models/lasagne_model_zoo/vgg.py) of the 16-layer VGGNet from [Lasagne model zoo](https://github.com/Lasagne/Recipes/blob/master/modelzoo/) to get an idea of how to import Lasagne models into Theano-MPI.
+| Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
+| :---: | :---: | :---: | :---: | :---: |
+| AlexNet-128b | 20.42 | 10.68 | 5.45 | 3.11 |
+| GoogLeNet-32b | 73.24 | 35.88 | 18.45 | 9.59 |
+| VGGNet-16b | 353.48 | 191.97 | 99.18 | 66.89 |
+| VGGNet-32b | 332.32 | 163.70 | 82.65 | 49.42 |
+<img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_a.png width=500/>
+<img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_g.png width=500/>
 
 ## Note
 
-To get the best running speed performance, the memory cache may need to be cleaned before running.
+* To get the best running speed performance, the memory cache may need to be cleaned before running.
 
-Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
+* Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher.
 
-Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
+* Learnining rate and other hyperparams may need to be retuned according to number of workers and effective batch size to be stable and give optimal convergence. 
+
+* Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
+
+* Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
+
+## License
+
+© Contributors, 2016-2017. Licensed under an [ECL-2.0](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/LICENSE) license.
