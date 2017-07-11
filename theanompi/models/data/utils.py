@@ -5,7 +5,8 @@ def unpickle(path):
     #Load the cifar 10
     f = open(path, 'rb')
     import pickle
-    data = pickle.load(f,encoding='latin1')
+    # data = pickle.load(f,encoding='latin1')
+    data = pickle.load(f)
     f.close()
     return data 
     

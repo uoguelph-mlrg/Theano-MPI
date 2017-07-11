@@ -39,7 +39,7 @@ if __name__ == '__main__':
     recorder = Recorder(comm=None, printFreq=5120/model.file_batch_size, modelname=modelclass, verbose=True)
     
     
-    model.compile_iter_fns()
+    model.compile_iter_fns(sync_type='avg')
     
     snapshot_freq= 5
     snapshot_path= './snapshots/'
