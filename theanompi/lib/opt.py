@@ -41,7 +41,11 @@ def pre_model_iter_fn(model, sync_type, f_train=True, f_val=True):
                         for param_i in model.params]
     
             updates_w, = prepare_update_dict(model, sync_type='avg')
-    
+                        
+
+            updates_w=fix_update_bcasts(dict(updates_w))
+            
+            
             train_args = {"inputs":[model.subb_ind], "outputs": [model.cost,model.error], "updates": updates_w, \
                                                                       "givens": [(model.x,  model.shared_x_slice), 
                                                                                  (model.y,  model.shared_y_slice),
@@ -59,6 +63,13 @@ def pre_model_iter_fn(model, sync_type, f_train=True, f_val=True):
         model.compile_val()
     
         model.val_iter_fn = model.val_fn
+        
+def fix_update_bcasts(updates):
+    import theano.tensor as T
+    for param, update in updates.items():
+        if param.broadcastable != update.broadcastable:
+            updates[param] = T.patternbroadcast(update, param.broadcastable)
+    return updates
 
 def choose_iter_fn(model, sync_type):
     
