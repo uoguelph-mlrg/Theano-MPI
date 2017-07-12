@@ -159,8 +159,9 @@ def build_model_resnet152(input_shape):
         else:
             sub_net, parent_layer_name = build_residual_block(net[parent_layer_name], 1.0/4, 1, False, 4, ix='2%s' % c)
         net.update(sub_net)
-
-    block_size = ['a'] + ['b'+str(i+1) for i in range(7)]
+    
+    # block_size = ['a'] + ['b'+str(i+1) for i in range(7)]
+    block_size = list('abcd')
     for c in block_size:
         if c == 'a':
             sub_net, parent_layer_name = build_residual_block(
@@ -168,8 +169,9 @@ def build_model_resnet152(input_shape):
         else:
             sub_net, parent_layer_name = build_residual_block(net[parent_layer_name], 1.0/4, 1, False, 4, ix='3%s' % c)
         net.update(sub_net)
-
-    block_size = ['a'] + ['b'+str(i+1) for i in range(35)]
+    
+    # block_size = ['a'] + ['b'+str(i+1) for i in range(35)]
+    block_size = list('abcdef')
     for c in block_size:
         if c == 'a':
             sub_net, parent_layer_name = build_residual_block(
@@ -190,19 +192,21 @@ def build_model_resnet152(input_shape):
                              mode='average_exc_pad', ignore_border=False)
     net['fc1000'] = DenseLayer(net['pool5'], num_units=1000, nonlinearity=None)
     net['prob'] = NonlinearityLayer(net['fc1000'], nonlinearity=softmax)
+    
+    print('Total number of layers:', len(lasagne.layers.get_all_layers(net['prob'])))
 
     return net
 
 # model hyperparams
-n_epochs = 60
+n_epochs = 120 # 60E4/5004 = 119.9
 momentum = 0.90
-weight_decay = 0.0005
-batch_size = 16
+weight_decay = 0.0001
+batch_size = 64  # ResNet50: 16->3.5G Mem, 64->10G Mem
 file_batch_size = 128
-learning_rate = 0.002
-# size=1 converge at 1320 6.897861; if avg and not scale lr by size, then size=2 will converge at: 2360 6.898975
+learning_rate = 0.025 # 0.1 for 256 batch size; 0.1/8 for 32 batch size
+
 lr_policy = 'step'
-lr_step = [15, 30, 35]
+lr_step = [30, 60, 110]
 
 use_momentum = True
 use_nesterov_momentum = False
@@ -213,8 +217,6 @@ input_height = 224
 
 batch_crop_mirror = True 
 rand_crop = True
-
-image_mean = np.array([103.939, 116.779, 123.68],dtype='float32')[:,np.newaxis,np.newaxis,np.newaxis]
 dataname = 'imagenet'
 
 monitor_grad = False
@@ -223,8 +225,9 @@ class ResNet152(object):
     '''
     Residual Network on ImageNet
     
-    # adjusted from https://github.com/kundan2510/resnet152-pre-trained-imagenet/blob/master/resnet152_test.py
-
+    # adjusted from https://github.com/kundan2510/resnet152-pre-trained-imagenet/blob/master/resnet152.py
+    # and https://github.com/Lasagne/Recipes/blob/master/examples/resnet50/ImageNet%20Pretrained%20Network%20(ResNet-50).ipynb
+    
     # "Deep Residual Learning for Image Recognition"
     # http://arxiv.org/pdf/1512.03385v1.pdf
     # License: see https://github.com/KaimingHe/deep-residual-networks/blob/master/LICENSE
@@ -248,7 +251,6 @@ class ResNet152(object):
         # data
         from theanompi.models.data import ImageNet_data
         self.data = ImageNet_data(verbose=False)
-        self.data.rawdata[4] = image_mean
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
