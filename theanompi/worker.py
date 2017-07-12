@@ -24,8 +24,8 @@ class BSP_Worker(MPI_GPU_Process):
         # construct model train function based on sync rule
         model.compile_iter_fns(self.sync_type)
         
-        if self.sync_type=='avg': 
-            model.scale_lr(self.size)
+        # Linear scale rule (See paper in #22)    
+        model.scale_lr(self.size)
         
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=config['mname'], verbose=self.verbose)
