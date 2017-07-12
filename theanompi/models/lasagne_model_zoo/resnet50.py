@@ -345,7 +345,7 @@ class ResNet50(object):
         self.y = T.lvector('y')
         self.lr = T.scalar('lr')
         
-        net = build_model_resnet152(input_shape=(None, 3, 224, 224))
+        net = build_model_resnet50(input_shape=(None, 3, 224, 224))
         
         self.output_layer = net['prob']
         
