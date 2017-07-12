@@ -29,7 +29,7 @@ class Exch_allreduce(Exch_strategy):
     paramter transfer passing host memory
     
     '''
-    def __init__(self, comm, avg=True):
+    def __init__(self, comm, avg=False):
         Exch_strategy.__init__(self)
         
         self.comm = comm
@@ -73,7 +73,12 @@ class Exch_allreduce(Exch_strategy):
         
 
 class Exch_nccl32(Exch_strategy):
-    def __init__(self, intercomm, intracomm, avg=True):
+    
+    '''
+    Single Node reduction
+    '''
+    
+    def __init__(self, intercomm, intracomm, avg=False):
         Exch_strategy.__init__(self)
         
         self.intercomm = intercomm
@@ -122,7 +127,12 @@ class Exch_nccl32(Exch_strategy):
             self.intracomm.all_reduce(source, '+', dest)
 
 class Exch_nccl16(Exch_strategy):
-    def __init__(self, intercomm, intracomm, avg=True):
+    
+    '''
+    Single Node reduction (half precision)
+    '''
+    
+    def __init__(self, intercomm, intracomm, avg=False):
         Exch_strategy.__init__(self)
         
         self.intercomm = intercomm

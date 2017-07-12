@@ -44,7 +44,7 @@ def remove_BN_params(params):
     
 class BSP_Exchanger(object):
     '''
-    model parameter exchanger during BSP weight exchanging
+    model parameter/gradient exchanger based on BSP
     '''
     def __init__(self, comm, gpucomm, exch_strategy, sync_type, ctx, model):
 
@@ -54,54 +54,38 @@ class BSP_Exchanger(object):
 
         self.size = comm.size
         
+        self.sync_type = sync_type
+        
         self.exch_strategy = exch_strategy
 
-        self.sync_type = sync_type
 
-        self.param_list = remove_BN_params(model.params)
-        
         if self.sync_type == 'cdd':
+            
             self.vels = model.vels
             self.vels2 = model.vels2
         
         if self.sync_type == 'cdd' and self.exch_strategy == 'ar':
             
             from theanompi.lib.exchanger_strategy import Exch_allreduce
-            self.exch = Exch_allreduce(self.comm, avg=False)
+            self.exch = Exch_allreduce(self.comm)
             self.exch.prepare(self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'nccl32':
             
             from theanompi.lib.exchanger_strategy import Exch_nccl32
-            self.exch = Exch_nccl32(intercomm=self.comm, intracomm=self.gpucomm, avg=False)
+            self.exch = Exch_nccl32(intercomm=self.comm, intracomm=self.gpucomm)
             self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'cdd' and self.exch_strategy == 'nccl16':
             
             from theanompi.lib.exchanger_strategy import Exch_nccl16
-            self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm, avg=False)
-            self.exch.prepare(self.ctx, self.vels, self.vels2)
-         
-        elif self.sync_type == 'avg' and self.exch_strategy == 'ar':
-            
-            from theanompi.lib.exchanger_strategy import Exch_allreduce
-            self.exch = Exch_allreduce(self.comm)
-            self.exch.prepare(self.param_list)
-            
-        elif self.sync_type == 'avg' and self.exch_strategy == 'nccl32':
-            
-            from theanompi.lib.exchanger_strategy import Exch_nccl32
-            self.exch = Exch_nccl32(intercomm=self.comm, intracomm=self.gpucomm)
-            self.exch.prepare(self.ctx, self.param_list)
-            
-        elif self.sync_type == 'avg' and self.exch_strategy == 'nccl16':
-            
-            from theanompi.lib.exchanger_strategy import Exch_nccl16
             self.exch = Exch_nccl16(intercomm=self.comm, intracomm=self.gpucomm)
-            self.exch.prepare(self.ctx, self.param_list)
+            self.exch.prepare(self.ctx, self.vels, self.vels2)
             
         elif self.sync_type == 'swap' and self.exch_strategy == 'nccl32':
             
+            self.param_list = remove_BN_params(model.params)
+                    
             from theanompi.lib.exchanger_strategy import Exch_swap
             self.exch = Exch_swap(intercomm=self.comm)
             self.exch.prepare(self.ctx, self.param_list)
