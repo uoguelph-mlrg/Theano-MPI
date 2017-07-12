@@ -118,17 +118,17 @@ Time per 5120 images in seconds: [allow_gc = True]
 <img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_g.png width=500/>
 
 ## Note
+* Test your single GPU model with `theanompi/models/test_model.py` before trying data-paralle rule.
+
+* You may want to use those helper functions in `/theanompi/lib/opt.py` to construct optimizers in order to avoid common pitfalls mentioned in (#22) and get better convergence.
 
 * To get the best running speed performance, the memory cache may need to be cleaned before running.
 
 * Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher.
 
-* Learnining rate and other hyperparams may need to be retuned according to number of workers and effective batch size to be stable and give optimal convergence. 
-
 * Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
 
 * Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.
-
 ## License
 
 © Contributors, 2016-2017. Licensed under an [ECL-2.0](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/LICENSE) license.
