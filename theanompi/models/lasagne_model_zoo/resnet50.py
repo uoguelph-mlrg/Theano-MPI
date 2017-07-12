@@ -143,7 +143,7 @@ def build_residual_block(incoming_layer, ratio_n_filter=1.0, ratio_size=1.0, has
     return net, 'res%s_relu' % ix
     
 
-def build_model_resnet152(input_shape): 
+def build_model_resnet50(input_shape): 
     net = {}
     net['input'] = InputLayer(input_shape)
     sub_net, parent_layer_name = build_simple_block(
@@ -160,8 +160,8 @@ def build_model_resnet152(input_shape):
             sub_net, parent_layer_name = build_residual_block(net[parent_layer_name], 1.0/4, 1, False, 4, ix='2%s' % c)
         net.update(sub_net)
     
-    block_size = ['a'] + ['b'+str(i+1) for i in range(7)]
-    # block_size = list('abcd')
+    # block_size = ['a'] + ['b'+str(i+1) for i in range(7)]
+    block_size = list('abcd')
     for c in block_size:
         if c == 'a':
             sub_net, parent_layer_name = build_residual_block(
@@ -170,8 +170,8 @@ def build_model_resnet152(input_shape):
             sub_net, parent_layer_name = build_residual_block(net[parent_layer_name], 1.0/4, 1, False, 4, ix='3%s' % c)
         net.update(sub_net)
     
-    block_size = ['a'] + ['b'+str(i+1) for i in range(35)]
-    # block_size = list('abcdef')
+    # block_size = ['a'] + ['b'+str(i+1) for i in range(35)]
+    block_size = list('abcdef')
     for c in block_size:
         if c == 'a':
             sub_net, parent_layer_name = build_residual_block(
@@ -221,7 +221,7 @@ dataname = 'imagenet'
 
 monitor_grad = False
 
-class ResNet152(object):
+class ResNet50(object):
     '''
     Residual Network on ImageNet
     
@@ -246,7 +246,7 @@ class ResNet152(object):
 
         import theano
         theano.config.on_unused_input = 'warn'
-        self.name = 'ResNet152'
+        self.name = 'ResNet50'
 
         # data
         from theanompi.models.data import ImageNet_data
@@ -666,7 +666,7 @@ class ResNet152(object):
         
 if __name__ == '__main__':
     
-    raise RuntimeError('to be tested using test_model.py:\n$ python test_model.py lasagne_model_zoo.resnet152 ResNet152')
+    raise RuntimeError('to be tested using test_model.py:\n$ python test_model.py lasagne_model_zoo.resnet50 ResNet50')
 
 
 

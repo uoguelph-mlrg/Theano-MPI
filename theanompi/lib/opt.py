@@ -17,6 +17,9 @@ def pre_model_iter_fn(model, sync_type, f_train=True, f_val=True):
                         for param_i in model.params]
                 
             updates_v, updates_dv = prepare_update_dict(model, sync_type='cdd')
+            
+            updates_v=fix_update_bcasts(dict(updates_v))
+            updates_dv=fix_update_bcasts(dict(updates_dv))
     
             get_vel_args = {"inputs":[model.subb_ind], "outputs":[model.cost,model.error], "updates":updates_v, \
                                                            "givens":[(model.x,  model.shared_x_slice), 
