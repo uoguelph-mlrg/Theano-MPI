@@ -32,7 +32,16 @@ def do_recv(comm, params, dest):
         p.sync()
         comm.Recv(buf = [bufint(p), mpitp], source=dest)
 
-
+def remove_BN_params(params):
+    
+    '''
+    remove any BN params from the list, e.g., beta, gamma named lasagne weights
+    
+    '''
+    excluded_parameter_names = ['gamma', 'beta']
+    
+    return [p for p in params if p.name not in excluded_parameter_names]
+    
 class BSP_Exchanger(object):
     '''
     model parameter exchanger during BSP weight exchanging
@@ -49,9 +58,7 @@ class BSP_Exchanger(object):
 
         self.sync_type = sync_type
 
-        
-        # TODO make sure exchanger class doesn't keep a self copy of model, only the reference to its param list
-        self.param_list = model.params
+        self.param_list = remove_BN_params(model.params)
         
         if self.sync_type == 'cdd':
             self.vels = model.vels
