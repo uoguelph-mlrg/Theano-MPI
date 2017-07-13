@@ -198,15 +198,15 @@ def build_model_resnet50(input_shape):
     return net
 
 # model hyperparams
-n_epochs = 120 # 60E4/5004 = 119.9
+n_epochs = 90 # 60E4/5004 = 119.9
 momentum = 0.90
 weight_decay = 0.0001
-batch_size = 64  # ResNet50: 16->3.5G Mem, 64->10G Mem
+batch_size = 32  # ResNet50: 16->3.5G Mem, 64->10G Mem
 file_batch_size = 128
-learning_rate = 0.025 # 0.1 for 256 batch size; 0.1/8 for 32 batch size
+learning_rate = 0.1 * batch_size/256. # 0.1 for 256 batch size; 0.1/8 for 32 batch size
 
 lr_policy = 'step'
-lr_step = [30, 60, 110]
+lr_step = [30, 60, 80]
 
 use_momentum = True
 use_nesterov_momentum = False
@@ -513,6 +513,8 @@ class ResNet50(object):
             if self.monitor_grad: 
                 print(np.array(self.get_norm(self.subb_t)))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
+                
+        for p in self.params: p.container.value.sync()
             
         recorder.train_error(count, cost, error)
         recorder.end('calc')
