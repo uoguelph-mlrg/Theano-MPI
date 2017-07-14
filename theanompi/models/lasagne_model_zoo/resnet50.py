@@ -53,15 +53,20 @@ def build_simple_block(incoming_layer, names,
     net = []
     net.append((
             names[0],
-            ConvLayer(incoming_layer, num_filters, filter_size, stride, pad,
+            ConvLayer(incoming_layer, num_filters, filter_size, stride, pad, W=lasagne.init.HeNormal(gain='relu'),
                       flip_filters=False, nonlinearity=None) if use_bias
-            else ConvLayer(incoming_layer, num_filters, filter_size, stride, pad, b=None,
+            else ConvLayer(incoming_layer, num_filters, filter_size, stride, pad, W=lasagne.init.HeNormal(gain='relu'), b=None,
                            flip_filters=False, nonlinearity=None)
         ))
-
+    
+    if names[1][-2:] == '2c': 
+        gamma=lasagne.init.Constant(0)
+    else:
+        gamma=lasagne.init.Constant(1)
+        
     net.append((
             names[1],
-            BatchNormLayer(net[-1][1])
+            BatchNormLayer(net[-1][1],gamma=gamma)
         ))
     if nonlin is not None:
         net.append((
@@ -190,7 +195,7 @@ def build_model_resnet50(input_shape):
         net.update(sub_net)
     net['pool5'] = PoolLayer(net[parent_layer_name], pool_size=7, stride=1, pad=0,
                              mode='average_exc_pad', ignore_border=False)
-    net['fc1000'] = DenseLayer(net['pool5'], num_units=1000, nonlinearity=None)
+    net['fc1000'] = DenseLayer(net['pool5'], num_units=1000, nonlinearity=None, W=lasagne.init.Normal(std=0.01, mean=0.0))
     net['prob'] = NonlinearityLayer(net['fc1000'], nonlinearity=softmax)
 
     return net
