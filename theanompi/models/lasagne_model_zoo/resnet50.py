@@ -192,8 +192,6 @@ def build_model_resnet50(input_shape):
                              mode='average_exc_pad', ignore_border=False)
     net['fc1000'] = DenseLayer(net['pool5'], num_units=1000, nonlinearity=None)
     net['prob'] = NonlinearityLayer(net['fc1000'], nonlinearity=softmax)
-    
-    print('Total number of layers:', len(lasagne.layers.get_all_layers(net['prob'])))
 
     return net
 
@@ -346,6 +344,8 @@ class ResNet50(object):
         self.lr = T.scalar('lr')
         
         net = build_model_resnet50(input_shape=(None, 3, 224, 224))
+        
+        if self.verbose: print('Total number of layers:', len(lasagne.layers.get_all_layers(net['prob'])))
         
         self.output_layer = net['prob']
         

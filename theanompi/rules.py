@@ -66,7 +66,7 @@ class BSP(Rule):
     
     '''
     
-    sync_type = 'avg' # 'avg' or 'cdd'
+    sync_type = 'cdd' # 'avg' or 'cdd'
     exch_strategy = 'nccl32' # nccl16, nccl32 or swap
     
     def __init__(self):

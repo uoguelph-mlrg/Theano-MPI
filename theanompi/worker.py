@@ -24,16 +24,39 @@ class BSP_Worker(MPI_GPU_Process):
         # construct model train function based on sync rule
         model.compile_iter_fns(self.sync_type)
         
-        # Linear scale rule (See paper in #22)    
-        model.scale_lr(self.size)
-        
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=config['mname'], verbose=self.verbose)
         
         # choose the type of exchanger
         from theanompi.lib.exchanger import BSP_Exchanger
         self.exchanger = BSP_Exchanger(self.comm, self.gpucomm, self.exch_strategy, self.sync_type, self.ctx, model)
+    
+    def lr_warmup(self, model, epoch):  
+        
+        if epoch == 0:
             
+            self.warmup_epochs=5.
+        
+            self.power_base = pow(self.size, 1./self.warmup_epochs)  # power(b,5) = size
+            
+            # epoch0 : lr
+            # epoch1 : lr * b
+            # epoch2 : lr * b * b 
+            # epoch3 : lr * b * b * b 
+            # epoch4 : lr * b * b * b * b
+            # epoch5 : lr * b * b * b * b * b = lr * size
+            # epoch6 : lr * size
+            
+        else:
+            
+            if epoch<=self.warmup_epochs:
+                
+                current_lr = model.shared_lr.get_value()
+                
+                if self.verbose: print('warming up lr from %f to %f' % (current_lr, current_lr*self.power_base))
+                import numpy as np
+                model.shared_lr.set_value(np.array(current_lr*self.power_base, dtype='float32'))
+                
             
     def BSP_run(self, model):
         
@@ -53,6 +76,8 @@ class BSP_Worker(MPI_GPU_Process):
             model.epoch=epoch
             
             recorder.start_epoch()
+            
+            self.lr_warmup(model,epoch)
             
             # train
             exch_iteration=0
