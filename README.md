@@ -105,8 +105,9 @@ More examples can be found [here](https://github.com/uoguelph-mlrg/Theano-MPI/tr
 
 ## Example Performance
 
-###BSP tested on up to eight Tesla K80 GPUs
-Time per 5120 images in seconds: [allow_gc = True]
+### BSP tested on up to eight Tesla K80 GPUs 
+
+Training (+communication) time per 5120 images in seconds: [allow_gc = True, using nccl32 on [copper](https://www.sharcnet.ca/my/systems/show/108)]
 
 | Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
 | :---: | :---: | :---: | :---: | :---: |
