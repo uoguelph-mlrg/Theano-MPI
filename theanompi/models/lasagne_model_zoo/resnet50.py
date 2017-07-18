@@ -411,7 +411,7 @@ class ResNet50(object):
                                                   (self.y, self.shared_y_slice)]
                                                                 )
     
-    def compile_iter_fns(self, sync_type):
+    def compile_iter_fns(self, *args, **kwargs):
         
         import time
         
