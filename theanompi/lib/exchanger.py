@@ -97,6 +97,11 @@ class BSP_Exchanger(object):
         
         recorder.start()
         
+        self.comm.Barrier()
+        
+        recorder.end('sync')
+        
+        recorder.start()
         # average w
         if self.size > 1:
 

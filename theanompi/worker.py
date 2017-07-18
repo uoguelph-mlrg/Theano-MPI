@@ -86,17 +86,14 @@ class BSP_Worker(MPI_GPU_Process):
                 
                 for subb_i in range(model.n_subb):
         
-                    out = model.train_iter(batch_i, recorder)
-                    
-                    if out!=None: 
-                        batch_i = out
-                    else:
-                        batch_i+=1
+                    model.train_iter(batch_i, recorder)
                     
                     if exch_iteration % exchange_freq == 0: 
                         exchanger.exchange(recorder)
                     exch_iteration+=1
                     
+                batch_i+=1
+                
                 recorder.print_train_info(batch_i*self.size)
             
             recorder.clear_train_info()

@@ -190,7 +190,7 @@ def check_model(model):
         
         assert hasattr(model, 'adjust_hyperp') == True and callable(getattr(model, 'adjust_hyperp')) == True
         
-        assert hasattr(model, 'scale_lr') == True and callable(getattr(model, 'scale_lr')) == True
+        # assert hasattr(model, 'scale_lr') == True and callable(getattr(model, 'scale_lr')) == True
         
         assert hasattr(model, 'cleanup') == True and callable(getattr(model, 'cleanup')) == True
         

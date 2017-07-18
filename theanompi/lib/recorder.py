@@ -36,6 +36,7 @@ class Recorder(object):
         self.info_dict['all_time'] = []
         self.all_time = {}
         self.all_time['calc'] = []
+        self.all_time['sync'] = []
         self.all_time['comm'] = []
         self.all_time['wait'] = []        
 
@@ -106,17 +107,19 @@ class Recorder(object):
             # print time info
 
             calc = sum(self.all_time['calc'])
+            sync = sum(self.all_time['sync'])
             comm = sum(self.all_time['comm'])
             wait = sum(self.all_time['wait'])
-            t_all = calc + comm + wait
+            t_all = calc + sync + comm + wait
 
-            self.info_dict['all_time'].append([count, t_all, calc, comm, wait])
+            self.info_dict['all_time'].append([count, t_all, calc, sync, comm, wait])
 
             if self.verbose:
-                print('time per %d batches: %.2f (train %.2f comm %.2f wait %.2f)' % \
-                            (printFreq, t_all, calc, comm, wait))
+                print('time per %d batches: %.2f (train %.2f sync %.2f comm %.2f wait %.2f)' % \
+                            (printFreq, t_all, calc, sync, comm, wait))
              
             self.all_time['calc'][:] = []
+            self.all_time['sync'][:] = []
             self.all_time['comm'][:] = []
             self.all_time['wait'][:] = []
             
@@ -126,6 +129,7 @@ class Recorder(object):
         self.train_info['error'][:] = []
         
         self.all_time['calc'][:] = []
+        self.all_time['sync'][:] = []
         self.all_time['comm'][:] = []
         self.all_time['wait'][:] = []
         
@@ -393,41 +397,48 @@ class Recorder(object):
 	        fig.savefig('val.png',format='png')
         
         if self.info_dict['all_time']!=[]:
-        	count_t, t_all, t_calc, t_comm, t_wait = np.transpose(self.info_dict['all_time'])
-        	t_all = t_all[:int(t_all.shape[0]/250) * 250]
-        	t_calc = t_calc[:int(t_calc.shape[0]/250) * 250]
-        	t_comm = t_comm[:int(t_comm.shape[0]/250) * 250]
-        	t_wait = t_wait[:int(t_wait.shape[0]/250) * 250]
-        
-        	t_all = np.mean(t_all.reshape(-1, 250), axis=1)
-        	t_calc = np.mean(t_calc.reshape(-1, 250), axis=1)
-        	t_comm = np.mean(t_comm.reshape(-1, 250), axis=1)
-        	t_wait = np.mean(t_wait.reshape(-1, 250), axis=1)
-        	
-        	# time
-	        fig = plt.figure(3)
-	
-	        ax = plt.subplot(411) # one record per 40 iterations ,
-	        ax.plot(t_all, color[0+color_id], label='all_time')
-	        #ax.set_xlabel('epoch')
-	        ax.set_ylabel('overall')
-	
-	        ax = plt.subplot(412)
-	        ax.plot(t_calc, color[0+color_id], label='train_time')
-	        #ax.set_xlabel('epoch')
-	        ax.set_ylabel('calc')
-	
-	        ax = plt.subplot(413)
-	        ax.plot(t_comm, color[0+color_id], label='comm_time')
-	        #ax.set_xlabel('epoch')
-	        ax.set_ylabel('comm')
-	
-	        ax = plt.subplot(414)
-	        ax.plot(t_wait, color[0+color_id], label='wait_time')
-	        ax.set_xlabel('epoch')
-	        ax.set_ylabel('wait')
-	        
-	        plt.suptitle('time per 5120 images')
+            count_t, t_all, t_calc, t_sync, t_comm, t_wait = np.transpose(self.info_dict['all_time'])
+            t_all = t_all[:int(t_all.shape[0]/250) * 250]
+            t_calc = t_calc[:int(t_calc.shape[0]/250) * 250]
+            t_sync = t_sync[:int(t_sync.shape[0]/250) * 250]
+            t_comm = t_comm[:int(t_comm.shape[0]/250) * 250]
+            t_wait = t_wait[:int(t_wait.shape[0]/250) * 250]
+
+            t_all = np.mean(t_all.reshape(-1, 250), axis=1)
+            t_calc = np.mean(t_calc.reshape(-1, 250), axis=1)
+            t_sync = np.mean(t_sync.reshape(-1, 250), axis=1)
+            t_comm = np.mean(t_comm.reshape(-1, 250), axis=1)
+            t_wait = np.mean(t_wait.reshape(-1, 250), axis=1)
+
+            # time
+            fig = plt.figure(3)
+
+            ax = plt.subplot(511) # one record per 40 iterations ,
+            ax.plot(t_all, color[0+color_id], label='all_time')
+            #ax.set_xlabel('epoch')
+            ax.set_ylabel('overall')
+
+            ax = plt.subplot(512)
+            ax.plot(t_calc, color[0+color_id], label='train_time')
+            #ax.set_xlabel('epoch')
+            ax.set_ylabel('calc')
+
+            ax = plt.subplot(513)
+            ax.plot(t_sync, color[0+color_id], label='sync_time')
+            #ax.set_xlabel('epoch')
+            ax.set_ylabel('sync')
+
+            ax = plt.subplot(514)
+            ax.plot(t_comm, color[0+color_id], label='comm_time')
+            #ax.set_xlabel('epoch')
+            ax.set_ylabel('comm')
+
+            ax = plt.subplot(515)
+            ax.plot(t_wait, color[0+color_id], label='wait_time')
+            ax.set_xlabel('epoch')
+            ax.set_ylabel('wait')
+
+            plt.suptitle('time per 5120 images')
         
         if self.info_dict['epoch_time']!=[]:
         	count_epoch, t_epoch = np.transpose(self.info_dict['epoch_time'])
