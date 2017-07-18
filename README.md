@@ -110,10 +110,11 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 | Model | 1GPU  | 2GPU  | 4GPU  | 8GPU  |
 | :---: | :---: | :---: | :---: | :---: |
-| AlexNet-128b | 20.42 | 10.68 | 5.45 | 3.11 |
-| GoogLeNet-32b | 73.24 | 35.88 | 18.45 | 9.59 |
-| VGGNet-16b | 353.48 | 191.97 | 99.18 | 66.89 |
-| VGGNet-32b | 332.32 | 163.70 | 82.65 | 49.42 |
+| AlexNet-128b | 20.50 | 10.35+0.78 | 5.13+0.54 | 2.63+0.61 |
+| GoogLeNet-32b | 63.89 | 31.40+1.00 | 15.51+0.71 | 7.69+0.80 |
+| VGG16-16b | 358.29 | 176.08+13.90 | 90.44+9.28 | 55.12+12.59 |
+| VGG16-32b | 343.37 | 169.12+7.14 | 86.97++4.80 | 43.29+5.41 |
+| ResNet50-64b | 163.15 | 80.09+0.81 | 40.25+0.56 | 20.12+0.57 |
 <img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_a.png width=500/>
 <img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_g.png width=500/>
 
@@ -121,7 +122,7 @@ Time per 5120 images in seconds: [allow_gc = True]
 
 * To get the best running speed performance, the memory cache may need to be cleaned before running.
 
-* Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher.
+* Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher (needs [hwloc](https://www.open-mpi.org/projects/hwloc/) depedency).
 
 * Learnining rate and other hyperparams may need to be retuned according to number of workers and effective batch size to be stable and give optimal convergence. 
 
