@@ -116,6 +116,8 @@ Training (+communication) time per 5120 images in seconds: [allow_gc = True, usi
 | VGG16-16b | 358.29 | 176.08+13.90 | 90.44+9.28 | 55.12+12.59 |
 | VGG16-32b | 343.37 | 169.12+7.14 | 86.97++4.80 | 43.29+5.41 |
 | ResNet50-64b | 163.15 | 80.09+0.81 | 40.25+0.56 | 20.12+0.57 |
+
+More details on the benchmark can be found in this [notebook](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/examples/speedup-n_workers.ipynb).
 <img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_a.png width=500/>
 <img src=https://github.com/uoguelph-mlrg/Theano-MPI/raw/master/show/val_g.png width=500/>
 
