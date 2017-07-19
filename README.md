@@ -114,7 +114,7 @@ Training (+communication) time per 5120 images in seconds: [allow_gc = True, usi
 | AlexNet-128b | 20.50 | 10.35+0.78 | 5.13+0.54 | 2.63+0.61 |
 | GoogLeNet-32b | 63.89 | 31.40+1.00 | 15.51+0.71 | 7.69+0.80 |
 | VGG16-16b | 358.29 | 176.08+13.90 | 90.44+9.28 | 55.12+12.59 |
-| VGG16-32b | 343.37 | 169.12+7.14 | 86.97++4.80 | 43.29+5.41 |
+| VGG16-32b | 343.37 | 169.12+7.14 | 86.97+4.80 | 43.29+5.41 |
 | ResNet50-64b | 163.15 | 80.09+0.81 | 40.25+0.56 | 20.12+0.57 |
 
 More details on the benchmark can be found in this [notebook](https://github.com/uoguelph-mlrg/Theano-MPI/blob/master/examples/speedup-n_workers.ipynb).
