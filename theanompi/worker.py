@@ -22,7 +22,7 @@ class BSP_Worker(MPI_GPU_Process):
         # check model has necessary attributes
         check_model(model)
         # construct model train function based on sync rule
-        model.compile_iter_fns(self.sync_type)
+        model.compile_iter_fns()
         
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=config['mname'], verbose=self.verbose)
@@ -38,6 +38,8 @@ class BSP_Worker(MPI_GPU_Process):
             self.warmup_epochs=5.
         
             self.power_base = pow(self.size, 1./self.warmup_epochs)  # power(b,5) = size
+            
+            if self.verbose: print('calculating lr warming up power base: %.3f' % self.power_base)
             
             # epoch0 : lr
             # epoch1 : lr * b
@@ -56,6 +58,9 @@ class BSP_Worker(MPI_GPU_Process):
                 if self.verbose: print('warming up lr from %f to %f' % (current_lr, current_lr*self.power_base))
                 import numpy as np
                 model.shared_lr.set_value(np.array(current_lr*self.power_base, dtype='float32'))
+            
+
+        if self.verbose: print('learning rate %f will be used for epoch %d' % (model.shared_lr.get_value(), epoch))
                 
             
     def BSP_run(self, model):

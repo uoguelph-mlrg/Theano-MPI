@@ -517,37 +517,16 @@ class VGG16(object): # c01b input
             self.subb_v+=1
         
     def adjust_hyperp(self, epoch):
-            
-        '''
-        borrowed from AlexNet
-        '''
-        # lr is calculated every time as a function of epoch and size
+        
+        'to be called once per epoch'
         
         if lr_policy == 'step':
             
-            stp0,stp1,stp2 = lr_step
-            
-            if epoch >=stp0 and epoch < stp1:
-
-                self.step_idx = 1
+            if epoch in lr_step: 
+                
+                tuned_base_lr = self.shared_lr.get_value() /10.
         
-            elif epoch >=stp1 and epoch < stp2:
-                
-                self.step_idx = 2
-
-            elif epoch >=stp2 and epoch < n_epochs:
-                
-                self.step_idx = 3
-                
-            else:
-                pass
-            
-            tuned_base_lr = self.base_lr * 1.0/pow(10.0,self.step_idx) 
-            
-        else:
-            raise NotImplementedError()
-        
-        self.shared_lr.set_value(np.float32(tuned_base_lr))
+                self.shared_lr.set_value(np.float32(tuned_base_lr))
         
     def scale_lr(self, size):
         
