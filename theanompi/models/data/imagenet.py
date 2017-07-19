@@ -71,6 +71,12 @@ class ImageNet_data(object):
         import numpy as np
         train_filenames = sorted(glob.glob(train_folder_path + '/*' + ext_data))
         val_filenames = sorted(glob.glob(val_folder_path + '/*' + ext_data))
+        
+        
+        if debug:
+            train_filenames = train_filenames[:40]
+            val_filenames = val_filenames[:20]
+            
         train_labels = np.load(label_folder_path + 'train_labels' + ext_label)
         val_labels = np.load(label_folder_path + 'val_labels' + ext_label)
         img_mean = np.load(dir_head + mean_file)
