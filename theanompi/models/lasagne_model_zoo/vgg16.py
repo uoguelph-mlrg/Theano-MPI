@@ -318,9 +318,9 @@ class VGG16(object): # c01b input
         
         from theanompi.lib.opt import pre_model_iter_fn
 
-        pre_model_iter_fn(self, sync_type=sync_type)
+        pre_model_iter_fn(self, self.size)
         
-        if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
+        print('Compile time: %.3f s' % (time.time()-start))
             
     def reset_iter(self, mode):
         
@@ -413,6 +413,8 @@ class VGG16(object): # c01b input
         
         cost,error= function(self.subb_t)
         
+        for p in self.params: p.container.value.sync()
+        
         if self.verbose: 
             if self.monitor_grad: 
                 print(np.array(self.get_norm(self.subb_t)))
@@ -420,8 +422,6 @@ class VGG16(object): # c01b input
             
         recorder.train_error(count, cost, error)
         recorder.end('calc')
-
-
             
         if (self.subb_t+1)//self.n_subb == 1: # test if next sub-batch is in another file
             

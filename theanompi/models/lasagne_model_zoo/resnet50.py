@@ -514,16 +514,15 @@ class ResNet50(object):
         
         cost,error= function(self.subb_t)
         
+        for p in self.params: p.container.value.sync()
+        
         if self.verbose: 
             if self.monitor_grad: 
                 print(np.array(self.get_norm(self.subb_t)))
                 #print [np.int(np.log10(i)) for i in np.array(self.get_norm(self.subb))]
-                
-        for p in self.params: p.container.value.sync()
             
         recorder.train_error(count, cost, error)
         recorder.end('calc')
-
 
             
         if (self.subb_t+1)//self.n_subb == 1: # test if next sub-batch is in another file
