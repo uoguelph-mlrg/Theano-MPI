@@ -489,7 +489,16 @@ class ResNet50(object):
             
             else:
             
-                arr = hkl.load(img[self.current_t]) #- img_mean
+                img_mean = self.data.rawdata[-1]
+                import hickle as hkl
+                arr = hkl.load(img[self.current_t]) - img_mean
+
+                from theanompi.models.data.utils import crop_and_mirror
+
+                arr = crop_and_mirror(arr, mode, 
+                                    rand_crop, 
+                                    batch_crop_mirror, 
+                                    input_width)
              
                 self.shared_x.set_value(arr)
                 
@@ -580,7 +589,17 @@ class ResNet50(object):
             else:
         
     
-                arr = hkl.load(img[self.current_v]) #- img_mean
+                img_mean = self.data.rawdata[-1]
+                
+                import hickle as hkl
+                arr = hkl.load(img[self.current_v]) - img_mean
+
+                from theanompi.models.data.utils import crop_and_mirror
+
+                arr = crop_and_mirror(arr, mode, 
+                                    rand_crop, 
+                                    batch_crop_mirror, 
+                                    input_width)
         
                 # arr = np.rollaxis(arr,0,4)
                                 
