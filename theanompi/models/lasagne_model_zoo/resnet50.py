@@ -220,6 +220,8 @@ input_height = 224
 
 batch_crop_mirror = True 
 rand_crop = True
+
+image_mean = np.array([103.939, 116.779, 123.68],dtype='float32')[:,np.newaxis,np.newaxis,np.newaxis]
 dataname = 'imagenet'
 
 monitor_grad = False
@@ -254,6 +256,7 @@ class ResNet50(object):
         # data
         from theanompi.models.data import ImageNet_data
         self.data = ImageNet_data(verbose=False)
+        self.data.rawdata[4] = image_mean
         self.channels = self.data.channels # 'c' mean(R,G,B) = (103.939, 116.779, 123.68)
         self.input_width = input_width # '0' single scale training 224
         self.input_height = input_height # '1' single scale training 224
@@ -494,9 +497,10 @@ class ResNet50(object):
             
             else:
             
-                img_mean = self.data.rawdata[-1]
+                img_mean = self.data.rawdata[4]
+                img_std = self.data.rawdata[5]
                 import hickle as hkl
-                arr = hkl.load(img[self.current_t]) - img_mean
+                arr = (hkl.load(img[self.current_t]) - img_mean)/255./img_std
 
                 from theanompi.models.data.utils import crop_and_mirror
 
@@ -595,10 +599,11 @@ class ResNet50(object):
             else:
         
     
-                img_mean = self.data.rawdata[-1]
+                img_mean = self.data.rawdata[4]
+                img_std = self.data.rawdata[5]
                 
                 import hickle as hkl
-                arr = hkl.load(img[self.current_v]) - img_mean
+                arr = (hkl.load(img[self.current_v]) - img_mean)/255./img_std
 
                 from theanompi.models.data.utils import crop_and_mirror
 

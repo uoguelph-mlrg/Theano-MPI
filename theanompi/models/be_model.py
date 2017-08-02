@@ -40,10 +40,11 @@ if __name__ == '__main__':
     
     # load data
 
-    img_mean=model.data.rawdata[-1]
+    img_mean=model.data.rawdata[4]
+    img_std=model.data.rawdata[5]
     
     import hickle as hkl
-    arr = hkl.load(model.data.train_img_shard[0]) - img_mean
+    arr = (hkl.load(model.data.train_img_shard[0]) - img_mean)/255./img_std
     
     from theanompi.models.data.utils import crop_and_mirror
     

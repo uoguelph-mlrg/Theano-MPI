@@ -33,6 +33,7 @@ if __name__ == '__main__':
     rand_crop  =    config['rand_crop']        
     batch_crop_mirror  =    config['batch_crop_mirror']
     img_mean = config['img_mean']
+    img_std=config['img_std']
     import os
     if "CPULIST_train" in os.environ:
         cpulist = os.environ['CPULIST_train']
@@ -95,7 +96,7 @@ if __name__ == '__main__':
 
             arr = hkl.load(str(filename)).astype('float32')
             
-            arr = arr - img_mean
+            arr = (arr - img_mean)/255./img_std
             
             arr = crop_and_mirror(arr, mode, 
                                 rand_crop, 

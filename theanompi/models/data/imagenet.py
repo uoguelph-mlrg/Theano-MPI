@@ -17,15 +17,17 @@ sock_data = 5020
 
 sc=False # if the architecture already includes subtract mean and cropping
         
+debug=False
+
 class ImageNet_data(object):
     
     def __init__(self, verbose):
         
         # data hyperparams
         
-        self.data_path  = '/scratch/ilsvrc12/'
-        self.train_folder = 'train_hkl_b256_b_128'
-        self.val_folder = 'val_hkl_b256_b_128'
+        self.data_path  = dir_head #'/scratch/ilsvrc12/'
+        self.train_folder = train_folder #'train_hkl_b256_b_128/'
+        self.val_folder = val_folder #'val_hkl_b256_b_128/'
         
         self.channels = 3
         self.width =256
@@ -89,11 +91,14 @@ class ImageNet_data(object):
             #print 'BGR_mean %s' % image_mean #[ 122.22585297  116.20915222  103.56548309]
             import numpy as np
             image_mean = image_mean[:,np.newaxis,np.newaxis,np.newaxis]
+        
+        img_std = np.array([0.229, 0.224, 0.225]).astype(np.float32)
+        img_std = img_std[:,np.newaxis,np.newaxis,np.newaxis]
 
     
 
         self.rawdata = [train_filenames,train_labels,\
-                    val_filenames,val_labels,img_mean] # 5 items
+                    val_filenames,val_labels,img_mean,img_std] # 6 items
                 
                 
         
@@ -286,6 +291,7 @@ class ImageNet_data(object):
         config['rand_crop'] = rand_crop
         config['batch_crop_mirror'] = batch_crop_mirror
         config['img_mean'] = self.rawdata[4]
+        config['img_std'] = self.rawdata[5]
         
         import os
         _sock_data = ((sock_data + int(os.getpid())) % 64511)+1024

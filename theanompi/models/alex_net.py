@@ -419,9 +419,10 @@ class AlexNet(object):
             
             else:
             
-                img_mean = self.data.rawdata[-1]
+                img_mean = self.data.rawdata[4]
+                img_std = self.data.rawdata[5]
                 import hickle as hkl
-                arr = hkl.load(img[self.current_t]) - img_mean
+                arr = (hkl.load(img[self.current_t]) - img_mean)/255./img_std
 
                 from theanompi.models.data.utils import crop_and_mirror
 
@@ -520,9 +521,10 @@ class AlexNet(object):
             else:
         
     
-                img_mean = self.data.rawdata[-1]
+                img_mean = self.data.rawdata[4]
+                img_std = self.data.rawdata[5]
                 import hickle as hkl
-                arr = hkl.load(img[self.current_v]) - img_mean
+                arr = (hkl.load(img[self.current_v]) - img_mean)/255./img_std
 
                 from theanompi.models.data.utils import crop_and_mirror
 
