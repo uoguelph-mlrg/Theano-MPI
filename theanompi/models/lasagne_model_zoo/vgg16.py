@@ -392,7 +392,7 @@ class VGG16(object): # c01b input
                     
             
             else:
-            
+
                 img_mean = self.data.rawdata[4]
                 img_std = self.data.rawdata[5]
                 import hickle as hkl
@@ -492,8 +492,7 @@ class VGG16(object): # c01b input
                 
         
             else:
-        
-    
+
                 img_mean = self.data.rawdata[4]
                 img_std = self.data.rawdata[5]
                 import hickle as hkl

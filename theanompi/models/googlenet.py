@@ -866,7 +866,6 @@ class GoogLeNet(object):
         
             else:
         
-    
                 img_mean = self.data.rawdata[4]
                 img_std = self.data.rawdata[5]
                 import hickle as hkl
