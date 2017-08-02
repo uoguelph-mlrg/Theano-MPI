@@ -337,7 +337,7 @@ class AlexNet(object):
                                                   (self.y, self.shared_y_slice)]
                                                                 )
     
-    def compile_iter_fns(self, sync_type='avg'):
+    def compile_iter_fns(self):
         
         import time
         
@@ -345,7 +345,7 @@ class AlexNet(object):
         
         from theanompi.lib.opt import pre_model_iter_fn
 
-        pre_model_iter_fn(self, sync_type=sync_type)
+        pre_model_iter_fn(self,self.size)
         
         if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
     
@@ -443,10 +443,11 @@ class AlexNet(object):
                 print(np.array(self.get_norm(self.subb_t)).tolist()[:2])
                 
         cost,error= function(self.subb_t)
-            
+        
+        for p in self.params: p.container.value.sync()
+        
         recorder.train_error(count, cost, error)
         recorder.end('calc')
-
 
             
         if (self.subb_t+1)//self.n_subb == 1: # test if next sub-batch is in another file
@@ -547,41 +548,16 @@ class AlexNet(object):
             self.subb_v+=1
         
     def adjust_hyperp(self, epoch):
-            
-        '''
-        borrowed from AlexNet
-        '''
-        # lr is calculated every time as a function of epoch and size
+        
+        'to be called once per epoch'
         
         if lr_policy == 'step':
             
-            stp0,stp1,stp2 = lr_step
-            
-            if epoch >=stp0 and epoch < stp1:
-
-                self.step_idx = 1
-        
-            elif epoch >=stp1 and epoch < stp2:
+            if epoch in lr_step: 
                 
-                self.step_idx = 2
-
-            elif epoch >=stp2 and epoch < n_epochs:
-                
-                self.step_idx = 3
-                
-            else:
-                pass
-            
-            tuned_base_lr = self.base_lr * 1.0/pow(10.0,self.step_idx) 
-            
-        else:
-            raise NotImplementedError()
+                tuned_base_lr = self.shared_lr.get_value() /10.
         
-        self.shared_lr.set_value(np.float32(tuned_base_lr))
-        
-    def scale_lr(self, size):
-        
-        self.shared_lr.set_value(np.array(self.shared_lr.get_value()*size, dtype='float32'))
+                self.shared_lr.set_value(np.float32(tuned_base_lr))
         
     def cleanup(self):
         

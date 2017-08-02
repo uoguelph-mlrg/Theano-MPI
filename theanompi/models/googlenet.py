@@ -693,7 +693,7 @@ class GoogLeNet(object):
         
         from theanompi.lib.opt import pre_model_iter_fn
 
-        pre_model_iter_fn(self, sync_type=sync_type)
+        pre_model_iter_fn(self, self.size)
         
         if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
             
@@ -786,6 +786,8 @@ class GoogLeNet(object):
         
         cost,error= function(self.subb_t)
         
+        for p in self.params: p.container.value.sync()
+        
         if self.verbose: 
             if self.monitor_grad: 
                 print(np.array(self.get_norm(self.subb_t)))
@@ -793,9 +795,7 @@ class GoogLeNet(object):
             
         recorder.train_error(count, cost, error)
         recorder.end('calc')
-
-
-            
+        
         if (self.subb_t+1)//self.n_subb == 1: # test if next sub-batch is in another file
             
             if self.last_one_t == False:
@@ -894,6 +894,7 @@ class GoogLeNet(object):
             self.subb_v+=1
                                                                
     def adjust_hyperp(self, epoch):
+        ' to be called once per epoch'
             
         # Poly lr policy according to
         # https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
@@ -911,13 +912,14 @@ class GoogLeNet(object):
         # Poly lr policy according to
         # https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet
         
-        tuned_base_lr = self.base_lr
-        
-        for i in range(5, epoch+1):
+        if epoch>5:
+            
+            tuned_base_lr = self.shared_lr.get_value()
+            
             tuned_base_lr = tuned_base_lr * \
                 pow( (1. -  1.* (i) /240.0), 0.5 )
                 
-        self.shared_lr.set_value(np.float32(tuned_base_lr))
+            self.shared_lr.set_value(np.float32(tuned_base_lr))
         
     def cleanup(self):
         
