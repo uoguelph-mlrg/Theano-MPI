@@ -125,9 +125,7 @@ More details on the benchmark can be found in this [notebook](https://github.com
 ## Note
 * Test your single GPU model with `theanompi/models/test_model.py` before trying data-paralle rule.
 
-* You may want to use those helper functions in `/theanompi/lib/opt.py` to construct optimizers in order to avoid common pitfalls mentioned in (#22) and get better convergence.
-
-* Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher (needs [hwloc](https://www.open-mpi.org/projects/hwloc/) depedency).
+* You may want to use those helper functions in `/theanompi/lib/opt.py` to construct optimizers in order to avoid common pitfalls mentioned in ([#22](https://github.com/uoguelph-mlrg/Theano-MPI/issues/22)) and get better convergence.
 
 * Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher (needs [hwloc](https://www.open-mpi.org/projects/hwloc/) depedency).
 

@@ -75,7 +75,7 @@ def _clip_paramlist(param_list, scale=10):
     return res
 
 
-def BSP_MSGD(model, use_nesterov_momentum, k=1):
+def _BSP_MSGD(model, use_nesterov_momentum, k=1):
     
     '''
     aggregate gradient
@@ -178,7 +178,7 @@ def BSP_MSGD(model, use_nesterov_momentum, k=1):
     
     
     
-def _BSP_MSGD(model, use_nesterov_momentum, k=1):
+def BSP_MSGD(model, use_nesterov_momentum, k=1):
     
     '''
     
@@ -327,89 +327,3 @@ def BSP_SGD(model, k=1):
         # training (step3-> step1) - > comm (step 2)
         
     return updates_pre_g_aggre, updates_post_g_aggre
-    
-    
-def MSGD(model, use_nesterov_momentum,sync_type, clip):
-    
-    params, grads, weight_types = model.params, model.grads, model.weight_types
-    
-    if clip==True:
-        grads=_clip_paramlist(grads)
-        
-    vels, vels2 = model.vels, model.vels2
-    
-    lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
-    mu = model.mu # def: 0.9 # momentum
-    eta = model.eta  #0.0002 # weight decay
-
-    updates_w = [] # for avg
-    
-    assert len(weight_types) == len(params)
-    
-    k=0
-
-    for param_i, grad_i, weight_type in \
-            zip(params, grads, weight_types):
-
-        if weight_type == 'W':
-            real_grad = grad_i + eta * param_i
-            real_lr = lr
-        elif weight_type == 'b':
-            real_grad = grad_i
-            real_lr = 2. * lr
-        else:
-            raise TypeError("Weight Type Error")
-
-        if use_nesterov_momentum:
-            vel_i_next = mu ** 2 * vels[k] - (1 + mu) * real_lr * real_grad
-        else:
-            vel_i_next = mu * vels[k] - real_lr * real_grad
-        
-        updates_w.append((vels[k], vel_i_next))    
-        updates_w.append((param_i, param_i + vel_i_next))
-        updates_w.append((vels2[k], vels2[k] + vel_i_next))
-            
-        k=k+1
-        
-    return updates_w
-    
-def SGD(model,sync_type, clip):
-    
-    params, grads, weight_types = model.params, model.grads, model.weight_types
-    
-    if clip==True:
-        grads=_clip_paramlist(grads)
-        
-    vels, vels2 = model.vels, model.vels2
-    
-    lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
-    mu = model.mu # def: 0.9 # momentum
-    eta = model.eta  #0.0002 # weight decay
-
-    updates_w = [] # for avg
-    
-    assert len(weight_types) == len(params)
-    
-    k=0
-    
-    for param_i, grad_i, weight_type in \
-            zip(params, grads, weight_types):
-            
-        if weight_type == 'W':
-                
-            update =  param_i - lr * grad_i - eta * lr * param_i
-            update_vel2 =  - lr * grad_i - eta * lr * param_i
-
-        elif weight_type == 'b':
-                
-            update = param_i - 2 * lr * grad_i
-            update_vel2 = - 2 * lr * grad_i
-
-        updates_w.append((param_i, update))
-        updates_w.append((vels2[k], update_vel2))
-            
-            
-        k=k+1
-        
-    return updates_w
-    
