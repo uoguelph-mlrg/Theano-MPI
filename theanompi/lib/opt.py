@@ -194,6 +194,7 @@ def BSP_MSGD(model, use_nesterov_momentum, k=1):
     model.vels2=[]
     
     lr = model.lr #shared_lr #T.scalar('lr')  # symbolic learning rate
+    mu = model.mu # def: 0.9 # momentum coefficient
     eta = model.eta  #0.0002 # weight decay
     
     updates_pre_g_aggre = [] # pre gradient aggregation
