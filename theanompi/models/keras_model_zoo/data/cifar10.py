@@ -86,7 +86,7 @@ class Cifar10_data():
                 ins+=[1.]
                 val_ins+=[0.]
                 
-            from keras.engine.training import slice_X
+            from keras.engine.training import _slice_arrays
             
             self.n_batch_train = ins[0].shape[0]//batch_size
             self.train_batches = []
@@ -98,9 +98,9 @@ class Cifar10_data():
                                         
                 if isinstance(ins[-1], float):
                     # do not slice the training phase flag
-                    ins_batch = slice_X(ins[:-1], batch_ids) + [ins[-1]]
+                    ins_batch = _slice_arrays(ins[:-1], batch_ids) + [ins[-1]]
                 else:
-                    ins_batch = slice_X(ins, batch_ids)
+                    ins_batch = _slice_arrays(ins, batch_ids)
                                         
                 self.train_batches.append(ins_batch)
             
@@ -115,9 +115,9 @@ class Cifar10_data():
                                         
                 if isinstance(val_ins[-1], float):
                     # do not slice the training phase flag
-                    ins_batch = slice_X(val_ins[:-1], batch_ids) + [val_ins[-1]]
+                    ins_batch = _slice_arrays(val_ins[:-1], batch_ids) + [val_ins[-1]]
                 else:
-                    ins_batch = slice_X(val_ins, batch_ids)
+                    ins_batch = _slice_arrays(val_ins, batch_ids)
                                         
                 self.val_batches.append(ins_batch)
                 

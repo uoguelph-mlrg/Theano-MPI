@@ -129,6 +129,8 @@ More details on the benchmark can be found in this [notebook](https://github.com
 
 * Binding cores according to your NUMA topology may give better performance. Try the `-bind` option with the launcher (needs [hwloc](https://www.open-mpi.org/projects/hwloc/) depedency).
 
+* Using the launcher script is prefered to start training. Using python to start training currently cause core binding problem especially on a NUMA system.
+
 * Shuffling training examples before asynchronous training makes the loss surface a lot smoother during model converging.
 
 * Some known bugs and possible enhancement are listed in [Issues](https://github.com/uoguelph-mlrg/Theano-MPI/issues). We welcome all kinds of participation (bug reporting, discussion, pull request, etc) in improving the framework.

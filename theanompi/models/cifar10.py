@@ -290,7 +290,7 @@ class Cifar10_model(object): # c01b input
                                                   (self.y, self.shared_y_slice)]
                                                                 )
     
-    def compile_iter_fns(self, sync_type):
+    def compile_iter_fns(self, *args, **kwargs):
         
         import time
         
@@ -298,7 +298,7 @@ class Cifar10_model(object): # c01b input
         
         from theanompi.lib.opt import pre_model_iter_fn
         
-        pre_model_iter_fn(self, sync_type=sync_type)
+        pre_model_iter_fn(self, k=self.size)
         
         if self.verbose: print('Compile time: %.3f s' % (time.time()-start))
             
@@ -427,8 +427,20 @@ class Cifar10_model(object): # c01b input
             self.subb_v=0
         else:
             self.subb_v+=1
-                                                               
+            
     def adjust_hyperp(self, epoch):
+        
+            'to be called once per epoch'
+        
+            if lr_policy == 'step':
+            
+                if epoch in lr_step: 
+                
+                    tuned_base_lr = self.shared_lr.get_value() /10.
+        
+                    self.shared_lr.set_value(np.float32(tuned_base_lr))
+                                                                               
+    def _adjust_hyperp(self, epoch):
             
         '''
         borrowed from AlexNet

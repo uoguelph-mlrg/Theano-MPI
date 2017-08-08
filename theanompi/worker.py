@@ -22,7 +22,7 @@ class BSP_Worker(MPI_GPU_Process):
         # check model has necessary attributes
         check_model(model)
         # construct model train function based on sync rule
-        model.compile_iter_fns()
+        model.compile_iter_fns(sync_type=self.sync_type)
         
         from theanompi.lib.recorder import Recorder
         self.recorder = Recorder(self.comm, printFreq=40, modelname=config['mname'], verbose=self.verbose)

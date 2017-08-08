@@ -4,7 +4,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-MAJOR, MINOR = 1 , 0 
+MAJOR, MINOR = 0 , 1 
 DESCRIPTION = None
 LONG_DESCRIPTION = None
 AUTHOR = 'He Ma, Fei Mao, Graham Taylor'

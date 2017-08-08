@@ -27,7 +27,7 @@ class Cifar10_data():
         # data hyperparams
         
         # self.data_path  = '/mnt/data/hma02/data/cifar10/cifar-10-batches-py/'
-        self.data_path  = '/scratch/g/gwtaylor/mahe6562/data/cifar10/cifar-10-batches-py/'
+        self.data_path  = '/work/mahe6562/data/cifar10/cifar-10-batches-py/'
         
         self.channels = 3
         self.width =32

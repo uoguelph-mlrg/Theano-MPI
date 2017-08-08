@@ -23,7 +23,8 @@ k = 4  # widen factor
 img_rows, img_cols = 32, 32
 img_channels = 3
 learninig_rate=0.001
-step_ids = [50, 70, 90]
+lr_policy='step'
+lr_step = [50, 70, 90]
 
 def bottleneck(incoming, count, nb_in_filters, nb_out_filters, dropout=None, subsample=(2, 2)):
     outgoing = wide_basic(incoming, nb_in_filters, nb_out_filters, dropout, subsample)
@@ -141,10 +142,15 @@ class Wide_ResNet(object):
         
         self.keras_get_params()
         
-    def compile_iter_fns(self, sync_type='avg'):
+    def compile_iter_fns(self, *args, **kwargs):
+        
+        try:
+            sync_type = kwargs['sync_type']
+        except:
+            raise RuntimeError('Keras wresnet needs sync_type keyword argument')
         
         if sync_type != 'avg':
-            raise RuntimeError('currently wresnet only support compiling with sync_type avg ')
+            raise RuntimeError('currently wresnet only support compiling with sync_type avg, add BSP_SYNC_TYPE=avg in your session cfg')
         
         import time
         
@@ -226,19 +232,18 @@ class Wide_ResNet(object):
             self.current_v = 0
             self.subb_v=0
             self.last_one_v = False
-    
+            
     def adjust_hyperp(self, epoch):
         
-        '''
-        customized lr adjust schedule
-        '''
-        
-        if epoch in step_ids:
-        
-            new_lr = self.model.optimizer.lr.get_value()
-            self.model.optimizer.lr.set_value(np.array(new_lr/10.,dtype='float32'))
-            
-            print('lr adjusted to %.5f' % new_lr)
+        'to be called once per epoch'
+    
+        if lr_policy == 'step':
+
+            if epoch in lr_step: 
+    
+                tuned_base_lr = self.shared_lr.get_value() /10.
+
+                self.shared_lr.set_value(np.float32(tuned_base_lr))
         
     def scale_lr(self, size):
         
