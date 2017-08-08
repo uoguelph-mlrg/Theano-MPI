@@ -7,37 +7,41 @@ import yaml
 #############
 # load data #
 #############
-loadpath_base = 'inforec_test/'
+loadpath_base = 'inforec/'
 import glob
 loadpaths = sorted(glob.glob(loadpath_base+'*.pkl'))
+
 labels = ['_'+l.split('/',1)[-1].split('_',1)[-1].split('.',1)[0] for l in loadpaths]
 print loadpaths
 print labels
     
     
-def load(path,loadpath):
+def load(loadpath, config):
 
-    with open(path, 'r') as f:
-        config = yaml.load(f)
-    config['verbose'] = False        
+    from theanompi.lib.recorder import Recorder
 
-    sys.path.append('../lib/')
+    recorder = Recorder(**config)
 
-    from base.recorder import Recorder
-
-    recorder = Recorder(config)
-
-    recorder.load(filepath = loadpath)
+    recorder.load(loadpath)
 
     return recorder
     
 if __name__ == '__main__' :
     
+    from mpi4py import MPI
+    comm=MPI.COMM_WORLD
+    
     recorders = []
     
     for i in range(len(loadpaths)):
         
-        recorders.append(load(path = '../run/config.yaml',loadpath = loadpaths[i]))
+        config={}
+        config['comm']=comm
+        config['printFreq']=40, 
+        config['modelname']='ResNet50'
+        config['verbose']=True
+        
+        recorders.append(load(loadpaths[i], config))
         
         if i != len(loadpaths)-1: 
             recorders[i].show(label=labels[i], color_id = i, show=False)

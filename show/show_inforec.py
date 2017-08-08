@@ -5,7 +5,7 @@ import numpy as np
 import sys
 import yaml
 
-loadpath_base = '../examples/inforec'
+loadpath_base = 'inforec/'
 import glob
 loadpaths = sorted(glob.glob(loadpath_base+'/inforec.pkl'))
     
@@ -16,7 +16,7 @@ if __name__ == '__main__' :
     config={}
     config['comm']=comm
     config['printFreq']=40, 
-    config['modelname']='AlexNet'
+    config['modelname']='ResNet50'
     config['verbose']=True   
 
     from theanompi.lib.recorder import Recorder
