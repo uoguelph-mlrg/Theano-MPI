@@ -59,8 +59,6 @@ class GOSGD_Worker(MPI_GPU_Process):
             recorder.start_epoch()
             
             # train
-            
-            print(model.data.n_batch_train)
     
             for batch_i in range(model.data.n_batch_train):
                 
